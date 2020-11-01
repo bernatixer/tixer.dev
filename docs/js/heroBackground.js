@@ -1,60 +1,67 @@
 var speed = 2;
 var particles = [];
-var w = window.innerWidth;
-var h = window.innerHeight;
 
-var camera = new THREE.PerspectiveCamera(85, w/h, 1, 4000);
+var camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 5000);
 var scene = new THREE.Scene();
 camera.position.z = 1000;
+console.log(camera.position)
 scene.add(camera);
-var renderer = new THREE.CanvasRenderer();
+var renderer = new THREE.WebGLRenderer({
+  antialias: true
+});
 var backgroundColor = new THREE.Color(0x020911);
 renderer.setClearColor(backgroundColor, 1);
-renderer.setSize(w, h);
+renderer.setPixelRatio( window.devicePixelRatio );
+renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild(renderer.domElement);
 
+const numParticles = 400;
 createParticles();
 update();
 
 function createParticles() {
-  var particle, material;
+  const positions = new Float32Array( numParticles * 3 );
+  const scales = new Float32Array( numParticles );
+  let i = 0, j = 0;
+
   for (var zpos = -1000; zpos < 1000; zpos += 5) {
-    material = new THREE.ParticleCanvasMaterial({
-      color: 0xF7E4BE,
-      program: function(c){
-        c.beginPath();
-        c.arc(0, 0, .8, 0, Math.PI * 2, true);
-        c.fill();
-      }
-    });
-    particle = new THREE.Particle(material);
-    particle.position.x = Math.random() * 1000 - 500;
-    particle.position.y = Math.random() * 1000 - 500;
-    particle.position.z = zpos;
-    particle.scale.x = particle.scale.y = 1;
-    scene.add(particle);
-    particles.push(particle);
+    positions[ i ] = Math.random() * 1000 - 500; // x
+    positions[ i + 1 ] = Math.random() * 1000 - 500; // y
+    positions[ i + 2 ] = zpos; // z
+    scales[ j ] = 3;
+
+    i += 3;
+    j ++;
   }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+  geometry.setAttribute( 'scale', new THREE.BufferAttribute( scales, 1 ) );
+
+  const material = new THREE.ShaderMaterial( {
+
+    uniforms: {
+      color: { value: new THREE.Color( 0xF7E4BE ) },
+    },
+    vertexShader: document.getElementById( 'vertexshader' ).textContent,
+    fragmentShader: document.getElementById( 'fragmentshader' ).textContent
+
+  } );
+
+  particles = new THREE.Points( geometry, material );
+  scene.add( particles );
+
 }
 
 function update() {
-  requestAnimationFrame( update);  
-  for (var i = 0; i < particles.length; i++) {
-    particle = particles[i];
-    particle.position.z += speed;
-    if (particle.position.z > 1000) particle.position.z -= 2000;
-      }
+  requestAnimationFrame(update);
+  const positions = particles.geometry.attributes.position.array;
+  let i = 0;
+  for (let pi = 0; pi < numParticles; ++pi) {
+    positions[ i + 2 ] += speed;
+    if (positions[ i + 2 ] > 1000) positions[ i + 2 ] -=1500;
+    i += 3;
+  }
+  particles.geometry.attributes.position.needsUpdate = true;
   renderer.render(scene, camera);
-}
-
-if (!window.requestAnimationFrame ) {
-    window.requestAnimationFrame = ( function() {
-        return window.webkitRequestAnimationFrame ||
-        window.mozRequestAnimationFrame ||
-        window.oRequestAnimationFrame ||
-        window.msRequestAnimationFrame ||
-        function(callback, element ) {
-            window.setTimeout( callback, 1000 / 60 );
-        };
-    })();
 }
