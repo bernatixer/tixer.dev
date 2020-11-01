@@ -28,9 +28,11 @@ createParticles();
 animate();
 
 function createParticles() {
+  // Initialize stars vectors
   const positions = new Float32Array(numParticles * 3);
   const scales = new Float32Array(numParticles);
  
+  // Fill vectors with positions
   let i = 0, j = 0;
   for (var zpos = starsStart; zpos < starsEnd; zpos += starsStep) {
     positions[i] = Math.random() * 1000 - 500;
@@ -42,10 +44,12 @@ function createParticles() {
     j += 1;
   }
 
+  // Create BufferGeometry
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   geometry.setAttribute('scale', new THREE.BufferAttribute(scales, 1));
 
+  // Create material
   const material = new THREE.ShaderMaterial({
     uniforms: {
       color: { value: new THREE.Color(0xF7E4BE) },
@@ -54,8 +58,21 @@ function createParticles() {
     fragmentShader: document.getElementById('fragmentshader').textContent
   });
 
+  // Add stars
   particles = new THREE.Points(geometry, material);
   scene.add(particles);
+
+  window.addEventListener('resize', onWindowResize, false);
+}
+
+function onWindowResize() {
+  windowHalfX = window.innerWidth / 2;
+  windowHalfY = window.innerHeight / 2;
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate() {
