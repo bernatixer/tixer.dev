@@ -2,6 +2,31 @@ body {
   margin: 0;
 }
 
+.custom-shape-divider-bottom-1604258493 {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.custom-shape-divider-bottom-1604258493 svg {
+  position: relative;
+  display: block;
+  width: calc(100% + 1.3px);
+  height: 80px;
+}
+
+.custom-shape-divider-bottom-1604258493 .shape-fill {
+  fill: #FFFFFF;
+}
+
+.content {
+  /* background-color: #A9A9A9; */
+  background: rgb(255,255,255);
+}
+
 .front {
   position: relative;
   display: flex;
