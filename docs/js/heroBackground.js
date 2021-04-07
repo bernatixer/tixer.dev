@@ -6,7 +6,10 @@ const starsStep = 5;
 const speed = 2;
 const numParticles = (starsEnd - starsStart) / starsStep;
 
+let scrolledPercentage = 0;
+
 var particles = [];
+var cloudParticles = [];
 
 // Create scene
 var scene = new THREE.Scene();
@@ -19,6 +22,20 @@ scene.add(camera);
 const light = new THREE.PointLight( 0xffffff, 1, 1000 );
 light.position.set( 0, 0, 1000 );
 scene.add( light );
+
+let directionalLight = new THREE.DirectionalLight(0xff8c19);
+directionalLight.position.set(0,0,1);
+scene.add(directionalLight);
+
+let orangeLight = new THREE.PointLight(0xcc6600,50,450,1.7);
+orangeLight.position.set(200,300,500);
+scene.add(orangeLight);
+let redLight = new THREE.PointLight(0xd8547e,50,450,1.7);
+redLight.position.set(100,300,400);
+scene.add(redLight);
+let blueLight = new THREE.PointLight(0x3677ac,50,450,1.7);
+blueLight.position.set(300,300,600);
+scene.add(blueLight);
 
 // EL COLOR: 0x89E894
 
@@ -69,7 +86,28 @@ function createParticles() {
   scene.add(particles);
 
   // scene.add(generateDelaunayTriangles());
-  scene.add(generateTriangles());
+  // scene.add(generateTriangles());
+
+  let loader = new THREE.TextureLoader();
+  loader.load("img/smoke.png", function(texture){
+    cloudGeo = new THREE.PlaneBufferGeometry(500,500);
+    cloudMaterial = new THREE.MeshLambertMaterial({
+      map:texture,
+      transparent: true
+    });
+
+    for(let p=0; p<50; p++) {
+      let cloud = new THREE.Mesh(cloudGeo, cloudMaterial);
+      cloud.position.set(
+        Math.random() * 1000 - 500,
+        Math.random() * 1000 - 500,
+        500
+      );
+      cloud.material.opacity = 0.15;
+      cloudParticles.push(cloud);
+      scene.add(cloud);
+    }
+  });
 
   window.addEventListener('resize', onWindowResize, false);
 }
@@ -156,7 +194,6 @@ function generateTriangles() {
     positions.push(cx, cy, 0);
   }
 
-  console.log(positions);
   geometry.setAttribute( 'position', new THREE.Float32BufferAttribute(positions, 3));
 
   const material = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
@@ -176,15 +213,23 @@ function onWindowResize() {
 
 function animate() {
   requestAnimationFrame(animate);
+  checkScroll();
   updateParticles();
   renderer.render(scene, camera);
+}
+
+function checkScroll() {
+  const scrolled = document.documentElement.scrollTop;
+  const height = window.innerHeight;
+  const left = height - scrolled;
+  scrolledPercentage = left/height;
 }
 
 function updateParticles() {
   const positions = particles.geometry.attributes.position.array;
   let i = 0;
   for (let pi = 0; pi < numParticles; ++pi) {
-    positions[i + 2] += speed;
+    positions[i + 2] += speed*scrolledPercentage;
     if (positions[i + 2] > 1000) positions[i + 2] -=1500;
     i += 3;
   }

@@ -1,5 +1,6 @@
 body {
   margin: 0;
+  background: #020911;
 }
 
 .custom-shape-divider-bottom-1604258493 {
@@ -19,12 +20,13 @@ body {
 }
 
 .custom-shape-divider-bottom-1604258493 .shape-fill {
-  fill: #FFFFFF;
+  fill: #020911;
 }
 
 .content {
   /* background-color: #A9A9A9; */
-  background: rgb(255,255,255);
+  /* background: rgb(255,255,255); */
+  background: #020911;
 }
 
 .front {
@@ -53,6 +55,8 @@ img {
   font-family: 'Roboto Mono', monospace;
   margin-top: 100px;
   margin-bottom: 100px;
+  background: #020911;
+  color: #ffffff;
 }
 
 canvas {
@@ -68,7 +72,7 @@ canvas {
   font-size: 2.5rem;
   font-weight: 600;
   line-height: 1.125;
-  color:#fff;
+  color:#ffffff;
   z-index:2;
 }
 
@@ -88,9 +92,16 @@ canvas {
   margin-top: -1.25rem;
 }
 
+.info {
+  padding: 5rem;
+  background-color: #053f5e;
+  border-radius: 0.5rem;
+  text-align: left;
+}
+
 .underScore {
-  -webkit-animation:blink 1s ease-in-out infinite;
-  animation:blink 1s ease-in-out infinite;
+  -webkit-animation: blink 1s ease-in-out infinite;
+  animation: blink 1s ease-in-out infinite;
 }
 
 .glitch {
