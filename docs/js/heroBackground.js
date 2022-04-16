@@ -87,27 +87,6 @@ function createParticles() {
 
   // scene.add(generateTriangles());
 
-  let loader = new THREE.TextureLoader();
-  loader.load("img/smoke.png", function(texture){
-    cloudGeo = new THREE.PlaneBufferGeometry(500,500);
-    cloudMaterial = new THREE.MeshLambertMaterial({
-      map:texture,
-      transparent: true
-    });
-
-    for(let p=0; p<50; p++) {
-      let cloud = new THREE.Mesh(cloudGeo, cloudMaterial);
-      cloud.position.set(
-        Math.random() * 1000 - 500,
-        Math.random() * 1000 - 500,
-        500
-      );
-      cloud.material.opacity = 0.15;
-      cloudParticles.push(cloud);
-      scene.add(cloud);
-    }
-  });
-
   window.addEventListener('resize', onWindowResize, false);
 }
 
