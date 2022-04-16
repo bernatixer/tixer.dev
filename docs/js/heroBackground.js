@@ -85,7 +85,6 @@ function createParticles() {
   particles = new THREE.Points(geometry, material);
   scene.add(particles);
 
-  // scene.add(generateDelaunayTriangles());
   // scene.add(generateTriangles());
 
   let loader = new THREE.TextureLoader();
@@ -110,58 +109,6 @@ function createParticles() {
   });
 
   window.addEventListener('resize', onWindowResize, false);
-}
-
-function generateDelaunayTriangles() {
-  const numPoints = 20;
-  const geometry = new THREE.BufferGeometry();
-  const positions = [];
-  
-  const box = visibleBox(camera.position.z);
-  const w = box.width, w2 = w/2;
-  const h = 0.3*box.height, h2 = 0.5*box.height;
-  const ha = 0.2*box.height, ha2 = 0.4*box.height;
-  const hb = 0.1*box.height, hb2 = 0.3*box.height;
-  
-  const points = [];
-  for (let i = 0; i < numPoints; i++) {
-    const x = Math.random() * w - w2;
-    const y = Math.random() * h - h2;
-    points.push([x,y]);
-  }
-  for (let i = 0; i < 50; i++) {
-    const x = Math.random() * w - w2;
-    const y = Math.random() * ha - ha2;
-    points.push([x,y]);
-  }
-  for (let i = 0; i < 25; i++) {
-    const x = Math.random() * w - w2;
-    const y = Math.random() * hb - hb2;
-    points.push([x,y]);
-  }
-
-  const delaunay = new Delaunator.from(points);
-  
-  for (let i = 0; i < delaunay.triangles.length; i += 6) {
-    const aOffset = Math.random() * 8 - 4;
-    const bOffset = Math.random() * 8 - 4;
-    const cOffset = Math.random() * 8 - 4;
-    const a = points[delaunay.triangles[i]];
-    const b = points[delaunay.triangles[i+1]];
-    const c = points[delaunay.triangles[i+2]];
-    positions.push(
-      b[0]+aOffset, b[1]+aOffset, 0,
-      a[0]+bOffset, a[1]+bOffset, 0,
-      c[0]+cOffset, c[1]+cOffset, 0
-    );
-  }
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  
-  geometry.computeBoundingSphere();
-  
-  const material = new THREE.MeshBasicMaterial({ color: 0xFFFFFF });
-  const mesh = new THREE.Mesh(geometry, material);
-  return mesh;
 }
 
 function generateTriangles() {
