@@ -14,11 +14,7 @@
       <h1 class="title glitch">BERNAT TORRES</h1>
       <h2 class="subtitle">developer and tech lover<span class="underScore">_</span></h2>
     </div>
-    <div class="custom-shape-divider-bottom-1604258493">
-      <svg data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 120" preserveAspectRatio="none">
-          <path d="M598.97 114.72L0 0 0 120 1200 120 1200 0 598.97 114.72z" class="shape-fill"></path>
-      </svg>
-    </div>
+    <div class="divider"></div>
     <section class="container">
       <div class="info">
         Check out my projects on GitHub
@@ -28,26 +24,9 @@
         Check out my projects on GitHub
       </div>
     </section>
-
-    <script type="x-shader/x-vertex" id="vertexshader">
-			attribute float scale;
-
-			void main() {
-				vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-				gl_PointSize = scale * (500.0 / - mvPosition.z);
-				gl_Position = projectionMatrix * mvPosition;
-			}
-		</script>
-
-		<script type="x-shader/x-fragment" id="fragmentshader">
-			uniform vec3 color;
-
-			void main() {
-				if (length(gl_PointCoord - vec2(0.5, 0.5)) > 0.550) discard;
-				gl_FragColor = vec4(color, 1.0);
-			}
-    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
     <script src="js/libs/three.r122.min.js"></script>
-    <script src="js/heroBackground.js"></script>
+    <script src="js/shaders.js"></script>
+    <script src="js/background.js"></script>
   </body>
 </html>
