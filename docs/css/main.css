@@ -1,6 +1,4 @@
 html {
-  /* background-image: linear-gradient(to right, #ce84af, #c98bc0, #c094d0, #b59ddf, #a6a6eb, #91b1f4, #7bbbf8, #68c4f7, #5bcfee, #66d7df, #7fddcf, #9de1c0); */
-  /* background-image: linear-gradient(to right, #133051, #212d4b, #292a45, #2e273e, #302538, #2c2436, #292433, #262330, #20232e, #1b222a, #182126, #171f22); */
   background-image: linear-gradient(to right, #00c9a3, #00c1b9, #00b7ca, #00acd3, #009fd4, #0997d5, #208ed4, #3585d2, #4c7fd1, #6178cf, #7371ca, #8469c4);
 }
 
@@ -8,23 +6,15 @@ body {
   margin: 0;
 }
 
-#blob {
+.hero {
   position: relative;
-}
-#blob canvas {
-  width: 1000px;
-  margin-top: -7%;
-}
-@media (max-width: 1200px) {
-  #blob canvas {
-    margin-top: -10%;
-    width: 800px;
- }
-}
-@media (max-width: 600px) {
-  #blob canvas {
-    width: 800px;
- }
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Share Tech Mono', monospace;
+  text-align: center;
+  height: 90vh;
 }
 
 .divider {
@@ -36,18 +26,7 @@ body {
   border-top: 8vh solid #020911;
 }
 
-.front {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  font-family: 'Share Tech Mono', monospace;
-  text-align: center;
-  height: 90vh;
-}
-
-.container {
+section {
   position: relative;
   width: 100%;
   max-width: 70%;
@@ -93,9 +72,9 @@ canvas {
   margin-top: -1.25rem;
 }
 
-.info {
+.box {
   padding: 5rem;
-  background-color: #053f5e;
+  background-color: #020911;
   border-radius: 0.5rem;
   font-family: 'Share Tech Mono', monospace;
   font-size: 2rem;
