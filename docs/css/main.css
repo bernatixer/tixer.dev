@@ -97,7 +97,10 @@ canvas {
   padding: 5rem;
   background-color: #053f5e;
   border-radius: 0.5rem;
-  text-align: left;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 2rem;
+  font-weight: 600;
+  text-align: center;
 }
 
 .underScore {
