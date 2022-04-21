@@ -4,7 +4,7 @@ const backgroundColor = new THREE.Color(0x020911);
 
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight*0.9, 1, 5000);
+const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 5000);
 camera.position.z = 1000;
 scene.add(camera);
 
@@ -15,9 +15,8 @@ scene.add(light);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setClearColor(backgroundColor, 1);
 renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(window.innerWidth, window.innerHeight*0.9);
-// document.body.appendChild(renderer.domElement);
-document.querySelector('.hero').appendChild(renderer.domElement);
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.querySelector('.hero').prepend(renderer.domElement);
 
 window.addEventListener('resize', onWindowResize, false);
 initializeScene();
@@ -30,7 +29,7 @@ function initializeScene() {
 
 function onWindowResize() {
   const innerWidth = window.innerWidth;
-  const innerHeight = window.innerHeight*0.9;
+  const innerHeight = window.innerHeight;
 
   windowHalfX = innerWidth / 2;
   windowHalfY = innerHeight / 2;
