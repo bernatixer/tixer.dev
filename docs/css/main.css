@@ -1,5 +1,6 @@
 html {
-  background-image: linear-gradient(to right, #00c9a3, #00c1b9, #00b7ca, #00acd3, #009fd4, #0997d5, #208ed4, #3585d2, #4c7fd1, #6178cf, #7371ca, #8469c4);
+  /* background-image: linear-gradient(to right, #00c9a3, #00c1b9, #00b7ca, #00acd3, #009fd4, #0997d5, #208ed4, #3585d2, #4c7fd1, #6178cf, #7371ca, #8469c4); */
+  background-image: linear-gradient( 55deg, #00fff0 0%, #677ef8 50%, #cc00ff 100% );
 }
 
 body {
@@ -73,7 +74,7 @@ canvas {
 }
 
 .box {
-  padding: 5rem;
+  padding: 5rem 1rem;
   background-color: #020911;
   border-radius: 0.5rem;
   font-family: 'Share Tech Mono', monospace;

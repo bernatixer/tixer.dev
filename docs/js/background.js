@@ -4,7 +4,7 @@ const backgroundColor = new THREE.Color(0x020911);
 
 const scene = new THREE.Scene();
 
-const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 1, 5000);
+const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight*0.9, 1, 5000);
 camera.position.z = 1000;
 scene.add(camera);
 
@@ -29,12 +29,12 @@ function initializeScene() {
 
 function onWindowResize() {
   windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight / 2;
+  windowHalfY = window.innerHeight*0.9 / 2;
 
-  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.aspect = window.innerWidth / window.innerHeight*0.9;
   camera.updateProjectionMatrix();
 
-  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight*0.9);
 }
 
 function animate() {
