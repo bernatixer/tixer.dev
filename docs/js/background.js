@@ -16,7 +16,8 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setClearColor(backgroundColor, 1);
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(window.innerWidth, window.innerHeight*0.9);
-document.body.appendChild(renderer.domElement);
+// document.body.appendChild(renderer.domElement);
+document.querySelector('.hero').appendChild(renderer.domElement);
 
 window.addEventListener('resize', onWindowResize, false);
 initializeScene();
@@ -28,13 +29,16 @@ function initializeScene() {
 }
 
 function onWindowResize() {
-  windowHalfX = window.innerWidth / 2;
-  windowHalfY = window.innerHeight*0.9 / 2;
+  const innerWidth = window.innerWidth;
+  const innerHeight = window.innerHeight*0.9;
 
-  camera.aspect = window.innerWidth / window.innerHeight*0.9;
+  windowHalfX = innerWidth / 2;
+  windowHalfY = innerHeight / 2;
+
+  camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
 
-  renderer.setSize(window.innerWidth, window.innerHeight*0.9);
+  renderer.setSize(innerWidth, innerHeight);
 }
 
 function animate() {
