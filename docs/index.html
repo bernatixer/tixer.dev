@@ -5,8 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Bernat Torres</title>
     <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/glitch.css">
+    <link rel="stylesheet" href="css/hero.css">
     <link href="https://fonts.googleapis.com/css?family=Share+Tech+Mono" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css?family=Roboto+Mono&display=swap" rel="stylesheet">
+    <link href='https://unpkg.com/boxicons@2.0.9/css/boxicons.min.css' rel='stylesheet'>
     <link rel="icon" type="image/x-icon" href="img/favicon.png">
   </head>
   <body>
@@ -19,14 +22,38 @@
     </div>
     <section class="boxes">
       <div class="box">
-        Coming soon!
+        <div id="results"></div>
+      </div>
+      <br>
+      <div class="box">
+        <div class="upload-file">
+          Upload image
+          <br/>
+          <br/>
+          <div class="drop-area">
+            <i class="bx bxs-cloud-upload icon"></i>
+            <h3>Drag and drop</h3>
+            <p>Maximum image size of <span>2MB</span></p>
+            <input type="file" accept="image/*" id="input-file" hidden>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="style-selector">
+          Select style
+          <br/>
+          <br/>
+          <div class="styles" id="styles"></div>
+        </div>
       </div>
     </section>
     <script src="js/libs/three.r122.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+    <script defer src=" https://cdnjs.cloudflare.com/ajax/libs/axios/0.27.2/axios.min.js"></script>
+    <script defer src="js/uploader.js"></script>
     <script defer src="js/shaders.js"></script>
     <script defer src="js/particles.js"></script>
     <script defer src="js/bubble.js"></script>
     <script defer src="js/background.js"></script>
+    <script defer src="js/style_selector.js"></script>
   </body>
 </html>

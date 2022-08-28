@@ -1,49 +1,16 @@
 html {
   /* background-image: linear-gradient(to right, #00c9a3, #00c1b9, #00b7ca, #00acd3, #009fd4, #0997d5, #208ed4, #3585d2, #4c7fd1, #6178cf, #7371ca, #8469c4); */
-  background-image: linear-gradient( 55deg, #00fff0 0%, #677ef8 50%, #cc00ff 100% );
+  background-image: linear-gradient(55deg, #00fff0 0%, #677ef8 50%, #cc00ff 100%);
 }
 
 body {
   margin: 0;
 }
 
-.hero {
-  position: relative;
-  /* clip-path: polygon(100% 0, 100% calc(100% - 4rem), 50% 100%, 0 calc(100% - 4rem), 0% 0%); */
-  clip-path: polygon(0 0, 100% 0, 100% 90%, 50% 98%, 0 90%);
-  background-color: #020911;
-  color: white;
-}
-
-.text {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  font-family: 'Share Tech Mono', monospace;
-  text-align: center;
-}
-
-.title {
-  font-size: 2.5rem;
-  font-weight: 600;
-  line-height: 1.125;
-}
-
-.subtitle {
-  color: #dbdbdb;
-  font-size: 1.25rem;
-  font-weight: 400;
-  line-height: 1.25;
-  margin-top: -1.25rem;
-}
-
 .boxes {
   position: relative;
   width: 100%;
-  max-width: 800px;
+  max-width: 1000px;
   margin: 0 auto;
   padding: 100px 20px;
   box-sizing: border-box;
@@ -51,89 +18,120 @@ body {
 }
 
 .box {
-  padding: 5rem 1rem;
+  padding: 2.5rem;
   background-color: #020911;
-  border-radius: 0.5rem;
+  border-radius: 1rem;
   font-family: 'Share Tech Mono', monospace;
   font-size: 2rem;
   font-weight: 600;
   text-align: center;
   color: #ffffff;
+  display: flex;
+  flex-direction: row;
 }
 
-::selection {
-  background: #00973c;
+.divider {
+  width: 2px;
+  margin: 6px 0;
+  background: white;
 }
 
-::-moz-selection {
-  background: #00973c;
+.style-selector {
+  width: 70%;
+  margin: 20px;
 }
 
-.underScore {
-  animation: blink 1s ease-in-out infinite;
+.styles {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
 }
 
-.glitch {
-  transform: translate(0%, 0%); 
+.style {
+  border: 2px solid white;
+  border-radius: 3px;
+  margin: 5px;
+  height: 100px;
+  width: 100px;
+
+  -webkit-transform: scale(1);
+	transform: scale(1);
+	-webkit-transition: .1s ease-in-out;
+	transition: .1s ease-in-out;
 }
 
-.glitch:before, .glitch:after {
-  display: block;
-  content: attr(data-title);
+.selected-style {
+  border: 2px solid greenyellow !important;
+  transform: scale(1.3) !important;
+  z-index: 1 !important;
+}
+
+.style:hover {
+  z-index: 1;
+  border: 2px solid white;
+  -webkit-transform: scale(1.3);
+	transform: scale(1.3);
+}
+
+.upload-file {
+  margin: 20px;
+  width: 30%;
+}
+
+.dragover {
+  opacity: 0.9;
+  border: 2px solid black !important;
+}
+
+.drop-area {
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  color: black;
+  cursor: pointer;
+  border: 2px dashed black;
+  position: relative;
+  overflow: hidden;
+}
+.icon {
+  font-size: 100px;
+  margin-bottom: 16px;
+}
+h3 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  pointer-events: none;
+}
+p {
+  font-size: 14px;
+}
+p span {
+  font-weight: 600;
+}
+.thumbnail, .img-name {
   position: absolute;
+  width: 100%;
+  height: 100%;
   top: 0;
   left: 0;
-  height: 100%;
-  width: 100%;
-  opacity: 0.8;
 }
-
-.glitch:after {
-  color: #f0f;
-  z-index: -2;
+.thumbnail {
+  object-fit: cover;
+  z-index: 100;
 }
-.glitch:before {
-  color: #00ff2a;
-  z-index: -1;
+.img-name {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  font-weight: 500;
+  padding: 16px;
+  background: rgba(0, 0, 0, .5);
+  z-index: 200;
+  opacity: 0;
+  transition: all .3s ease;
 }
-
-.glitch:hover:before {
-  animation: glitch 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) both infinite;
-}
-
-.glitch:hover:after {
-  animation: glitch 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) reverse both infinite;
-}
-
-@keyframes blink {
-  0% {
-    opacity:1;
-  }
-  50% {
-    opacity:0;
-  }
-  100% {
-    opacity:1;
-  }
-}
-
-@keyframes glitch {
-  0% {
-    transform: translate(0);
-  }
-  20% {
-    transform: translate(-3px, 3px);
-  }
-  40% {
-    transform: translate(-3px, -3px);
-  }
-  60% {
-    transform: translate(3px, 3px);
-  }
-  80% {
-    transform: translate(3px, -3px);
-  }
-  to {
-    transform: translate(0);
-  }
+.drop-area:hover .img-name {
+  opacity: 1;
 }
