@@ -1,4 +1,4 @@
-axios.get('https://37.187.122.100/api/styles')
+axios.get('https://api.tixer.dev/api/styles')
   .then(function (response) {
     const styles = response.data.styles
     for (const style in styles) {
@@ -30,7 +30,7 @@ function stylize() {
   var data = new FormData();
   data.append("file", document.getElementById("input-file").files[0]);
   data.append("style", current_selection.id)
-  fetch('https://37.187.122.100/api/styles/transform', {
+  fetch('https://api.tixer.dev/api/styles/transform', {
     method: 'POST',
     body: data,
   })
