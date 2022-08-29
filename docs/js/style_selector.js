@@ -30,6 +30,7 @@ function stylize() {
   var data = new FormData();
   data.append("file", document.getElementById("input-file").files[0]);
   data.append("style", current_selection.id)
+  document.getElementById("results-box").classList.add("loading")
   fetch('https://api.tixer.dev/api/styles/transform', {
     method: 'POST',
     body: data,
@@ -43,6 +44,7 @@ function stylize() {
           var img = document.createElement('img');
           img.src = reader.result
           document.getElementById("results").appendChild(img);
+          document.getElementById("results-box").classList.remove("loading")
       }
       reader.readAsDataURL(data)
   })

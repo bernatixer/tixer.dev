@@ -135,3 +135,10 @@ p span {
 .drop-area:hover .img-name {
   opacity: 1;
 }
+
+.loading {
+  background-image: url("https://cdn.dribbble.com/users/1303437/screenshots/4952713/abstract-loader-white.gif") !important;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+}
