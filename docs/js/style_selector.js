@@ -14,7 +14,7 @@ function createStyle(src, name, displayName) {
   img.classList.add("style")
   img.width = "100px"
   img.height = "100px"
-  img.src = "http://"+src
+  img.src = "https://"+src
   img.id = name
   img.alt = displayName
   img.addEventListener("click", () => {
