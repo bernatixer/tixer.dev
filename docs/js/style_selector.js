@@ -1,4 +1,4 @@
-axios.get('https://api.tixer.dev/api/styles')
+axios.get('https://api.tixer.dev/api/styles/')
   .then(function (response) {
     const styles = response.data.styles
     for (const style in styles) {
