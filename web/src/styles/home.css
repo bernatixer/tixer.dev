@@ -1,0 +1,330 @@
+/* ============================================
+   HOME PAGE STYLES
+   ============================================ */
+
+/* Hero */
+.hero-card {
+    border: 2px solid var(--acid);
+    padding: 40px 36px;
+    background: var(--void);
+    box-shadow: 8px 8px 0 var(--acid);
+    margin-bottom: 80px;
+    position: relative;
+    overflow: hidden;
+}
+
+.hero-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 50%;
+    height: 100%;
+    background: 
+        radial-gradient(circle, var(--acid) 1px, transparent 1px),
+        radial-gradient(circle, var(--acid) 0.5px, transparent 0.5px);
+    background-size: 8px 8px, 4px 4px;
+    background-position: 0 0, 2px 2px;
+    opacity: 0.3;
+    mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.hero-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.hero-title {
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cursor {
+    display: inline-block;
+    width: 0.45em;
+    height: 0.9em;
+    background: var(--acid);
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    50% { opacity: 0; }
+}
+
+.hero-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.hero-subtitle .sep {
+    opacity: 0.4;
+}
+
+.hero-note {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    opacity: 0.5;
+}
+
+/* Hobby effects */
+.hobby {
+    display: inline-block;
+    position: relative;
+    transition: all 0.3s ease;
+    cursor: default;
+    padding-bottom: 4px;
+}
+
+/* Skiing - falling snow */
+.hobby-ski:hover {
+    color: #87CEEB;
+}
+
+.flakes {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 40px;
+    pointer-events: none;
+}
+
+.flakes span {
+    position: absolute;
+    font-size: 0.55rem;
+    opacity: 0;
+}
+.flakes span:nth-child(1) { left: 5px; top: 0; }
+.flakes span:nth-child(2) { left: 35px; top: 4px; }
+.flakes span:nth-child(3) { left: 18px; top: 2px; }
+.flakes span:nth-child(4) { left: 42px; top: 6px; }
+.flakes span:nth-child(5) { left: 12px; top: 5px; }
+
+.hobby-ski:hover .flakes span {
+    animation: snowfall 1.4s ease-in infinite;
+}
+.hobby-ski:hover .flakes span:nth-child(1) { animation-delay: 0s; animation-name: snowfall1; }
+.hobby-ski:hover .flakes span:nth-child(2) { animation-delay: 0.3s; animation-name: snowfall2; }
+.hobby-ski:hover .flakes span:nth-child(3) { animation-delay: 0.6s; animation-name: snowfall3; }
+.hobby-ski:hover .flakes span:nth-child(4) { animation-delay: 0.15s; animation-name: snowfall4; }
+.hobby-ski:hover .flakes span:nth-child(5) { animation-delay: 0.45s; animation-name: snowfall5; }
+
+@keyframes snowfall1 {
+    0% { opacity: 1; transform: translate(0, 0); }
+    100% { opacity: 0; transform: translate(10px, 35px); }
+}
+@keyframes snowfall2 {
+    0% { opacity: 1; transform: translate(0, 0); }
+    100% { opacity: 0; transform: translate(-8px, 30px); }
+}
+@keyframes snowfall3 {
+    0% { opacity: 1; transform: translate(0, 0); }
+    100% { opacity: 0; transform: translate(5px, 33px); }
+}
+@keyframes snowfall4 {
+    0% { opacity: 1; transform: translate(0, 0); }
+    100% { opacity: 0; transform: translate(-5px, 28px); }
+}
+@keyframes snowfall5 {
+    0% { opacity: 1; transform: translate(0, 0); }
+    100% { opacity: 0; transform: translate(8px, 31px); }
+}
+
+/* Mountains - with trees */
+.mountain-scene {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: flex-end;
+    gap: 1px;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    font-size: 1.1rem;
+}
+
+.hobby-hike::after {
+    content: '';
+    position: absolute;
+    top: calc(100% + 22px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #228B22, #90EE90, #228B22, transparent);
+    border-radius: 2px;
+    opacity: 0;
+    transition: all 0.3s ease 0.1s;
+}
+
+.hobby-hike:hover {
+    color: #90EE90;
+}
+.hobby-hike:hover .mountain-scene {
+    opacity: 1;
+}
+.hobby-hike:hover::after {
+    opacity: 0.6;
+}
+
+/* Food - sushi pieces */
+.sushi-pieces {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 50px;
+    height: 25px;
+    pointer-events: none;
+}
+
+.sushi-pieces span {
+    position: absolute;
+    font-size: 0.8rem;
+    opacity: 0;
+}
+.sushi-pieces span:nth-child(1) { left: 5px; top: 2px; }
+.sushi-pieces span:nth-child(2) { left: 20px; top: 0; }
+.sushi-pieces span:nth-child(3) { left: 35px; top: 4px; }
+
+.hobby-food:hover {
+    color: #FFB347;
+}
+.hobby-food:hover .sushi-pieces span {
+    opacity: 1;
+}
+.hobby-food:hover .sushi-pieces span:nth-child(1) {
+    animation: sushi-bounce1 0.8s ease-in-out infinite;
+}
+.hobby-food:hover .sushi-pieces span:nth-child(2) {
+    animation: sushi-bounce2 0.7s ease-in-out infinite 0.15s;
+}
+.hobby-food:hover .sushi-pieces span:nth-child(3) {
+    animation: sushi-bounce3 0.9s ease-in-out infinite 0.3s;
+}
+
+@keyframes sushi-bounce1 {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-6px) rotate(-10deg); }
+}
+@keyframes sushi-bounce2 {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(8deg); }
+}
+@keyframes sushi-bounce3 {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-5px) rotate(-5deg); }
+}
+
+/* Travel - plane below */
+.hobby-travel::before {
+    content: '✈️';
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 50%;
+    font-size: 1rem;
+    opacity: 0;
+}
+
+.hobby-travel:hover {
+    color: var(--acid);
+}
+.hobby-travel:hover::before {
+    animation: fly 1.6s ease-in-out infinite;
+}
+
+@keyframes fly {
+    0% { opacity: 0; transform: translateX(-50%) translateX(-50px); }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { opacity: 0; transform: translateX(-50%) translateX(50px); }
+}
+
+/* Now section */
+.now-content p {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    opacity: 0.8;
+    margin-bottom: 16px;
+}
+
+.now-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Blog section */
+.blog-list {
+    list-style: none;
+}
+
+.blog-item {
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+}
+
+.blog-item:first-child {
+    padding-top: 0;
+}
+
+.blog-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.blog-item a {
+    font-size: 0.95rem;
+    color: var(--bone);
+}
+
+.blog-item a:hover {
+    color: var(--acid);
+    opacity: 1;
+}
+
+.blog-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    opacity: 0.4;
+    flex-shrink: 0;
+}
+
+.blog-empty {
+    font-size: 0.85rem;
+    opacity: 0.5;
+    font-style: italic;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .hero-card {
+        padding: 32px 28px;
+        box-shadow: 6px 6px 0 var(--acid);
+    }
+
+    .blog-item {
+        flex-direction: column;
+        gap: 6px;
+    }
+}
+
