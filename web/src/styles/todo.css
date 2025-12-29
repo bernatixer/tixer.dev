@@ -579,7 +579,7 @@
 .subtasks-container {
     max-height: 0;
     overflow: hidden;
-    transition: max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease;
+    transition: max-height 0.2s ease-out, padding 0.2s ease-out, margin 0.2s ease-out;
     margin-top: 0;
     border-top: 0 solid rgba(255, 255, 255, 0.06);
 }
@@ -658,9 +658,6 @@
     opacity: 0.4;
 }
 
-.task-card.has-subtasks.expanded .task-footer {
-    display: none;
-}
 
 /* ============================================
    FOCUS MODE

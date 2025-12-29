@@ -159,10 +159,6 @@ export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick }) 
         </div>
       </div>
 
-      {hasSubtasks && (
-        <SubtasksContainer subtasks={task.subtasks} onToggle={handleSubtaskToggle} />
-      )}
-
       <div className="task-footer">
         <div className="task-tags">
           {task.tags.map(tagId => (
@@ -170,6 +166,10 @@ export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick }) 
           ))}
         </div>
       </div>
+
+      {hasSubtasks && (
+        <SubtasksContainer subtasks={task.subtasks} onToggle={handleSubtaskToggle} />
+      )}
     </div>
   )
 }
