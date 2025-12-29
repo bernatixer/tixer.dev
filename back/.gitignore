@@ -4,3 +4,8 @@
 # Cargo lock is committed for binaries
 # Cargo.lock
 
+# SQLite database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

@@ -1,40 +1,53 @@
+mod db;
 mod handlers;
 mod models;
 mod state;
 
-use axum::{
-    http::{header, Method},
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
 use std::net::SocketAddr;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::CorsLayer;
 
+use db::SqliteRepository;
 use handlers::{health, tasks};
 use state::AppState;
 
 #[tokio::main]
 async fn main() {
-    // Initialize app state with mock data
-    let state = AppState::new();
+    // Initialize SQLite database
+    // The database file will be created in the current directory
+    let database_url = "sqlite:tixer.db?mode=rwc";
+    
+    let repo = SqliteRepository::new(database_url)
+        .await
+        .expect("Failed to connect to database");
 
-    // Configure CORS for frontend integration
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers([header::CONTENT_TYPE]);
+    // Seed with mock data if the database is empty
+    repo.seed_if_empty()
+        .await
+        .expect("Failed to seed database");
+
+    // Initialize app state with the repository
+    let state = AppState::new(repo);
+
+    // Configure CORS for frontend integration (fully permissive for development)
+    let cors = CorsLayer::very_permissive();
 
     // Build the router
     let app = Router::new()
-        .route("/health", get(health::health))
-        .route("/tasks", get(tasks::list_tasks).post(tasks::create_task))
-        .route("/tasks/:id", get(tasks::get_task))
+        .route("/api/health", get(health::health))
+        .route("/api/tasks", get(tasks::list_tasks).post(tasks::create_task))
+        .route(
+            "/api/tasks/:id",
+            get(tasks::get_task)
+                .put(tasks::update_task)
+                .delete(tasks::delete_task),
+        )
         .layer(cors)
         .with_state(state);
 
-    // Set the address (port 3001 to avoid conflict with frontend dev server)
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 5555));
     println!("🚀 Server running at http://{}", addr);
+    println!("📁 Using SQLite database: tixer.db");
 
     // Start the server
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
