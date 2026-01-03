@@ -23,6 +23,7 @@ struct TaskRow {
     created_at: String,
     recurrence: Option<String>,
     subtasks: String,       // JSON array
+    order: i32,
 }
 
 impl SqliteRepository {
@@ -41,6 +42,7 @@ impl SqliteRepository {
 
     /// Initialize the database schema
     async fn initialize(&self) -> Result<(), DbError> {
+        // Create table if it doesn't exist
         sqlx::query(
             r#"
             CREATE TABLE IF NOT EXISTS tasks (
@@ -52,12 +54,23 @@ impl SqliteRepository {
                 due_date TEXT,
                 created_at TEXT NOT NULL,
                 recurrence TEXT,
-                subtasks TEXT NOT NULL DEFAULT '[]'
+                subtasks TEXT NOT NULL DEFAULT '[]',
+                "order" INTEGER NOT NULL DEFAULT 0
             )
             "#,
         )
         .execute(&self.pool)
         .await?;
+
+        // Add order column if it doesn't exist (migration for existing databases)
+        sqlx::query(
+            r#"
+            ALTER TABLE tasks ADD COLUMN "order" INTEGER NOT NULL DEFAULT 0
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .ok(); // Ignore error if column already exists
 
         Ok(())
     }
@@ -96,6 +109,7 @@ impl SqliteRepository {
                         completed: true,
                     },
                 ],
+                order: 0,
             },
             CreateTaskRequest {
                 title: "Finish project report".to_string(),
@@ -105,6 +119,7 @@ impl SqliteRepository {
                 due_date: None,
                 recurrence: None,
                 subtasks: vec![],
+                order: 0,
             },
             CreateTaskRequest {
                 title: "Schedule dentist appointment".to_string(),
@@ -114,6 +129,7 @@ impl SqliteRepository {
                 due_date: None,
                 recurrence: None,
                 subtasks: vec![],
+                order: 0,
             },
             CreateTaskRequest {
                 title: "Review monthly expenses".to_string(),
@@ -123,6 +139,7 @@ impl SqliteRepository {
                 due_date: None,
                 recurrence: Some(Recurrence::Monthly),
                 subtasks: vec![],
+                order: 0,
             },
         ];
 
@@ -168,6 +185,7 @@ impl SqliteRepository {
             created_at,
             recurrence,
             subtasks,
+            order: row.order,
         })
     }
 }
@@ -176,7 +194,7 @@ impl SqliteRepository {
 impl TaskRepository for SqliteRepository {
     async fn get_tasks(&self) -> Result<Vec<Task>, DbError> {
         let rows: Vec<TaskRow> = sqlx::query_as(
-            "SELECT id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks FROM tasks ORDER BY created_at DESC"
+            "SELECT id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks, \"order\" FROM tasks ORDER BY column_id, \"order\", created_at DESC"
         )
         .fetch_all(&self.pool)
         .await?;
@@ -186,7 +204,7 @@ impl TaskRepository for SqliteRepository {
 
     async fn get_task(&self, id: &str) -> Result<Option<Task>, DbError> {
         let row: Option<TaskRow> = sqlx::query_as(
-            "SELECT id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks FROM tasks WHERE id = ?"
+            "SELECT id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks, \"order\" FROM tasks WHERE id = ?"
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -218,10 +236,23 @@ impl TaskRepository for SqliteRepository {
         let due_date_str = request.due_date.map(|d| d.to_rfc3339());
         let created_at_str = created_at.to_rfc3339();
 
+        // If order is not provided, set it to the max order in the column + 1
+        let order = if request.order == 0 {
+            let max_order: Option<(i32,)> = sqlx::query_as(
+                "SELECT COALESCE(MAX(\"order\"), -1) + 1 FROM tasks WHERE column_id = ?"
+            )
+            .bind(&column_id_str)
+            .fetch_optional(&self.pool)
+            .await?;
+            max_order.map(|(o,)| o).unwrap_or(0)
+        } else {
+            request.order
+        };
+
         sqlx::query(
             r#"
-            INSERT INTO tasks (id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tasks (id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks, "order")
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&id)
@@ -233,6 +264,7 @@ impl TaskRepository for SqliteRepository {
         .bind(&created_at_str)
         .bind(&recurrence_str)
         .bind(&subtasks_json)
+        .bind(order)
         .execute(&self.pool)
         .await?;
 
@@ -246,6 +278,7 @@ impl TaskRepository for SqliteRepository {
             created_at,
             recurrence: request.recurrence,
             subtasks: request.subtasks,
+            order,
         })
     }
 
@@ -268,7 +301,7 @@ impl TaskRepository for SqliteRepository {
         let result = sqlx::query(
             r#"
             UPDATE tasks 
-            SET title = ?, priority = ?, column_id = ?, tags = ?, due_date = ?, recurrence = ?, subtasks = ?
+            SET title = ?, priority = ?, column_id = ?, tags = ?, due_date = ?, recurrence = ?, subtasks = ?, "order" = ?
             WHERE id = ?
             "#,
         )
@@ -279,6 +312,7 @@ impl TaskRepository for SqliteRepository {
         .bind(&due_date_str)
         .bind(&recurrence_str)
         .bind(&subtasks_json)
+        .bind(task.order)
         .bind(id)
         .execute(&self.pool)
         .await?;

@@ -83,10 +83,12 @@ export const TodoBoard: FC<TodoBoardProps> = ({
     // Check if we're over a task
     const overTask = tasks.find(t => t.id === overId)
     if (overTask && activeTask.id !== overTask.id) {
-      // If different columns, move to the column
-      if (activeTask.columnId !== overTask.columnId) {
-        const targetColumnTasks = getTasksByColumn(overTask.columnId)
-        const overIndex = targetColumnTasks.findIndex(t => t.id === overId)
+      const targetColumnTasks = getTasksByColumn(overTask.columnId)
+      const overIndex = targetColumnTasks.findIndex(t => t.id === overId)
+      const activeIndex = targetColumnTasks.findIndex(t => t.id === activeId)
+
+      // Move between columns or reorder within same column
+      if (activeTask.columnId !== overTask.columnId || activeIndex !== overIndex) {
         moveTask({
           taskId: activeId,
           targetColumnId: overTask.columnId,
@@ -130,13 +132,11 @@ export const TodoBoard: FC<TodoBoardProps> = ({
       }
     }
 
-    if (activeTask.columnId !== targetColumnId || true) {
-      moveTask({
-        taskId: activeId,
-        targetColumnId,
-        targetIndex,
-      })
-    }
+    moveTask({
+      taskId: activeId,
+      targetColumnId,
+      targetIndex,
+    })
   }
 
   return (

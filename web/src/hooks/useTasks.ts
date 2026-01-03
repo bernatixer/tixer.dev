@@ -92,14 +92,39 @@ export function useMoveTask() {
       const tasks = queryClient.getQueryData<Task[]>(taskKeys.list())
       const task = tasks?.find(t => t.id === params.taskId)
 
-      if (!task) {
+      if (!task || !tasks) {
         throw new Error('Task not found')
       }
 
-      // Update the task with new column
+      // Calculate the new order value
+      const targetColumnTasks = tasks.filter(
+        t => t.columnId === params.targetColumnId && t.id !== params.taskId
+      )
+      
+      let newOrder = params.targetIndex
+      if (targetColumnTasks.length > 0) {
+        if (params.targetIndex === 0) {
+          // Insert at the beginning
+          newOrder = targetColumnTasks[0].order - 1
+        } else if (params.targetIndex >= targetColumnTasks.length) {
+          // Insert at the end
+          newOrder = Math.max(...targetColumnTasks.map(t => t.order)) + 1
+        } else {
+          // Insert in the middle
+          const prevOrder = targetColumnTasks[params.targetIndex - 1].order
+          const nextOrder = targetColumnTasks[params.targetIndex].order
+          newOrder = Math.floor((prevOrder + nextOrder) / 2)
+          if (newOrder === prevOrder || newOrder === nextOrder) {
+            newOrder = prevOrder + 1
+          }
+        }
+      }
+
+      // Update the task with new column and order
       const updatedTask: Task = {
         ...task,
         columnId: params.targetColumnId,
+        order: newOrder,
       }
 
       // Call the backend to persist the change
@@ -112,13 +137,47 @@ export function useMoveTask() {
       // Snapshot previous value
       const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
 
-      // Optimistically update
+      // Optimistically update with reordering support
       if (previousTasks) {
-        const updated = previousTasks.map(task =>
-          task.id === params.taskId
-            ? { ...task, columnId: params.targetColumnId }
-            : task
+        const task = previousTasks.find(t => t.id === params.taskId)
+        if (!task) return { previousTasks }
+
+        // Get tasks in the target column (excluding the moving task)
+        const targetColumnTasks = previousTasks.filter(
+          t => t.columnId === params.targetColumnId && t.id !== params.taskId
         )
+        // Get tasks in other columns (excluding the moving task)
+        const otherTasks = previousTasks.filter(
+          t => t.columnId !== params.targetColumnId && t.id !== params.taskId
+        )
+
+        // Calculate the new order value based on target index
+        let newOrder = params.targetIndex
+        if (targetColumnTasks.length > 0) {
+          if (params.targetIndex === 0) {
+            // Insert at the beginning
+            newOrder = targetColumnTasks[0].order - 1
+          } else if (params.targetIndex >= targetColumnTasks.length) {
+            // Insert at the end
+            newOrder = Math.max(...targetColumnTasks.map(t => t.order)) + 1
+          } else {
+            // Insert in the middle - use average of surrounding orders
+            const prevOrder = targetColumnTasks[params.targetIndex - 1].order
+            const nextOrder = targetColumnTasks[params.targetIndex].order
+            newOrder = Math.floor((prevOrder + nextOrder) / 2)
+            // If orders are too close, we'll need to renumber (but for now, just use the average)
+            if (newOrder === prevOrder || newOrder === nextOrder) {
+              newOrder = prevOrder + 1
+            }
+          }
+        }
+
+        // Insert the task at the target index with updated order
+        const updatedTask = { ...task, columnId: params.targetColumnId, order: newOrder }
+        targetColumnTasks.splice(params.targetIndex, 0, updatedTask)
+
+        // Combine all tasks back together
+        const updated = [...otherTasks, ...targetColumnTasks]
         queryClient.setQueryData(taskKeys.list(), updated)
       }
 

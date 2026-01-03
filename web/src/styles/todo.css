@@ -283,7 +283,6 @@
 /* Priority Indicators */
 .task-card.priority-urgent::before {
     background: var(--priority-urgent);
-    width: 4px;
     animation: pulse-urgent 2s ease-in-out infinite;
 }
 
@@ -302,7 +301,6 @@
 
 .task-card.priority-medium::before {
     background: var(--priority-medium);
-    width: 2px;
 }
 
 .task-card.priority-low::before {

@@ -28,6 +28,7 @@ export interface Task {
   createdAt: Date
   recurrence: Recurrence | null
   subtasks: Subtask[]
+  order: number
 }
 
 export interface Column {

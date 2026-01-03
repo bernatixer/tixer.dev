@@ -70,6 +70,8 @@ pub struct Task {
     pub created_at: DateTime<Utc>,
     pub recurrence: Option<Recurrence>,
     pub subtasks: Vec<Subtask>,
+    #[serde(default)]
+    pub order: i32,
 }
 
 // ============================================
@@ -88,5 +90,7 @@ pub struct CreateTaskRequest {
     pub recurrence: Option<Recurrence>,
     #[serde(default)]
     pub subtasks: Vec<Subtask>,
+    #[serde(default)]
+    pub order: i32,
 }
 
