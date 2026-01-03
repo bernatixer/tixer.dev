@@ -8,7 +8,7 @@ export type ColumnId = 'inbox' | 'todo' | 'doing' | 'done'
 
 export type Recurrence = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
-export type TagId = 'shopping' | 'work' | 'personal' | 'ideas' | 'health' | 'finance'
+export type TagId = 'shopping' | 'work' | 'personal' | 'ideas' | 'others'
 
 export type AgeState = 'fresh' | 'aging' | 'stale' | 'dusty'
 
@@ -60,8 +60,7 @@ export const TAGS: readonly TagConfig[] = [
   { id: 'work', name: 'Work', color: '#4ECDC4' },
   { id: 'personal', name: 'Personal', color: '#966FD6' },
   { id: 'ideas', name: 'Ideas', color: '#FFD166' },
-  { id: 'health', name: 'Health', color: '#06D6A0' },
-  { id: 'finance', name: 'Finance', color: '#118AB2' },
+  { id: 'others', name: 'Others', color: '#888888' },
 ] as const
 
 export const TAGS_BY_ID = Object.fromEntries(

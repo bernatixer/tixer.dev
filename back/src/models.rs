@@ -39,8 +39,7 @@ pub enum TagId {
     Work,
     Personal,
     Ideas,
-    Health,
-    Finance,
+    Others,
 }
 
 // ============================================

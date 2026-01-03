@@ -267,7 +267,6 @@
 /* Drag States */
 .task-card.dragging {
     opacity: 0.5;
-    transform: rotate(2deg);
     cursor: grabbing;
 }
 
@@ -438,14 +437,9 @@
     color: var(--tag-ideas);
 }
 
-.tag-health {
-    background: rgba(6, 214, 160, 0.2);
-    color: var(--tag-health);
-}
-
-.tag-finance {
-    background: rgba(17, 138, 178, 0.2);
-    color: var(--tag-finance);
+.tag-others {
+    background: rgba(136, 136, 136, 0.2);
+    color: var(--tag-others);
 }
 
 /* ============================================
@@ -780,8 +774,7 @@ body.compact-mode .tag-dots {
 .tag-dot.dot-work { background: var(--tag-work); }
 .tag-dot.dot-personal { background: var(--tag-personal); }
 .tag-dot.dot-ideas { background: var(--tag-ideas); }
-.tag-dot.dot-health { background: var(--tag-health); }
-.tag-dot.dot-finance { background: var(--tag-finance); }
+.tag-dot.dot-others { background: var(--tag-others); }
 
 /* ============================================
    TAG FILTERING

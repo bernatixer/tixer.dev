@@ -89,63 +89,16 @@ impl SqliteRepository {
     }
 
     async fn seed_mock_data(&self) -> Result<(), DbError> {
-        let mock_tasks = vec![
-            CreateTaskRequest {
-                title: "Buy groceries".to_string(),
-                priority: Priority::Medium,
-                column_id: ColumnId::Todo,
-                tags: vec![TagId::Shopping],
-                due_date: None,
-                recurrence: None,
-                subtasks: vec![
-                    Subtask {
-                        id: Uuid::new_v4().to_string(),
-                        text: "Milk".to_string(),
-                        completed: false,
-                    },
-                    Subtask {
-                        id: Uuid::new_v4().to_string(),
-                        text: "Bread".to_string(),
-                        completed: true,
-                    },
-                ],
-                order: 0,
-            },
-            CreateTaskRequest {
-                title: "Finish project report".to_string(),
-                priority: Priority::High,
-                column_id: ColumnId::Doing,
-                tags: vec![TagId::Work],
-                due_date: None,
-                recurrence: None,
-                subtasks: vec![],
-                order: 0,
-            },
-            CreateTaskRequest {
-                title: "Schedule dentist appointment".to_string(),
-                priority: Priority::Low,
-                column_id: ColumnId::Inbox,
-                tags: vec![TagId::Health, TagId::Personal],
-                due_date: None,
-                recurrence: None,
-                subtasks: vec![],
-                order: 0,
-            },
-            CreateTaskRequest {
-                title: "Review monthly expenses".to_string(),
-                priority: Priority::Medium,
-                column_id: ColumnId::Todo,
-                tags: vec![TagId::Finance],
-                due_date: None,
-                recurrence: Some(Recurrence::Monthly),
-                subtasks: vec![],
-                order: 0,
-            },
-        ];
-
-        for request in mock_tasks {
-            self.create_task(request).await?;
-        }
+        self.create_task(CreateTaskRequest {
+            title: "My first task".to_string(),
+            priority: Priority::Medium,
+            column_id: ColumnId::Todo,
+            tags: vec![],
+            due_date: None,
+            recurrence: None,
+            subtasks: vec![],
+            order: 0,
+        }).await?;
 
         Ok(())
     }
