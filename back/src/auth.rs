@@ -3,84 +3,30 @@ use axum::{
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
 };
-use jsonwebtoken::{decode, decode_header, DecodingKey, Validation, Algorithm};
+use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::env;
-use std::sync::RwLock;
 
 // ============================================
-// JWKS CACHE
+// PUBLIC KEY
 // ============================================
 
-/// Cached JWKS keys
-static JWKS_CACHE: OnceCell<RwLock<HashMap<String, DecodingKey>>> = OnceCell::new();
+/// Cached decoding key from PEM
+static DECODING_KEY: OnceCell<DecodingKey> = OnceCell::new();
 
-/// JWKS response structure from Clerk
-#[derive(Debug, Deserialize)]
-struct JwksResponse {
-    keys: Vec<JwkKey>,
-}
-
-#[derive(Debug, Deserialize)]
-struct JwkKey {
-    kid: String,
-    kty: String,
-    n: String,
-    e: String,
-}
-
-/// Fetch and cache JWKS from Clerk
-async fn fetch_jwks() -> Result<(), AuthError> {
-    let issuer_url = env::var("CLERK_ISSUER_URL")
-        .map_err(|_| AuthError::Configuration("CLERK_ISSUER_URL not set".to_string()))?;
-    
-    let jwks_url = format!("{}/.well-known/jwks.json", issuer_url);
-    
-    let response = reqwest::get(&jwks_url)
-        .await
-        .map_err(|e| AuthError::JwksFetch(e.to_string()))?;
-    
-    let jwks: JwksResponse = response
-        .json()
-        .await
-        .map_err(|e| AuthError::JwksFetch(e.to_string()))?;
-    
-    let cache = JWKS_CACHE.get_or_init(|| RwLock::new(HashMap::new()));
-    let mut keys = cache.write().map_err(|_| AuthError::JwksFetch("Lock poisoned".to_string()))?;
-    
-    for key in jwks.keys {
-        if key.kty == "RSA" {
-            if let Ok(decoding_key) = DecodingKey::from_rsa_components(&key.n, &key.e) {
-                keys.insert(key.kid, decoding_key);
-            }
-        }
-    }
-    
-    Ok(())
-}
-
-/// Get a decoding key by kid, fetching JWKS if needed
-async fn get_decoding_key(kid: &str) -> Result<DecodingKey, AuthError> {
-    // Try to get from cache first
-    if let Some(cache) = JWKS_CACHE.get() {
-        if let Ok(keys) = cache.read() {
-            if let Some(key) = keys.get(kid) {
-                return Ok(key.clone());
-            }
-        }
-    }
-    
-    // Fetch JWKS and try again
-    fetch_jwks().await?;
-    
-    let cache = JWKS_CACHE.get().ok_or(AuthError::JwksFetch("Cache not initialized".to_string()))?;
-    let keys = cache.read().map_err(|_| AuthError::JwksFetch("Lock poisoned".to_string()))?;
-    
-    keys.get(kid)
-        .cloned()
-        .ok_or(AuthError::InvalidToken("Key not found".to_string()))
+/// Get or initialize the decoding key from the CLERK_PEM_PUBLIC_KEY env var
+fn get_decoding_key() -> Result<&'static DecodingKey, AuthError> {
+    DECODING_KEY.get_or_try_init(|| {
+        let pem = env::var("CLERK_PEM_PUBLIC_KEY")
+            .map_err(|_| AuthError::Configuration("CLERK_PEM_PUBLIC_KEY not set".to_string()))?;
+        
+        // Handle escaped newlines from .env file
+        let pem = pem.replace("\\n", "\n");
+        
+        DecodingKey::from_rsa_pem(pem.as_bytes())
+            .map_err(|e| AuthError::Configuration(format!("Invalid PEM key: {}", e)))
+    })
 }
 
 // ============================================
@@ -122,8 +68,6 @@ pub enum AuthError {
     InvalidHeaderFormat,
     #[error("Invalid token: {0}")]
     InvalidToken(String),
-    #[error("JWKS fetch error: {0}")]
-    JwksFetch(String),
     #[error("Configuration error: {0}")]
     Configuration(String),
 }
@@ -133,7 +77,6 @@ impl From<AuthError> for StatusCode {
         match err {
             AuthError::MissingHeader | AuthError::InvalidHeaderFormat => StatusCode::UNAUTHORIZED,
             AuthError::InvalidToken(_) => StatusCode::UNAUTHORIZED,
-            AuthError::JwksFetch(_) => StatusCode::INTERNAL_SERVER_ERROR,
             AuthError::Configuration(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -159,31 +102,24 @@ where
             .strip_prefix("Bearer ")
             .ok_or(StatusCode::UNAUTHORIZED)?;
 
-        // Decode the header to get the kid
-        let header = decode_header(token)
-            .map_err(|_| StatusCode::UNAUTHORIZED)?;
-        
-        let kid = header.kid.ok_or(StatusCode::UNAUTHORIZED)?;
-
-        // Get the decoding key
-        let decoding_key = get_decoding_key(&kid)
-            .await
+        // Get the decoding key from PEM
+        let decoding_key = get_decoding_key()
             .map_err(|e| {
                 eprintln!("Auth error: {:?}", e);
                 StatusCode::from(e)
             })?;
 
         // Set up validation
-        let issuer_url = env::var("CLERK_ISSUER_URL")
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        
         let mut validation = Validation::new(Algorithm::RS256);
-        validation.set_issuer(&[&issuer_url]);
-        // Clerk doesn't always set audience, so we skip validation
         validation.validate_aud = false;
+        
+        // Validate issuer if CLERK_ISSUER_URL is set
+        if let Ok(issuer_url) = env::var("CLERK_ISSUER_URL") {
+            validation.set_issuer(&[issuer_url]);
+        }
 
         // Decode and validate the token
-        let token_data = decode::<Claims>(token, &decoding_key, &validation)
+        let token_data = decode::<Claims>(token, decoding_key, &validation)
             .map_err(|e| {
                 eprintln!("Token validation error: {:?}", e);
                 StatusCode::UNAUTHORIZED
@@ -194,4 +130,3 @@ where
         })
     }
 }
-
