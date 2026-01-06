@@ -3,7 +3,7 @@
 // ============================================
 
 // const API_BASE = 'http://localhost:5555/api'
-const API_BASE = 'https://46.224.18.155:5555/api'
+const API_BASE = 'https://api.tixer.dev/api'
 
 export class ApiError extends Error {
   constructor(
