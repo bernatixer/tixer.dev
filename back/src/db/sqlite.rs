@@ -18,6 +18,7 @@ struct TaskRow {
     id: String,
     user_id: String,
     title: String,
+    description: Option<String>,
     priority: String,
     column_id: String,
     tags: String,           // JSON array
@@ -118,6 +119,16 @@ impl SqliteRepository {
         .await
         .ok(); // Ignore error if column already exists
 
+        // Add description column if it doesn't exist
+        sqlx::query(
+            r#"
+            ALTER TABLE tasks ADD COLUMN description TEXT
+            "#,
+        )
+        .execute(&self.pool)
+        .await
+        .ok(); // Ignore error if column already exists
+
         Ok(())
     }
 
@@ -158,6 +169,7 @@ impl SqliteRepository {
         Ok(Task {
             id: row.id,
             title: row.title,
+            description: row.description,
             priority,
             column_id,
             tags,
@@ -177,7 +189,7 @@ impl SqliteRepository {
 impl TaskRepository for SqliteRepository {
     async fn get_tasks(&self, user_id: &str) -> Result<Vec<Task>, DbError> {
         let rows: Vec<TaskRow> = sqlx::query_as(
-            "SELECT id, user_id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks, \"order\", blocked_by, task_type, url FROM tasks WHERE user_id = ? ORDER BY column_id, \"order\", created_at DESC"
+            "SELECT id, user_id, title, description, priority, column_id, tags, due_date, created_at, recurrence, subtasks, \"order\", blocked_by, task_type, url FROM tasks WHERE user_id = ? ORDER BY column_id, \"order\", created_at DESC"
         )
         .bind(user_id)
         .fetch_all(&self.pool)
@@ -188,7 +200,7 @@ impl TaskRepository for SqliteRepository {
 
     async fn get_task(&self, user_id: &str, id: &str) -> Result<Option<Task>, DbError> {
         let row: Option<TaskRow> = sqlx::query_as(
-            "SELECT id, user_id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks, \"order\", blocked_by, task_type, url FROM tasks WHERE id = ? AND user_id = ?"
+            "SELECT id, user_id, title, description, priority, column_id, tags, due_date, created_at, recurrence, subtasks, \"order\", blocked_by, task_type, url FROM tasks WHERE id = ? AND user_id = ?"
         )
         .bind(id)
         .bind(user_id)
@@ -245,13 +257,14 @@ impl TaskRepository for SqliteRepository {
 
         sqlx::query(
             r#"
-            INSERT INTO tasks (id, user_id, title, priority, column_id, tags, due_date, created_at, recurrence, subtasks, "order", blocked_by, task_type, url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO tasks (id, user_id, title, description, priority, column_id, tags, due_date, created_at, recurrence, subtasks, "order", blocked_by, task_type, url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             "#,
         )
         .bind(&id)
         .bind(user_id)
         .bind(&request.title)
+        .bind(&request.description)
         .bind(&priority_str)
         .bind(&column_id_str)
         .bind(&tags_json)
@@ -269,6 +282,7 @@ impl TaskRepository for SqliteRepository {
         Ok(Task {
             id,
             title: request.title,
+            description: request.description,
             priority: request.priority,
             column_id: request.column_id,
             tags: request.tags,
@@ -310,11 +324,12 @@ impl TaskRepository for SqliteRepository {
         let result = sqlx::query(
             r#"
             UPDATE tasks 
-            SET title = ?, priority = ?, column_id = ?, tags = ?, due_date = ?, recurrence = ?, subtasks = ?, "order" = ?, blocked_by = ?, task_type = ?, url = ?
+            SET title = ?, description = ?, priority = ?, column_id = ?, tags = ?, due_date = ?, recurrence = ?, subtasks = ?, "order" = ?, blocked_by = ?, task_type = ?, url = ?
             WHERE id = ? AND user_id = ?
             "#,
         )
         .bind(&task.title)
+        .bind(&task.description)
         .bind(&priority_str)
         .bind(&column_id_str)
         .bind(&tags_json)

@@ -1,4 +1,7 @@
 node_modules
 .DS_Store
-*.local
-.env
+
+# Env files - .env.production is committed, local overrides are not
+.env.local
+.env.*.local
+.env.development

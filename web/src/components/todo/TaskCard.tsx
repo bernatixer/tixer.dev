@@ -2,13 +2,13 @@
 // TASK CARD COMPONENT
 // ============================================
 
-import { FC, useState, MouseEvent } from 'react'
+import { FC, useState, MouseEvent, useRef, useEffect, KeyboardEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Task, TagId } from '@/todo/types'
 import { TAGS_BY_ID, TASK_TYPES_BY_ID } from '@/todo/types'
 import { useTaskAge } from '@/hooks/useAppState'
-import { useToggleSubtask, useUnblockTask } from '@/hooks/useTasks'
+import { useToggleSubtask, useUnblockTask, useUpdateTask, useAddSubtask } from '@/hooks/useTasks'
 import { DueDateBadge } from './DueDateBadge'
 import { SubtasksContainer, ProgressChip } from './Subtasks'
 
@@ -151,8 +151,16 @@ interface TaskCardProps {
 
 export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick, allTasks, onBlockTask }) => {
   const [expanded, setExpanded] = useState(false)
+  const [isEditingDescription, setIsEditingDescription] = useState(false)
+  const [descriptionValue, setDescriptionValue] = useState(task.description || '')
+  const [newSubtaskText, setNewSubtaskText] = useState('')
+  const descriptionRef = useRef<HTMLTextAreaElement>(null)
+  const subtaskInputRef = useRef<HTMLInputElement>(null)
+
   const { mutate: toggleSubtask } = useToggleSubtask()
   const { mutate: unblockTask } = useUnblockTask()
+  const { mutate: updateTask } = useUpdateTask()
+  const { mutate: addSubtask } = useAddSubtask()
   const { ageState, daysSinceCreation } = useTaskAge(task)
 
   // dnd-kit sortable
@@ -176,14 +184,25 @@ export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick, al
   // Check if filtered out
   const isFilteredOut = activeFilter !== null && !task.tags.includes(activeFilter)
 
-  const handleCardClick = () => {
-    if (hasSubtasks) {
-      setExpanded(prev => !prev)
+  // Sync description value when task changes
+  useEffect(() => {
+    setDescriptionValue(task.description || '')
+  }, [task.description])
+
+  // Focus textarea when editing starts
+  useEffect(() => {
+    if (isEditingDescription && descriptionRef.current) {
+      descriptionRef.current.focus()
+      descriptionRef.current.select()
     }
+  }, [isEditingDescription])
+
+  const handleCardClick = () => {
+    setExpanded(prev => !prev)
   }
 
   const handleSubtaskToggle = (subtaskId: string) => {
-    toggleSubtask({ taskId: task.id, subtaskId })
+    toggleSubtask({ task, subtaskId })
   }
 
   const handleTagClick = (tagId: TagId, e: MouseEvent) => {
@@ -198,11 +217,52 @@ export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick, al
     }
   }
 
-  // Build class names exactly as in original
+  const handleDescriptionClick = (e: MouseEvent) => {
+    e.stopPropagation()
+    setIsEditingDescription(true)
+  }
+
+  const handleDescriptionBlur = () => {
+    setIsEditingDescription(false)
+    const newDescription = descriptionValue.trim() || null
+    if (newDescription !== task.description) {
+      updateTask({ ...task, description: newDescription })
+    }
+  }
+
+  const handleDescriptionKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
+      setDescriptionValue(task.description || '')
+      setIsEditingDescription(false)
+    } else if (e.key === 'Enter' && !e.shiftKey) {
+      // Enter saves, Shift+Enter adds new line
+      e.preventDefault()
+      descriptionRef.current?.blur()
+    }
+  }
+
+  const handleAddSubtask = (e: MouseEvent | KeyboardEvent) => {
+    e.stopPropagation()
+    if (newSubtaskText.trim()) {
+      addSubtask({ task, text: newSubtaskText.trim() })
+      setNewSubtaskText('')
+      subtaskInputRef.current?.focus()
+    }
+  }
+
+  const handleSubtaskKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleAddSubtask(e)
+    } else if (e.key === 'Escape') {
+      setNewSubtaskText('')
+    }
+  }
+
+  // Build class names - all cards are expandable
   const classNames = [
     'task-card',
     `priority-${task.priority}`,
-    hasSubtasks ? 'has-subtasks' : '',
+    'expandable',
     expanded ? 'expanded' : '',
     isDragging ? 'dragging' : '',
     isFilteredOut ? 'filtered-out' : '',
@@ -266,8 +326,59 @@ export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick, al
         )}
       </div>
 
-      {hasSubtasks && (
-        <SubtasksContainer subtasks={task.subtasks} onToggle={handleSubtaskToggle} />
+      {/* Expanded content: description + subtasks + add subtask */}
+      {expanded && (
+        <div className="task-expanded-content" onClick={e => e.stopPropagation()}>
+          {/* Description */}
+          <div className="task-description-section">
+            {isEditingDescription ? (
+              <textarea
+                ref={descriptionRef}
+                className="task-description-input"
+                value={descriptionValue}
+                onChange={e => setDescriptionValue(e.target.value)}
+                onBlur={handleDescriptionBlur}
+                onKeyDown={handleDescriptionKeyDown}
+                placeholder="Add a description..."
+              />
+            ) : (
+              <div
+                className={`task-description ${!task.description ? 'empty' : ''}`}
+                onClick={handleDescriptionClick}
+              >
+                {task.description || 'Add a description...'}
+              </div>
+            )}
+          </div>
+
+          {/* Subtasks */}
+          {hasSubtasks && (
+            <SubtasksContainer subtasks={task.subtasks} onToggle={handleSubtaskToggle} />
+          )}
+
+          {/* Add subtask input */}
+          <div className="add-subtask-section">
+            <input
+              ref={subtaskInputRef}
+              type="text"
+              className="add-subtask-input"
+              value={newSubtaskText}
+              onChange={e => setNewSubtaskText(e.target.value)}
+              onKeyDown={handleSubtaskKeyDown}
+              placeholder="+ Add subtask..."
+              onClick={e => e.stopPropagation()}
+            />
+            {newSubtaskText.trim() && (
+              <button
+                type="button"
+                className="add-subtask-btn"
+                onClick={handleAddSubtask}
+              >
+                Add
+              </button>
+            )}
+          </div>
+        </div>
       )}
     </div>
   )

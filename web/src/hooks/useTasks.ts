@@ -66,7 +66,30 @@ export function useUpdateTask() {
 
   return useMutation({
     mutationFn: (task: Task) => tasksApi.update(task.id, task),
-    onSuccess: (_, task) => {
+    onMutate: async (updatedTask) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
+
+      // Snapshot previous value
+      const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+
+      // Optimistically update the cache
+      if (previousTasks) {
+        const updated = previousTasks.map(t => 
+          t.id === updatedTask.id ? updatedTask : t
+        )
+        queryClient.setQueryData(taskKeys.list(), updated)
+      }
+
+      return { previousTasks }
+    },
+    onError: (_err, _task, context) => {
+      // Rollback on error
+      if (context?.previousTasks) {
+        queryClient.setQueryData(taskKeys.list(), context.previousTasks)
+      }
+    },
+    onSettled: (_, __, task) => {
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() })
       queryClient.invalidateQueries({ queryKey: taskKeys.detail(task.id) })
     },
@@ -222,16 +245,22 @@ export function useToggleSubtask() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ taskId, subtaskId }: { taskId: string; subtaskId: string }) => {
-      // Get current tasks from cache
-      const tasks = queryClient.getQueryData<Task[]>(taskKeys.list())
-      const task = tasks?.find(t => t.id === taskId)
-
-      if (!task) {
-        throw new Error('Task not found')
+    mutationFn: async ({ task, subtaskId }: { task: Task; subtaskId: string }) => {
+      // Compute the update using the original task passed in
+      const updatedTask: Task = {
+        ...task,
+        subtasks: task.subtasks.map(st =>
+          st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        ),
       }
+      return tasksApi.update(task.id, updatedTask)
+    },
+    onMutate: async ({ task, subtaskId }) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
 
-      // Toggle the subtask
+      const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+
+      // Create the updated task
       const updatedTask: Task = {
         ...task,
         subtasks: task.subtasks.map(st =>
@@ -239,26 +268,9 @@ export function useToggleSubtask() {
         ),
       }
 
-      // Call the backend to persist the change
-      return tasksApi.update(task.id, updatedTask)
-    },
-    onMutate: async ({ taskId, subtaskId }) => {
-      await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
-
-      const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
-
+      // Update cache optimistically
       if (previousTasks) {
-        const updated = previousTasks.map(task => {
-          if (task.id === taskId) {
-            return {
-              ...task,
-              subtasks: task.subtasks.map(st =>
-                st.id === subtaskId ? { ...st, completed: !st.completed } : st
-              ),
-            }
-          }
-          return task
-        })
+        const updated = previousTasks.map(t => t.id === task.id ? updatedTask : t)
         queryClient.setQueryData(taskKeys.list(), updated)
       }
 
@@ -347,6 +359,58 @@ export function useUnblockTask() {
         const updated = previousTasks.map(task =>
           task.id === taskId ? { ...task, columnId: 'todo' as ColumnId, blockedBy: null } : task
         )
+        queryClient.setQueryData(taskKeys.list(), updated)
+      }
+
+      return { previousTasks }
+    },
+    onError: (_err, _params, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(taskKeys.list(), context.previousTasks)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() })
+    },
+  })
+}
+
+export function useAddSubtask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ task, text }: { task: Task; text: string }) => {
+      const newSubtask = {
+        id: crypto.randomUUID(),
+        text: text.trim(),
+        completed: false,
+      }
+
+      const updatedTask: Task = {
+        ...task,
+        subtasks: [...task.subtasks, newSubtask],
+      }
+
+      return tasksApi.update(task.id, updatedTask)
+    },
+    onMutate: async ({ task, text }) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
+
+      const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+
+      const newSubtask = {
+        id: crypto.randomUUID(),
+        text: text.trim(),
+        completed: false,
+      }
+
+      const updatedTask: Task = {
+        ...task,
+        subtasks: [...task.subtasks, newSubtask],
+      }
+
+      if (previousTasks) {
+        const updated = previousTasks.map(t => t.id === task.id ? updatedTask : t)
         queryClient.setQueryData(taskKeys.list(), updated)
       }
 

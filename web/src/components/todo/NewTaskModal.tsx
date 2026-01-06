@@ -200,6 +200,21 @@ const urlInputStyle: React.CSSProperties = {
   outline: 'none',
 }
 
+// Description textarea style
+const textareaStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px 14px',
+  background: 'rgba(255, 255, 255, 0.05)',
+  border: '1px solid rgba(255, 255, 255, 0.15)',
+  color: 'var(--bone)',
+  fontFamily: 'inherit',
+  fontSize: '0.85rem',
+  marginBottom: '16px',
+  outline: 'none',
+  resize: 'vertical',
+  minHeight: '60px',
+}
+
 // Due date options
 type DueDateOption = 'none' | 'today' | 'tomorrow' | 'next-week' | 'custom'
 
@@ -418,6 +433,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   onClose,
 }) => {
   const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
   const [selectedTags, setSelectedTags] = useState<TagId[]>([])
   const [dueDate, setDueDate] = useState('')
@@ -432,6 +448,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setTitle('')
+      setDescription('')
       setPriority('medium')
       setSelectedTags([])
       setDueDate('')
@@ -459,6 +476,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const handleCalendarSelect = (dateStr: string) => {
     setDueDate(dateStr)
     setDueDateMode('custom')
+    setShowCalendar(false)
   }
   
   // Format custom date for display
@@ -489,6 +507,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     createTask(
       {
         title: title.trim(),
+        description: description.trim() || null,
         priority,
         columnId: 'todo',
         tags: selectedTags,
@@ -561,6 +580,17 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
               placeholder={taskType === 'task' ? 'What needs to be done?' : `What ${taskType} to check out?`}
               style={inputStyle}
               autoFocus
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label style={labelStyle}>Description (optional)</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Add more details..."
+              style={textareaStyle}
             />
           </div>
 
@@ -655,7 +685,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
                 onClick={() => handleDueDateSelect('custom')}
                 style={dueDateButtonStyle(dueDateMode === 'custom' || showCalendar)}
               >
-                {dueDateMode === 'custom' ? formatCustomDate(dueDate) : '···'}
+                {dueDateMode === 'custom' ? formatCustomDate(dueDate) : 'Choose'}
               </button>
             </div>
             {showCalendar && (

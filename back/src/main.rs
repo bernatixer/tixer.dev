@@ -14,14 +14,27 @@ use state::AppState;
 
 #[tokio::main]
 async fn main() {
-    // Load environment variables from .env file
-    dotenvy::dotenv().ok();
+    // Load environment variables based on RUN_MODE
+    // Priority: .env.{mode} -> .env.local -> .env
+    let run_mode = std::env::var("RUN_MODE").unwrap_or_else(|_| "development".to_string());
+    
+    // Try to load mode-specific env file first
+    let mode_env = format!(".env.{}", run_mode);
+    if dotenvy::from_filename(&mode_env).is_ok() {
+        println!("📝 Loaded environment from {}", mode_env);
+    } else if dotenvy::from_filename(".env.local").is_ok() {
+        println!("📝 Loaded environment from .env.local");
+    } else if dotenvy::dotenv().is_ok() {
+        println!("📝 Loaded environment from .env");
+    } else {
+        println!("📝 No environment file found, using default values");
+    }
 
     // Initialize SQLite database
-    // The database file will be created in the current directory
-    let database_url = "sqlite:tixer.db?mode=rwc";
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "sqlite:tixer.db?mode=rwc".to_string());
     
-    let repo = SqliteRepository::new(database_url)
+    let repo = SqliteRepository::new(&database_url)
         .await
         .expect("Failed to connect to database");
 
@@ -44,9 +57,14 @@ async fn main() {
         .layer(cors)
         .with_state(state);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 5555));
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(5555);
+    
+    let addr = SocketAddr::from(([0, 0, 0, 0], port));
     println!("🚀 Server running at http://{}", addr);
-    println!("📁 Using SQLite database: tixer.db");
+    println!("📁 Using database: {}", database_url);
 
     // Start the server
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

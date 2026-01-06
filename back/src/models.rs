@@ -48,10 +48,10 @@ pub enum Recurrence {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum TagId {
-    Shopping,
     Work,
     Personal,
     Ideas,
+    Travel,
     Others,
 }
 
@@ -64,8 +64,6 @@ pub enum TaskType {
     Video,
     Article,
     Movie,
-    Show,
-    Podcast,
 }
 
 // ============================================
@@ -88,6 +86,7 @@ pub struct Subtask {
 pub struct Task {
     pub id: String,
     pub title: String,
+    pub description: Option<String>,
     pub priority: Priority,
     pub column_id: ColumnId,
     pub tags: Vec<TagId>,
@@ -111,6 +110,7 @@ pub struct Task {
 #[serde(rename_all = "camelCase")]
 pub struct CreateTaskRequest {
     pub title: String,
+    pub description: Option<String>,
     pub priority: Priority,
     pub column_id: ColumnId,
     #[serde(default)]

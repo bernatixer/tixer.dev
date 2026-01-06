@@ -10,5 +10,7 @@
 *.db-wal
 *.db-shm
 
-# Environment
-.env
+# Environment - .env.production is committed, local/dev are not
+.env.local
+.env.development
+.env.production

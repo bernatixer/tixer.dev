@@ -8,7 +8,7 @@ export type ColumnId = 'inbox' | 'todo' | 'blocked' | 'doing' | 'done'
 
 export type Recurrence = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
-export type TagId = 'shopping' | 'work' | 'personal' | 'ideas' | 'travel' | 'others'
+export type TagId = 'work' | 'personal' | 'ideas' | 'travel' | 'others'
 
 export type AgeState = 'fresh' | 'aging' | 'stale' | 'dusty'
 
@@ -28,6 +28,7 @@ export type BlockedBy =
 export interface Task {
   id: string
   title: string
+  description: string | null
   priority: Priority
   columnId: ColumnId
   tags: TagId[]
@@ -66,7 +67,6 @@ export interface TagConfig {
 }
 
 export const TAGS: readonly TagConfig[] = [
-  { id: 'shopping', name: 'Shopping', color: '#FF6B6B' },
   { id: 'work', name: 'Work', color: '#4ECDC4' },
   { id: 'personal', name: 'Personal', color: '#966FD6' },
   { id: 'ideas', name: 'Ideas', color: '#FFD166' },
@@ -123,7 +123,7 @@ export interface TaskTypeConfig {
 }
 
 export const TASK_TYPES: readonly TaskTypeConfig[] = [
-  { id: 'task', name: 'Task', icon: '✓' },
+  { id: 'task', name: 'Task', icon: '📋' },
   { id: 'book', name: 'Book', icon: '📖' },
   { id: 'video', name: 'Video', icon: '▶️' },
   { id: 'article', name: 'Article', icon: '📰' },

@@ -2,8 +2,7 @@
 // API CLIENT - Base Fetch Wrapper with Auth
 // ============================================
 
-// const API_BASE = 'http://localhost:5555/api'
-const API_BASE = 'https://api.tixer.dev/api'
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5555/api'
 
 export class ApiError extends Error {
   constructor(
