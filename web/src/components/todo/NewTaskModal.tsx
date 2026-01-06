@@ -3,8 +3,8 @@
 // ============================================
 
 import { FC, useState, FormEvent, useEffect } from 'react'
-import type { Priority, ColumnId, TagId } from '@/todo/types'
-import { TAGS, PRIORITIES, COLUMNS } from '@/todo/types'
+import type { Priority, ColumnId, TagId, TaskType } from '@/todo/types'
+import { TAGS, PRIORITIES, COLUMNS, TASK_TYPES } from '@/todo/types'
 import { useCreateTask } from '@/hooks/useTasks'
 
 // ============================================
@@ -146,7 +146,7 @@ const priorityGroupStyle: React.CSSProperties = {
   border: '1px solid rgba(255, 255, 255, 0.15)',
 }
 
-const priorityButtonStyle = (isSelected: boolean, color: string, isFirst: boolean, isLast: boolean): React.CSSProperties => ({
+const priorityButtonStyle = (isSelected: boolean, color: string, _isFirst: boolean, isLast: boolean): React.CSSProperties => ({
   flex: 1,
   padding: '10px 8px',
   background: isSelected ? `${color}22` : 'transparent',
@@ -191,6 +191,42 @@ const PRIORITY_INDICATORS: Record<Priority, string> = {
   high: '↑',
   medium: '–',
   low: '↓',
+}
+
+// Task type selector styles
+const typeGroupStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: '6px',
+  marginBottom: '16px',
+}
+
+const typeButtonStyle = (isSelected: boolean): React.CSSProperties => ({
+  padding: '8px 12px',
+  background: isSelected ? 'rgba(191, 255, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+  border: `1px solid ${isSelected ? 'var(--acid)' : 'rgba(255, 255, 255, 0.15)'}`,
+  color: isSelected ? 'var(--acid)' : 'var(--bone)',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '0.65rem',
+  letterSpacing: '0.03em',
+  cursor: 'pointer',
+  transition: 'all 0.15s',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+})
+
+// URL input style
+const urlInputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  background: 'rgba(255, 255, 255, 0.05)',
+  border: '1px solid rgba(255, 255, 255, 0.15)',
+  color: 'var(--bone)',
+  fontFamily: "'JetBrains Mono', monospace",
+  fontSize: '0.75rem',
+  marginBottom: '16px',
+  outline: 'none',
 }
 
 // Due date options
@@ -411,6 +447,8 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [dueDate, setDueDate] = useState('')
   const [dueDateMode, setDueDateMode] = useState<DueDateOption>('none')
   const [showCalendar, setShowCalendar] = useState(false)
+  const [taskType, setTaskType] = useState<TaskType>('task')
+  const [url, setUrl] = useState('')
 
   const { mutate: createTask, isPending } = useCreateTask()
 
@@ -424,6 +462,8 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       setDueDate('')
       setDueDateMode('none')
       setShowCalendar(false)
+      setTaskType('task')
+      setUrl('')
     }
   }, [isOpen, defaultColumn])
   
@@ -480,6 +520,10 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
         dueDate: dueDate ? new Date(dueDate) : null,
         recurrence: null,
         subtasks: [],
+        taskType,
+        url: url.trim() || null,
+        order: 0,
+        blockedBy: null,
       },
       {
         onSuccess: () => {
@@ -514,6 +558,24 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
         </h2>
 
         <form onSubmit={handleSubmit}>
+          {/* Task Type */}
+          <div>
+            <label style={labelStyle}>Type</label>
+            <div style={typeGroupStyle}>
+              {TASK_TYPES.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTaskType(t.id)}
+                  style={typeButtonStyle(taskType === t.id)}
+                >
+                  <span>{t.icon}</span>
+                  <span>{t.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Title */}
           <div>
             <label style={labelStyle}>Title</label>
@@ -521,11 +583,25 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="What needs to be done?"
+              placeholder={taskType === 'task' ? 'What needs to be done?' : `What ${taskType} to check out?`}
               style={inputStyle}
               autoFocus
             />
           </div>
+
+          {/* URL (shown for non-task types) */}
+          {taskType !== 'task' && (
+            <div>
+              <label style={labelStyle}>URL (optional)</label>
+              <input
+                type="url"
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+                placeholder="https://..."
+                style={urlInputStyle}
+              />
+            </div>
+          )}
 
           {/* Priority - Button Group */}
           <div>

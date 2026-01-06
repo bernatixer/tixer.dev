@@ -19,8 +19,21 @@ pub enum Priority {
 pub enum ColumnId {
     Inbox,
     Todo,
+    Blocked,
     Doing,
     Done,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+pub enum BlockedBy {
+    #[serde(rename = "text")]
+    Text { reason: String },
+    #[serde(rename = "task")]
+    Task {
+        #[serde(rename = "taskId")]
+        task_id: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -40,6 +53,19 @@ pub enum TagId {
     Personal,
     Ideas,
     Others,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum TaskType {
+    #[default]
+    Task,
+    Book,
+    Video,
+    Article,
+    Movie,
+    Show,
+    Podcast,
 }
 
 // ============================================
@@ -71,6 +97,10 @@ pub struct Task {
     pub subtasks: Vec<Subtask>,
     #[serde(default)]
     pub order: i32,
+    pub blocked_by: Option<BlockedBy>,
+    #[serde(default)]
+    pub task_type: TaskType,
+    pub url: Option<String>,
 }
 
 // ============================================
@@ -91,5 +121,9 @@ pub struct CreateTaskRequest {
     pub subtasks: Vec<Subtask>,
     #[serde(default)]
     pub order: i32,
+    pub blocked_by: Option<BlockedBy>,
+    #[serde(default)]
+    pub task_type: TaskType,
+    pub url: Option<String>,
 }
 

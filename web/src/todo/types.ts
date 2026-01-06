@@ -4,7 +4,7 @@
 
 export type Priority = 'urgent' | 'high' | 'medium' | 'low'
 
-export type ColumnId = 'inbox' | 'todo' | 'doing' | 'done'
+export type ColumnId = 'inbox' | 'todo' | 'blocked' | 'doing' | 'done'
 
 export type Recurrence = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
@@ -12,11 +12,18 @@ export type TagId = 'shopping' | 'work' | 'personal' | 'ideas' | 'others'
 
 export type AgeState = 'fresh' | 'aging' | 'stale' | 'dusty'
 
+export type TaskType = 'task' | 'book' | 'video' | 'article' | 'movie' | 'show' | 'podcast'
+
 export interface Subtask {
   id: string
   text: string
   completed: boolean
 }
+
+// Blocked by can be a text reason or a dependency on another task
+export type BlockedBy = 
+  | { type: 'text'; reason: string }
+  | { type: 'task'; taskId: string }
 
 export interface Task {
   id: string
@@ -29,6 +36,9 @@ export interface Task {
   recurrence: Recurrence | null
   subtasks: Subtask[]
   order: number
+  blockedBy: BlockedBy | null
+  taskType: TaskType
+  url: string | null
 }
 
 export interface Column {
@@ -74,8 +84,9 @@ export const TAGS_BY_ID = Object.fromEntries(
 export const COLUMNS: readonly Column[] = [
   { id: 'inbox', title: 'Inbox', order: 0 },
   { id: 'todo', title: 'To Do', order: 1 },
-  { id: 'doing', title: 'Doing', order: 2 },
-  { id: 'done', title: 'Done', order: 3 },
+  { id: 'blocked', title: 'Blocked', order: 2 },
+  { id: 'doing', title: 'Doing', order: 3 },
+  { id: 'done', title: 'Done', order: 4 },
 ] as const
 
 export const COLUMNS_BY_ID = Object.fromEntries(
@@ -99,6 +110,30 @@ export const PRIORITIES: readonly PriorityConfig[] = [
   { id: 'medium', name: 'Medium', color: '#BFFF00', order: 2 },
   { id: 'low', name: 'Low', color: '#666666', order: 3 },
 ] as const
+
+// ============================================
+// TASK TYPE CONFIGURATION
+// ============================================
+
+export interface TaskTypeConfig {
+  id: TaskType
+  name: string
+  icon: string
+}
+
+export const TASK_TYPES: readonly TaskTypeConfig[] = [
+  { id: 'task', name: 'Task', icon: '✓' },
+  { id: 'book', name: 'Book', icon: '📖' },
+  { id: 'video', name: 'Video', icon: '▶️' },
+  { id: 'article', name: 'Article', icon: '📰' },
+  { id: 'movie', name: 'Movie', icon: '🎬' },
+  { id: 'show', name: 'Show', icon: '📺' },
+  { id: 'podcast', name: 'Podcast', icon: '🎧' },
+] as const
+
+export const TASK_TYPES_BY_ID = Object.fromEntries(
+  TASK_TYPES.map(t => [t.id, t])
+) as Record<TaskType, TaskTypeConfig>
 
 // ============================================
 // AGING CONFIGURATION

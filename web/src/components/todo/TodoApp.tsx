@@ -4,20 +4,56 @@
 
 import { FC, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useFocusMode, useCompactMode, useFilter } from '@/hooks/useAppState'
+import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
+import { useFocusMode, useCompactMode, useFilter, useAuthSync } from '@/hooks'
+import { useTasks } from '@/hooks/useTasks'
 import { Header } from './Header'
 import { TodoBoard } from './TodoBoard'
 import { NewTaskModal } from './NewTaskModal'
-import type { ColumnId } from '@/todo/types'
+import { BlockTaskModal } from './BlockTaskModal'
+import { SignInPage } from './SignInPage'
+import type { ColumnId, Task } from '@/todo/types'
 import '@/styles/todo.css'
 
-export const TodoApp: FC = () => {
+// ============================================
+// TOP BAR
+// ============================================
+
+const TopBar: FC = () => {
+  return (
+    <div className="top-bar">
+      <Link to="/" className="back-link">
+        Back to home
+      </Link>
+      <div className="top-bar-right">
+        <UserButton 
+          appearance={{
+            elements: {
+              avatarBox: 'user-avatar',
+            },
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ============================================
+// TODO CONTENT
+// ============================================
+
+const TodoContent: FC = () => {
+  // Sync Clerk token with API client
+  useAuthSync()
+
   const { focusMode, toggle: toggleFocus } = useFocusMode()
   const { compactMode, toggle: toggleCompact } = useCompactMode()
   const { activeFilter, toggle: toggleFilter, clear: clearFilter } = useFilter()
+  const { data: tasks = [] } = useTasks()
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [defaultColumn, setDefaultColumn] = useState<ColumnId>('inbox')
+  const [blockingTask, setBlockingTask] = useState<Task | null>(null)
 
   const handleNewTask = () => {
     setDefaultColumn('inbox')
@@ -29,12 +65,12 @@ export const TodoApp: FC = () => {
     setIsModalOpen(true)
   }
 
-  return (
-    <div className="todo-container">
-      <Link to="/" className="back-link">
-        Back to home
-      </Link>
+  const handleBlockTask = (task: Task) => {
+    setBlockingTask(task)
+  }
 
+  return (
+    <>
       <Header
         focusMode={focusMode}
         compactMode={compactMode}
@@ -49,6 +85,7 @@ export const TodoApp: FC = () => {
         activeFilter={activeFilter}
         onTagClick={toggleFilter}
         onAddTask={handleAddTaskToColumn}
+        onBlockTask={handleBlockTask}
       />
 
       <NewTaskModal
@@ -56,6 +93,33 @@ export const TodoApp: FC = () => {
         onClose={() => setIsModalOpen(false)}
         defaultColumn={defaultColumn}
       />
-    </div>
+
+      <BlockTaskModal
+        isOpen={blockingTask !== null}
+        onClose={() => setBlockingTask(null)}
+        task={blockingTask}
+        allTasks={tasks}
+      />
+    </>
+  )
+}
+
+// ============================================
+// TODO APP
+// ============================================
+
+export const TodoApp: FC = () => {
+  return (
+    <>
+      <SignedOut>
+        <SignInPage />
+      </SignedOut>
+      <SignedIn>
+        <div className="todo-container">
+          <TopBar />
+          <TodoContent />
+        </div>
+      </SignedIn>
+    </>
   )
 }

@@ -4,7 +4,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { tasksApi, MoveTaskRequest } from '@/api/tasks'
-import type { Task, TaskCreate, ColumnId } from '@/todo/types'
+import type { Task, TaskCreate, ColumnId, BlockedBy } from '@/todo/types'
 
 // ============================================
 // QUERY KEYS
@@ -189,6 +189,27 @@ export function useMoveTask() {
         queryClient.setQueryData(taskKeys.list(), context.previousTasks)
       }
     },
+    onSuccess: async (updatedTask) => {
+      // When a task is moved to "done", unblock any tasks that depend on it
+      if (updatedTask.columnId === 'done') {
+        const tasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+        if (tasks) {
+          const dependentTasks = tasks.filter(
+            t => t.blockedBy?.type === 'task' && t.blockedBy.taskId === updatedTask.id
+          )
+          
+          // Unblock each dependent task (move to todo and clear blockedBy)
+          for (const task of dependentTasks) {
+            const unblocked: Task = {
+              ...task,
+              columnId: 'todo',
+              blockedBy: null,
+            }
+            await tasksApi.update(task.id, unblocked)
+          }
+        }
+      }
+    },
     onSettled: () => {
       // Refetch to ensure we're in sync with the server
       queryClient.invalidateQueries({ queryKey: taskKeys.lists() })
@@ -237,6 +258,94 @@ export function useToggleSubtask() {
           }
           return task
         })
+        queryClient.setQueryData(taskKeys.list(), updated)
+      }
+
+      return { previousTasks }
+    },
+    onError: (_err, _params, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(taskKeys.list(), context.previousTasks)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() })
+    },
+  })
+}
+
+export function useBlockTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ taskId, blockedBy }: { taskId: string; blockedBy: BlockedBy }) => {
+      const tasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+      const task = tasks?.find(t => t.id === taskId)
+
+      if (!task) {
+        throw new Error('Task not found')
+      }
+
+      const updatedTask: Task = {
+        ...task,
+        columnId: 'blocked',
+        blockedBy,
+      }
+
+      return tasksApi.update(task.id, updatedTask)
+    },
+    onMutate: async ({ taskId, blockedBy }) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
+      const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+
+      if (previousTasks) {
+        const updated = previousTasks.map(task =>
+          task.id === taskId ? { ...task, columnId: 'blocked' as ColumnId, blockedBy } : task
+        )
+        queryClient.setQueryData(taskKeys.list(), updated)
+      }
+
+      return { previousTasks }
+    },
+    onError: (_err, _params, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(taskKeys.list(), context.previousTasks)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() })
+    },
+  })
+}
+
+export function useUnblockTask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (taskId: string) => {
+      const tasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+      const task = tasks?.find(t => t.id === taskId)
+
+      if (!task) {
+        throw new Error('Task not found')
+      }
+
+      const updatedTask: Task = {
+        ...task,
+        columnId: 'todo',
+        blockedBy: null,
+      }
+
+      return tasksApi.update(task.id, updatedTask)
+    },
+    onMutate: async (taskId) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
+      const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+
+      if (previousTasks) {
+        const updated = previousTasks.map(task =>
+          task.id === taskId ? { ...task, columnId: 'todo' as ColumnId, blockedBy: null } : task
+        )
         queryClient.setQueryData(taskKeys.list(), updated)
       }
 

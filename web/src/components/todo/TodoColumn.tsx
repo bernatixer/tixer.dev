@@ -11,17 +11,21 @@ import { TaskCard } from './TaskCard'
 interface TodoColumnProps {
   column: Column
   tasks: Task[]
+  allTasks: Task[]
   activeFilter: TagId | null
   onTagClick: (tagId: TagId) => void
   onAddTask: () => void
+  onBlockTask: (task: Task) => void
 }
 
 export const TodoColumn: FC<TodoColumnProps> = ({
   column,
   tasks,
+  allTasks,
   activeFilter,
   onTagClick,
   onAddTask,
+  onBlockTask,
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
@@ -59,6 +63,8 @@ export const TodoColumn: FC<TodoColumnProps> = ({
               task={task}
               activeFilter={activeFilter}
               onTagClick={onTagClick}
+              allTasks={allTasks}
+              onBlockTask={onBlockTask}
             />
           ))}
         </SortableContext>

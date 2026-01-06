@@ -10,6 +10,8 @@ export {
   useDeleteTask,
   useMoveTask,
   useToggleSubtask,
+  useBlockTask,
+  useUnblockTask,
 } from './useTasks'
 
 export {
@@ -19,4 +21,6 @@ export {
   useTaskAge,
   useDueDate,
 } from './useAppState'
+
+export { useAuthSync } from './useAuthSync'
 

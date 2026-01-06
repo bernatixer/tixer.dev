@@ -1,3 +1,4 @@
+mod auth;
 mod db;
 mod handlers;
 mod models;
@@ -13,6 +14,9 @@ use state::AppState;
 
 #[tokio::main]
 async fn main() {
+    // Load environment variables from .env file
+    dotenvy::dotenv().ok();
+
     // Initialize SQLite database
     // The database file will be created in the current directory
     let database_url = "sqlite:tixer.db?mode=rwc";
@@ -20,11 +24,6 @@ async fn main() {
     let repo = SqliteRepository::new(database_url)
         .await
         .expect("Failed to connect to database");
-
-    // Seed with mock data if the database is empty
-    repo.seed_if_empty()
-        .await
-        .expect("Failed to seed database");
 
     // Initialize app state with the repository
     let state = AppState::new(repo);

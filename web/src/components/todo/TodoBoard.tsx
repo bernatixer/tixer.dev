@@ -30,12 +30,14 @@ interface TodoBoardProps {
   activeFilter: TagId | null
   onTagClick: (tagId: TagId) => void
   onAddTask: (columnId: ColumnId) => void
+  onBlockTask: (task: Task) => void
 }
 
 export const TodoBoard: FC<TodoBoardProps> = ({
   activeFilter,
   onTagClick,
   onAddTask,
+  onBlockTask,
 }) => {
   const { data: tasks = [] } = useTasks()
   const { mutate: moveTask } = useMoveTask()
@@ -165,16 +167,26 @@ export const TodoBoard: FC<TodoBoardProps> = ({
       onDragEnd={handleDragEnd}
     >
       <div className="todo-board">
-        {COLUMNS.map(column => (
-          <TodoColumn
-            key={column.id}
-            column={column}
-            tasks={getTasksByColumn(column.id)}
-            activeFilter={activeFilter}
-            onTagClick={onTagClick}
-            onAddTask={() => onAddTask(column.id)}
-          />
-        ))}
+        {COLUMNS
+          .filter(column => {
+            // Hide blocked column if it has no tasks
+            if (column.id === 'blocked') {
+              return getTasksByColumn('blocked').length > 0
+            }
+            return true
+          })
+          .map(column => (
+            <TodoColumn
+              key={column.id}
+              column={column}
+              tasks={getTasksByColumn(column.id)}
+              allTasks={tasks}
+              activeFilter={activeFilter}
+              onTagClick={onTagClick}
+              onAddTask={() => onAddTask(column.id)}
+              onBlockTask={onBlockTask}
+            />
+          ))}
       </div>
       <DragOverlay>
         {activeTask && (
@@ -182,6 +194,7 @@ export const TodoBoard: FC<TodoBoardProps> = ({
             task={activeTask}
             activeFilter={activeFilter}
             onTagClick={onTagClick}
+            allTasks={tasks}
           />
         )}
       </DragOverlay>

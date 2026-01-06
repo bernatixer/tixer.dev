@@ -10,4 +10,6 @@ export { Header } from './Header'
 export { DueDateBadge } from './DueDateBadge'
 export { SubtasksContainer, ProgressChip } from './Subtasks'
 export { NewTaskModal } from './NewTaskModal'
+export { BlockTaskModal } from './BlockTaskModal'
+export { SignInPage } from './SignInPage'
 

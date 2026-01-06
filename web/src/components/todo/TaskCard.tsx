@@ -6,9 +6,9 @@ import { FC, useState, MouseEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import type { Task, TagId } from '@/todo/types'
-import { TAGS_BY_ID } from '@/todo/types'
+import { TAGS_BY_ID, TASK_TYPES_BY_ID } from '@/todo/types'
 import { useTaskAge } from '@/hooks/useAppState'
-import { useToggleSubtask } from '@/hooks/useTasks'
+import { useToggleSubtask, useUnblockTask } from '@/hooks/useTasks'
 import { DueDateBadge } from './DueDateBadge'
 import { SubtasksContainer, ProgressChip } from './Subtasks'
 
@@ -68,18 +68,91 @@ const RecurringBadge: FC<RecurringBadgeProps> = ({ recurrence }) => {
 }
 
 // ============================================
+// TASK TYPE ICON
+// ============================================
+
+interface TaskTypeIconProps {
+  task: Task
+}
+
+const TaskTypeIcon: FC<TaskTypeIconProps> = ({ task }) => {
+  // Don't show icon for regular tasks
+  if (!task.taskType || task.taskType === 'task') return null
+
+  const typeConfig = TASK_TYPES_BY_ID[task.taskType]
+  if (!typeConfig) return null
+
+  const handleClick = (e: MouseEvent) => {
+    e.stopPropagation()
+    if (task.url) {
+      window.open(task.url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  return (
+    <span
+      className={`task-type-icon ${task.url ? 'has-url' : ''}`}
+      onClick={task.url ? handleClick : undefined}
+      title={task.url ? `Open ${typeConfig.name}` : typeConfig.name}
+    >
+      {typeConfig.icon}
+    </span>
+  )
+}
+
+// ============================================
 // TASK CARD
 // ============================================
+
+// ============================================
+// BLOCKED BADGE
+// ============================================
+
+interface BlockedBadgeProps {
+  task: Task
+  allTasks?: Task[]
+  onUnblock?: () => void
+}
+
+const BlockedBadge: FC<BlockedBadgeProps> = ({ task, allTasks, onUnblock }) => {
+  if (!task.blockedBy) return null
+
+  let reason: string
+  if (task.blockedBy.type === 'text') {
+    reason = task.blockedBy.reason
+  } else {
+    const blockerTask = allTasks?.find(t => task.blockedBy?.type === 'task' && task.blockedBy.taskId === t.id)
+    reason = blockerTask ? `⏳ ${blockerTask.title}` : '⏳ Waiting for task'
+  }
+
+  return (
+    <div className="blocked-badge" title={reason}>
+      <span>🚧 {reason.length > 20 ? `${reason.slice(0, 20)}...` : reason}</span>
+      {onUnblock && (
+        <button 
+          className="unblock-btn" 
+          onClick={(e) => { e.stopPropagation(); onUnblock(); }}
+          title="Unblock and move to Todo"
+        >
+          ✓
+        </button>
+      )}
+    </div>
+  )
+}
 
 interface TaskCardProps {
   task: Task
   activeFilter: TagId | null
   onTagClick: (tagId: TagId) => void
+  allTasks?: Task[]
+  onBlockTask?: (task: Task) => void
 }
 
-export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick }) => {
+export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick, allTasks, onBlockTask }) => {
   const [expanded, setExpanded] = useState(false)
   const { mutate: toggleSubtask } = useToggleSubtask()
+  const { mutate: unblockTask } = useUnblockTask()
   const { ageState, daysSinceCreation } = useTaskAge(task)
 
   // dnd-kit sortable
@@ -118,6 +191,13 @@ export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick }) 
     onTagClick(tagId)
   }
 
+  const handleBlockClick = (e: MouseEvent) => {
+    e.stopPropagation()
+    if (onBlockTask && task.columnId !== 'blocked' && task.columnId !== 'done') {
+      onBlockTask(task)
+    }
+  }
+
   // Build class names exactly as in original
   const classNames = [
     'task-card',
@@ -142,8 +222,18 @@ export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick }) 
       {...attributes}
       {...listeners}
     >
+      {task.blockedBy && (
+        <BlockedBadge 
+          task={task} 
+          allTasks={allTasks} 
+          onUnblock={() => unblockTask(task.id)}
+        />
+      )}
       <div className="task-header">
-        <div className="task-title">{task.title}</div>
+        <div className="task-title">
+          <TaskTypeIcon task={task} />
+          <span>{task.title}</span>
+        </div>
         <div className="task-meta">
           {hasSubtasks && (
             <ProgressChip completed={completedSubtasks} total={task.subtasks.length} />
@@ -165,6 +255,15 @@ export const TaskCard: FC<TaskCardProps> = ({ task, activeFilter, onTagClick }) 
             <TagBadge key={tagId} tagId={tagId} onClick={handleTagClick} />
           ))}
         </div>
+        {onBlockTask && task.columnId !== 'blocked' && task.columnId !== 'done' && (
+          <button
+            className="task-action-btn"
+            onClick={handleBlockClick}
+            title="Block this task"
+          >
+            🚧
+          </button>
+        )}
       </div>
 
       {hasSubtasks && (

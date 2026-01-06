@@ -1,8 +1,9 @@
 // ============================================
-// API CLIENT - Base Fetch Wrapper
+// API CLIENT - Base Fetch Wrapper with Auth
 // ============================================
 
-const API_BASE = 'http://46.224.18.155:5555/api'
+const API_BASE = 'http://localhost:5555/api'
+// const API_BASE = 'http://46.224.18.155:5555/api'
 
 export class ApiError extends Error {
   constructor(
@@ -14,14 +15,39 @@ export class ApiError extends Error {
   }
 }
 
+// ============================================
+// TOKEN STORAGE
+// ============================================
+
+let authToken: string | null = null
+
+export function setAuthToken(token: string | null) {
+  authToken = token
+}
+
+export function getAuthToken(): string | null {
+  return authToken
+}
+
+// ============================================
+// FETCH WRAPPER
+// ============================================
+
 async function fetchApi<TResponse>(
   endpoint: string,
   options?: RequestInit
 ): Promise<TResponse> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  }
+
+  // Add Authorization header if token is available
+  if (authToken) {
+    headers['Authorization'] = `Bearer ${authToken}`
+  }
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     ...options,
   })
 
