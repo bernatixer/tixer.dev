@@ -7,6 +7,7 @@ use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::env;
+use tracing::{error, debug};
 
 // ============================================
 // PUBLIC KEY
@@ -105,7 +106,7 @@ where
         // Get the decoding key from PEM
         let decoding_key = get_decoding_key()
             .map_err(|e| {
-                eprintln!("Auth error: {:?}", e);
+                error!("Auth config error: {:?}", e);
                 StatusCode::from(e)
             })?;
 
@@ -121,9 +122,11 @@ where
         // Decode and validate the token
         let token_data = decode::<Claims>(token, decoding_key, &validation)
             .map_err(|e| {
-                eprintln!("Token validation error: {:?}", e);
+                error!("Token validation failed: {:?}", e);
                 StatusCode::UNAUTHORIZED
             })?;
+
+        debug!("Authenticated user: {}", token_data.claims.sub);
 
         Ok(AuthUser {
             user_id: token_data.claims.sub,

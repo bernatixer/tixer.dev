@@ -7,6 +7,8 @@ mod state;
 use axum::{routing::get, Router};
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use db::SqliteRepository;
 use handlers::{health, tasks};
@@ -14,6 +16,13 @@ use state::AppState;
 
 #[tokio::main]
 async fn main() {
+    // Initialize tracing
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(tracing_subscriber::EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| "back=debug,tower_http=debug".into()))
+        .init();
+
     // Load environment variables from .env file
     dotenvy::dotenv().ok();
 
@@ -41,6 +50,7 @@ async fn main() {
                 .put(tasks::update_task)
                 .delete(tasks::delete_task),
         )
+        .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);
 
