@@ -44,8 +44,8 @@ async fn main() {
         .layer(cors)
         .with_state(state);
 
-    let addr = SocketAddr::from(([0, 0, 0, 0], 5555));
-    println!("🚀 Server running at http://{}", addr);
+    let addr = SocketAddr::from(([46, 224, 18, 155], 5555));
+    println!("🚀 Server running at {}", addr);
     println!("📁 Using SQLite database: tixer.db");
 
     // Start the server
