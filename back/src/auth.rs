@@ -2,12 +2,13 @@ use axum::{
     async_trait,
     extract::FromRequestParts,
     http::{request::Parts, StatusCode},
+    response::{IntoResponse, Response},
+    Json,
 };
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::env;
-use tracing::{error, debug};
 
 // ============================================
 // PUBLIC KEY
@@ -73,13 +74,21 @@ pub enum AuthError {
     Configuration(String),
 }
 
-impl From<AuthError> for StatusCode {
-    fn from(err: AuthError) -> Self {
-        match err {
+/// JSON error response
+#[derive(Serialize)]
+struct ErrorResponse {
+    error: String,
+}
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        let status = match &self {
             AuthError::MissingHeader | AuthError::InvalidHeaderFormat => StatusCode::UNAUTHORIZED,
             AuthError::InvalidToken(_) => StatusCode::UNAUTHORIZED,
             AuthError::Configuration(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        }
+        };
+        let body = Json(ErrorResponse { error: self.to_string() });
+        (status, body).into_response()
     }
 }
 
@@ -88,7 +97,7 @@ impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
 {
-    type Rejection = StatusCode;
+    type Rejection = AuthError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // Extract the Authorization header
@@ -96,19 +105,15 @@ where
             .headers
             .get("authorization")
             .and_then(|value| value.to_str().ok())
-            .ok_or(StatusCode::UNAUTHORIZED)?;
+            .ok_or(AuthError::MissingHeader)?;
 
         // Check for Bearer prefix
         let token = auth_header
             .strip_prefix("Bearer ")
-            .ok_or(StatusCode::UNAUTHORIZED)?;
+            .ok_or(AuthError::InvalidHeaderFormat)?;
 
         // Get the decoding key from PEM
-        let decoding_key = get_decoding_key()
-            .map_err(|e| {
-                error!("Auth config error: {:?}", e);
-                StatusCode::from(e)
-            })?;
+        let decoding_key = get_decoding_key()?;
 
         // Set up validation
         let mut validation = Validation::new(Algorithm::RS256);
@@ -121,12 +126,7 @@ where
 
         // Decode and validate the token
         let token_data = decode::<Claims>(token, decoding_key, &validation)
-            .map_err(|e| {
-                error!("Token validation failed: {:?}", e);
-                StatusCode::UNAUTHORIZED
-            })?;
-
-        debug!("Authenticated user: {}", token_data.claims.sub);
+            .map_err(|e| AuthError::InvalidToken(format!("{:?}", e)))?;
 
         Ok(AuthUser {
             user_id: token_data.claims.sub,
