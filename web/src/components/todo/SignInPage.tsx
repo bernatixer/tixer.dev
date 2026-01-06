@@ -21,6 +21,8 @@ export const SignInPage: FC = () => {
 
         <div className="signin-card">
           <SignIn 
+            fallbackRedirectUrl="/todo"
+            signUpFallbackRedirectUrl="/todo"
             appearance={{
               elements: {
                 rootBox: 'clerk-root',
