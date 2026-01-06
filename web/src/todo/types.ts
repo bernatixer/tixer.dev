@@ -8,11 +8,11 @@ export type ColumnId = 'inbox' | 'todo' | 'blocked' | 'doing' | 'done'
 
 export type Recurrence = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
-export type TagId = 'shopping' | 'work' | 'personal' | 'ideas' | 'others'
+export type TagId = 'shopping' | 'work' | 'personal' | 'ideas' | 'travel' | 'others'
 
 export type AgeState = 'fresh' | 'aging' | 'stale' | 'dusty'
 
-export type TaskType = 'task' | 'book' | 'video' | 'article' | 'movie' | 'show' | 'podcast'
+export type TaskType = 'task' | 'book' | 'video' | 'article' | 'movie'
 
 export interface Subtask {
   id: string
@@ -70,6 +70,7 @@ export const TAGS: readonly TagConfig[] = [
   { id: 'work', name: 'Work', color: '#4ECDC4' },
   { id: 'personal', name: 'Personal', color: '#966FD6' },
   { id: 'ideas', name: 'Ideas', color: '#FFD166' },
+  { id: 'travel', name: 'Travel', color: '#3B82F6' },
   { id: 'others', name: 'Others', color: '#888888' },
 ] as const
 
@@ -127,8 +128,6 @@ export const TASK_TYPES: readonly TaskTypeConfig[] = [
   { id: 'video', name: 'Video', icon: '▶️' },
   { id: 'article', name: 'Article', icon: '📰' },
   { id: 'movie', name: 'Movie', icon: '🎬' },
-  { id: 'show', name: 'Show', icon: '📺' },
-  { id: 'podcast', name: 'Podcast', icon: '🎧' },
 ] as const
 
 export const TASK_TYPES_BY_ID = Object.fromEntries(

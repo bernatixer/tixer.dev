@@ -529,6 +529,11 @@
     color: var(--tag-ideas);
 }
 
+.tag-travel {
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--tag-travel);
+}
+
 .tag-others {
     background: rgba(136, 136, 136, 0.2);
     color: var(--tag-others);
@@ -866,6 +871,7 @@ body.compact-mode .tag-dots {
 .tag-dot.dot-work { background: var(--tag-work); }
 .tag-dot.dot-personal { background: var(--tag-personal); }
 .tag-dot.dot-ideas { background: var(--tag-ideas); }
+.tag-dot.dot-travel { background: var(--tag-travel); }
 .tag-dot.dot-others { background: var(--tag-others); }
 
 /* ============================================

@@ -12,7 +12,7 @@ import { TodoBoard } from './TodoBoard'
 import { NewTaskModal } from './NewTaskModal'
 import { BlockTaskModal } from './BlockTaskModal'
 import { SignInPage } from './SignInPage'
-import type { ColumnId, Task } from '@/todo/types'
+import type { Task } from '@/todo/types'
 import '@/styles/todo.css'
 
 // ============================================
@@ -52,16 +52,13 @@ const TodoContent: FC = () => {
   const { data: tasks = [] } = useTasks(isReady)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [defaultColumn, setDefaultColumn] = useState<ColumnId>('inbox')
   const [blockingTask, setBlockingTask] = useState<Task | null>(null)
 
   const handleNewTask = () => {
-    setDefaultColumn('inbox')
     setIsModalOpen(true)
   }
 
-  const handleAddTaskToColumn = (columnId: ColumnId) => {
-    setDefaultColumn(columnId)
+  const handleAddTaskToColumn = (_columnId: string) => {
     setIsModalOpen(true)
   }
 
@@ -95,7 +92,6 @@ const TodoContent: FC = () => {
       <NewTaskModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        defaultColumn={defaultColumn}
       />
 
       <BlockTaskModal

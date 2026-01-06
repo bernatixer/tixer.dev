@@ -3,8 +3,8 @@
 // ============================================
 
 import { FC, useState, FormEvent, useEffect } from 'react'
-import type { Priority, ColumnId, TagId, TaskType } from '@/todo/types'
-import { TAGS, PRIORITIES, COLUMNS, TASK_TYPES } from '@/todo/types'
+import type { Priority, TagId, TaskType } from '@/todo/types'
+import { TAGS, PRIORITIES, TASK_TYPES } from '@/todo/types'
 import { useCreateTask } from '@/hooks/useTasks'
 
 // ============================================
@@ -47,35 +47,6 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 }
 
-const selectWrapperStyle: React.CSSProperties = {
-  position: 'relative',
-  marginBottom: '16px',
-}
-
-const selectStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '12px 14px',
-  paddingRight: '36px',
-  background: 'rgba(255, 255, 255, 0.05)',
-  border: '1px solid rgba(255, 255, 255, 0.15)',
-  color: 'var(--bone)',
-  fontFamily: 'inherit',
-  fontSize: '0.9rem',
-  outline: 'none',
-  cursor: 'pointer',
-  appearance: 'none',
-  WebkitAppearance: 'none',
-}
-
-const selectArrowStyle: React.CSSProperties = {
-  position: 'absolute',
-  right: '14px',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  pointerEvents: 'none',
-  opacity: 0.5,
-  fontSize: '0.6rem',
-}
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
@@ -327,10 +298,18 @@ interface MiniCalendarProps {
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
+// Format date as YYYY-MM-DD using local time (avoids UTC timezone shift)
+const formatDateLocal = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect }) => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
-  const todayStr = today.toISOString().split('T')[0]
+  const todayStr = formatDateLocal(today)
   
   const [viewDate, setViewDate] = useState(() => {
     if (selectedDate) {
@@ -380,7 +359,7 @@ const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect }) => {
 
   const handleDayClick = (date: Date, isCurrentMonth: boolean) => {
     if (!isCurrentMonth) return
-    const dateStr = date.toISOString().split('T')[0]
+    const dateStr = formatDateLocal(date)
     onSelect(dateStr)
   }
 
@@ -404,7 +383,7 @@ const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect }) => {
           </div>
         ))}
         {days.map(({ date, isCurrentMonth }, idx) => {
-          const dateStr = date.toISOString().split('T')[0]
+          const dateStr = formatDateLocal(date)
           const isSelected = dateStr === selectedDate
           const isToday = dateStr === todayStr
 
@@ -432,17 +411,14 @@ const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect }) => {
 interface NewTaskModalProps {
   isOpen: boolean
   onClose: () => void
-  defaultColumn?: ColumnId
 }
 
 export const NewTaskModal: FC<NewTaskModalProps> = ({
   isOpen,
   onClose,
-  defaultColumn = 'inbox',
 }) => {
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState<Priority>('medium')
-  const [columnId, setColumnId] = useState<ColumnId>(defaultColumn)
   const [selectedTags, setSelectedTags] = useState<TagId[]>([])
   const [dueDate, setDueDate] = useState('')
   const [dueDateMode, setDueDateMode] = useState<DueDateOption>('none')
@@ -457,7 +433,6 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     if (isOpen) {
       setTitle('')
       setPriority('medium')
-      setColumnId(defaultColumn)
       setSelectedTags([])
       setDueDate('')
       setDueDateMode('none')
@@ -465,7 +440,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       setTaskType('task')
       setUrl('')
     }
-  }, [isOpen, defaultColumn])
+  }, [isOpen])
   
   const handleDueDateSelect = (option: DueDateOption) => {
     if (option === 'custom') {
@@ -515,7 +490,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       {
         title: title.trim(),
         priority,
-        columnId,
+        columnId: 'todo',
         tags: selectedTags,
         dueDate: dueDate ? new Date(dueDate) : null,
         recurrence: null,
@@ -626,22 +601,20 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
             </div>
           </div>
 
-          {/* Column */}
+          {/* Tags */}
           <div>
-            <label style={labelStyle}>Column</label>
-            <div style={selectWrapperStyle}>
-              <select
-                value={columnId}
-                onChange={e => setColumnId(e.target.value as ColumnId)}
-                style={selectStyle}
-              >
-                {COLUMNS.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.title}
-                  </option>
-                ))}
-              </select>
-              <span style={selectArrowStyle}>▼</span>
+            <label style={labelStyle}>Tags</label>
+            <div style={tagContainerStyle}>
+              {TAGS.map(tag => (
+                <button
+                  key={tag.id}
+                  type="button"
+                  onClick={() => toggleTag(tag.id)}
+                  style={tagButtonStyle(selectedTags.includes(tag.id), tag.color)}
+                >
+                  {tag.name}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -688,23 +661,6 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
             {showCalendar && (
               <MiniCalendar selectedDate={dueDate} onSelect={handleCalendarSelect} />
             )}
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label style={labelStyle}>Tags</label>
-            <div style={tagContainerStyle}>
-              {TAGS.map(tag => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => toggleTag(tag.id)}
-                  style={tagButtonStyle(selectedTags.includes(tag.id), tag.color)}
-                >
-                  {tag.name}
-                </button>
-              ))}
-            </div>
           </div>
 
           {/* Buttons */}

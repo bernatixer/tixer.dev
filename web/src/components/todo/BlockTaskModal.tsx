@@ -2,9 +2,10 @@
 // BLOCK TASK MODAL COMPONENT
 // ============================================
 
-import { FC, useState, FormEvent, useEffect } from 'react'
+import { FC, useState, FormEvent, useEffect, useMemo } from 'react'
 import type { Task, BlockedBy } from '@/todo/types'
 import { useBlockTask } from '@/hooks/useTasks'
+import { StyledSelect, SelectOption } from './StyledSelect'
 
 // ============================================
 // STYLES
@@ -54,12 +55,6 @@ const inputStyle: React.CSSProperties = {
   outline: 'none',
 }
 
-const selectStyle: React.CSSProperties = {
-  ...inputStyle,
-  cursor: 'pointer',
-  appearance: 'none',
-  WebkitAppearance: 'none',
-}
 
 const buttonRowStyle: React.CSSProperties = {
   display: 'flex',
@@ -133,9 +128,19 @@ export const BlockTaskModal: FC<BlockTaskModalProps> = ({
 
   const { mutate: blockTask, isPending } = useBlockTask()
 
-  // Filter out the current task and already done tasks from the dependency options
+  // Filter out the current task and completed tasks from the dependency options
+  // Any non-completed task can be selected as a blocker
   const availableTasks = allTasks.filter(
-    t => t.id !== task?.id && t.columnId !== 'done' && t.columnId !== 'blocked'
+    t => t.id !== task?.id && t.columnId !== 'done'
+  )
+
+  // Convert available tasks to select options
+  const taskOptions: SelectOption[] = useMemo(() => 
+    availableTasks.map(t => ({
+      id: t.id,
+      label: t.title,
+    })),
+    [availableTasks]
   )
 
   // Reset form when modal opens
@@ -254,18 +259,13 @@ export const BlockTaskModal: FC<BlockTaskModalProps> = ({
           {blockType === 'task' && (
             <div>
               <label style={labelStyle}>Depends on which task?</label>
-              <select
+              <StyledSelect
+                options={taskOptions}
                 value={selectedTaskId}
-                onChange={e => setSelectedTaskId(e.target.value)}
-                style={selectStyle}
-              >
-                <option value="">Select a task...</option>
-                {availableTasks.map(t => (
-                  <option key={t.id} value={t.id}>
-                    {t.title}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedTaskId}
+                placeholder="Select a task..."
+                accentColor="var(--priority-high)"
+              />
             </div>
           )}
 
