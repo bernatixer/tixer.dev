@@ -2,8 +2,8 @@
 // API CLIENT - Base Fetch Wrapper with Auth
 // ============================================
 
-const API_BASE = 'http://localhost:5555/api'
-// const API_BASE = 'http://46.224.18.155:5555/api'
+// const API_BASE = 'http://localhost:5555/api'
+const API_BASE = 'http://46.224.18.155:5555/api'
 
 export class ApiError extends Error {
   constructor(
