@@ -45,7 +45,7 @@ async fn main() {
         .with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], 5555));
-    println!("🚀 Server running at {}", addr);
+    println!("🚀 Server running at http://{}", addr);
     println!("📁 Using SQLite database: tixer.db");
 
     // Start the server
