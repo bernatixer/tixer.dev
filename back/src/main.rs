@@ -34,6 +34,7 @@ async fn main() {
     // Build the router
     let app = Router::new()
         .route("/api/health", get(health::health))
+        .route("/api/debug", get(health::debug))
         .route("/api/tasks", get(tasks::list_tasks).post(tasks::create_task))
         .route(
             "/api/tasks/:id",
