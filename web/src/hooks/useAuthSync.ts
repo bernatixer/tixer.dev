@@ -3,20 +3,22 @@
 // ============================================
 // Syncs Clerk session token with the API client
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@clerk/clerk-react'
 import { setAuthToken } from '@/api/client'
 
 /**
  * Hook that syncs the Clerk session token with the API client.
- * Should be used in a component that wraps authenticated content.
+ * Returns isReady: true once the token has been set.
  */
 export function useAuthSync() {
   const { getToken, isSignedIn } = useAuth()
+  const [isReady, setIsReady] = useState(false)
 
   useEffect(() => {
     if (!isSignedIn) {
       setAuthToken(null)
+      setIsReady(false)
       return
     }
 
@@ -25,9 +27,11 @@ export function useAuthSync() {
       try {
         const token = await getToken()
         setAuthToken(token)
+        setIsReady(true)
       } catch (error) {
         console.error('Failed to get auth token:', error)
         setAuthToken(null)
+        setIsReady(false)
       }
     }
 
@@ -38,5 +42,7 @@ export function useAuthSync() {
 
     return () => clearInterval(interval)
   }, [getToken, isSignedIn])
+
+  return { isReady }
 }
 

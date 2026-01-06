@@ -22,10 +22,11 @@ export const taskKeys = {
 // QUERIES
 // ============================================
 
-export function useTasks() {
+export function useTasks(enabled = true) {
   return useQuery({
     queryKey: taskKeys.list(),
     queryFn: () => tasksApi.list(),
+    enabled,
   })
 }
 

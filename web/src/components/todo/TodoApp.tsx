@@ -43,13 +43,13 @@ const TopBar: FC = () => {
 // ============================================
 
 const TodoContent: FC = () => {
-  // Sync Clerk token with API client
-  useAuthSync()
+  // Sync Clerk token with API client - wait until ready
+  const { isReady } = useAuthSync()
 
   const { focusMode, toggle: toggleFocus } = useFocusMode()
   const { compactMode, toggle: toggleCompact } = useCompactMode()
   const { activeFilter, toggle: toggleFilter, clear: clearFilter } = useFilter()
-  const { data: tasks = [] } = useTasks()
+  const { data: tasks = [] } = useTasks(isReady)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [defaultColumn, setDefaultColumn] = useState<ColumnId>('inbox')
@@ -67,6 +67,10 @@ const TodoContent: FC = () => {
 
   const handleBlockTask = (task: Task) => {
     setBlockingTask(task)
+  }
+
+  if (!isReady) {
+    return <div className="loading">Loading...</div>
   }
 
   return (
