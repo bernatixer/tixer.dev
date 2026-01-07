@@ -995,6 +995,25 @@ body.filtering .task-card.filtered-out {
     color: var(--acid);
 }
 
+/* Load More Button */
+.load-more-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    padding: 10px 16px;
+    background: rgba(208, 255, 0, 0.05);
+    border: 1px solid rgba(208, 255, 0, 0.2);
+    color: var(--acid);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+.load-more-btn:hover {
+    background: rgba(208, 255, 0, 0.1);
+    border-color: rgba(208, 255, 0, 0.4);
+}
+
 /* Top Bar */
 .top-bar {
     display: flex;

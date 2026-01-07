@@ -85,8 +85,8 @@ export const TAGS_BY_ID = Object.fromEntries(
 export const COLUMNS: readonly Column[] = [
   { id: 'inbox', title: 'Inbox', order: 0 },
   { id: 'todo', title: 'To Do', order: 1 },
-  { id: 'blocked', title: 'Blocked', order: 2 },
-  { id: 'doing', title: 'Doing', order: 3 },
+  { id: 'doing', title: 'Doing', order: 2 },
+  { id: 'blocked', title: 'Blocked', order: 3 },
   { id: 'done', title: 'Done', order: 4 },
 ] as const
 

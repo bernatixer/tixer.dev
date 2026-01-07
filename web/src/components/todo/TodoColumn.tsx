@@ -2,11 +2,14 @@
 // TODO COLUMN COMPONENT
 // ============================================
 
-import { FC } from 'react'
+import { FC, useState, useMemo } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import type { Task, Column, TagId } from '@/todo/types'
 import { TaskCard } from './TaskCard'
+
+const DONE_INITIAL_LIMIT = 10
+const DONE_LOAD_MORE_COUNT = 10
 
 interface TodoColumnProps {
   column: Column
@@ -27,6 +30,8 @@ export const TodoColumn: FC<TodoColumnProps> = ({
   onAddTask,
   onBlockTask,
 }) => {
+  const [doneLimit, setDoneLimit] = useState(DONE_INITIAL_LIMIT)
+  
   const { setNodeRef, isOver } = useDroppable({
     id: column.id,
     data: {
@@ -35,7 +40,27 @@ export const TodoColumn: FC<TodoColumnProps> = ({
     },
   })
 
-  const taskIds = tasks.map(task => task.id)
+  // For done column, sort by completion (most recent first) and limit display
+  const displayTasks = useMemo(() => {
+    if (column.id !== 'done') return tasks
+    
+    // Sort by updatedAt descending (most recently completed first)
+    const sorted = [...tasks].sort((a, b) => {
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
+      return dateB - dateA
+    })
+    
+    return sorted.slice(0, doneLimit)
+  }, [tasks, column.id, doneLimit])
+
+  const hasMoreDone = column.id === 'done' && tasks.length > doneLimit
+  
+  const handleLoadMore = () => {
+    setDoneLimit(prev => prev + DONE_LOAD_MORE_COUNT)
+  }
+
+  const taskIds = displayTasks.map(task => task.id)
 
   // Build column class names exactly as original
   const columnClassName = [
@@ -57,7 +82,7 @@ export const TodoColumn: FC<TodoColumnProps> = ({
         className={`column-tasks ${isOver ? 'drag-over' : ''}`}
       >
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          {tasks.map(task => (
+          {displayTasks.map(task => (
             <TaskCard
               key={task.id}
               task={task}
@@ -68,6 +93,11 @@ export const TodoColumn: FC<TodoColumnProps> = ({
             />
           ))}
         </SortableContext>
+        {hasMoreDone && (
+          <button className="load-more-btn" onClick={handleLoadMore}>
+            Load more ({tasks.length - doneLimit} remaining)
+          </button>
+        )}
         <button className="add-task-inline" onClick={onAddTask}>
           Add task
         </button>
