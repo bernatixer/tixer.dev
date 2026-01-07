@@ -40,16 +40,12 @@ export const TodoColumn: FC<TodoColumnProps> = ({
     },
   })
 
-  // For done column, sort by completion (most recent first) and limit display
+  // For done column, sort by order descending (most recently moved first) and limit display
   const displayTasks = useMemo(() => {
     if (column.id !== 'done') return tasks
     
-    // Sort by updatedAt descending (most recently completed first)
-    const sorted = [...tasks].sort((a, b) => {
-      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0
-      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0
-      return dateB - dateA
-    })
+    // Sort by order descending (higher order = more recently added to done)
+    const sorted = [...tasks].sort((a, b) => b.order - a.order)
     
     return sorted.slice(0, doneLimit)
   }, [tasks, column.id, doneLimit])
