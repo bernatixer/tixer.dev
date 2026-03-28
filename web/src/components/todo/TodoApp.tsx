@@ -5,12 +5,13 @@
 import { FC, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
-import { useFocusMode, useCompactMode, useFilter, useAuthSync } from '@/hooks'
+import { useFilter, useAuthSync } from '@/hooks'
 import { useTasks } from '@/hooks/useTasks'
 import { Header } from './Header'
 import { TodoBoard } from './TodoBoard'
 import { NewTaskModal } from './NewTaskModal'
 import { BlockTaskModal } from './BlockTaskModal'
+import { DonePanel } from './DonePanel'
 import { SignInPage } from './SignInPage'
 import type { Task } from '@/todo/types'
 import '@/styles/todo.css'
@@ -26,7 +27,7 @@ const TopBar: FC = () => {
         Back to home
       </Link>
       <div className="top-bar-right">
-        <UserButton 
+        <UserButton
           appearance={{
             elements: {
               avatarBox: 'user-avatar',
@@ -43,16 +44,15 @@ const TopBar: FC = () => {
 // ============================================
 
 const TodoContent: FC = () => {
-  // Sync Clerk token with API client - wait until ready
   const { isReady } = useAuthSync()
-
-  const { focusMode, toggle: toggleFocus } = useFocusMode()
-  const { compactMode, toggle: toggleCompact } = useCompactMode()
-  const { activeFilter, toggle: toggleFilter, clear: clearFilter } = useFilter()
+  const { activeFilter, clear: clearFilter } = useFilter()
   const { data: tasks = [] } = useTasks(isReady)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [blockingTask, setBlockingTask] = useState<Task | null>(null)
+  const [isDonePanelOpen, setIsDonePanelOpen] = useState(false)
+
+  const doneTasks = tasks.filter(t => t.columnId === 'done')
 
   const handleNewTask = () => {
     setIsModalOpen(true)
@@ -73,18 +73,15 @@ const TodoContent: FC = () => {
   return (
     <>
       <Header
-        focusMode={focusMode}
-        compactMode={compactMode}
         activeFilter={activeFilter}
-        onToggleFocus={toggleFocus}
-        onToggleCompact={toggleCompact}
         onClearFilter={clearFilter}
         onNewTask={handleNewTask}
+        doneCount={doneTasks.length}
+        onOpenDone={() => setIsDonePanelOpen(true)}
       />
 
       <TodoBoard
         activeFilter={activeFilter}
-        onTagClick={toggleFilter}
         onAddTask={handleAddTaskToColumn}
         onBlockTask={handleBlockTask}
       />
@@ -99,6 +96,12 @@ const TodoContent: FC = () => {
         onClose={() => setBlockingTask(null)}
         task={blockingTask}
         allTasks={tasks}
+      />
+
+      <DonePanel
+        isOpen={isDonePanelOpen}
+        onClose={() => setIsDonePanelOpen(false)}
+        tasks={doneTasks}
       />
     </>
   )

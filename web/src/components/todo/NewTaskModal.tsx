@@ -218,22 +218,30 @@ const textareaStyle: React.CSSProperties = {
 // Due date options
 type DueDateOption = 'none' | 'today' | 'tomorrow' | 'next-week' | 'custom'
 
+// Format date as YYYY-MM-DD using local time (avoids UTC timezone shift)
+const formatDateLocal = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const getDueDateFromOption = (option: DueDateOption): string => {
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  
+  today.setHours(12, 0, 0, 0) // noon to avoid any DST edge cases
+
   switch (option) {
     case 'today':
-      return today.toISOString().split('T')[0]
+      return formatDateLocal(today)
     case 'tomorrow': {
       const tomorrow = new Date(today)
       tomorrow.setDate(tomorrow.getDate() + 1)
-      return tomorrow.toISOString().split('T')[0]
+      return formatDateLocal(tomorrow)
     }
     case 'next-week': {
       const nextWeek = new Date(today)
       nextWeek.setDate(nextWeek.getDate() + 7)
-      return nextWeek.toISOString().split('T')[0]
+      return formatDateLocal(nextWeek)
     }
     default:
       return ''
@@ -312,14 +320,6 @@ interface MiniCalendarProps {
 }
 
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
-
-// Format date as YYYY-MM-DD using local time (avoids UTC timezone shift)
-const formatDateLocal = (date: Date): string => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect }) => {
   const today = new Date()
@@ -441,6 +441,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [showCalendar, setShowCalendar] = useState(false)
   const [taskType, setTaskType] = useState<TaskType>('task')
   const [url, setUrl] = useState('')
+  const [showDescription, setShowDescription] = useState(false)
 
   const { mutate: createTask, isPending } = useCreateTask()
 
@@ -452,6 +453,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       setPriority('medium')
       setSelectedTags([])
       setDueDate('')
+      setShowDescription(false)
       setDueDateMode('none')
       setShowCalendar(false)
       setTaskType('task')
@@ -511,7 +513,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
         priority,
         columnId: 'todo',
         tags: selectedTags,
-        dueDate: dueDate ? new Date(dueDate) : null,
+        dueDate: dueDate ? new Date(dueDate + 'T12:00:00') : null,
         recurrence: null,
         subtasks: [],
         taskType,
@@ -583,16 +585,38 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
             />
           </div>
 
-          {/* Description */}
-          <div>
-            <label style={labelStyle}>Description (optional)</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Add more details..."
-              style={textareaStyle}
-            />
-          </div>
+          {/* Description - collapsible */}
+          {showDescription ? (
+            <div>
+              <label style={labelStyle}>Description</label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Add more details..."
+                style={textareaStyle}
+                autoFocus
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowDescription(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: 'var(--bone)',
+                opacity: 0.4,
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: '0.65rem',
+                cursor: 'pointer',
+                padding: '4px 0',
+                marginBottom: '12px',
+                letterSpacing: '0.03em',
+              }}
+            >
+              + Add description
+            </button>
+          )}
 
           {/* URL (shown for non-task types) */}
           {taskType !== 'task' && (

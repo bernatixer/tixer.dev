@@ -19,11 +19,11 @@ const FilterIndicator: FC<FilterIndicatorProps> = ({ activeFilter, onClear }) =>
   if (!activeFilter) return null
 
   return (
-    <div className={`filter-indicator ${activeFilter ? 'visible' : ''}`} id="filter-indicator">
+    <div className={`filter-indicator ${activeFilter ? 'visible' : ''}`}>
       <span>Filtering:</span>
-      <span id="filter-name">{TAGS_BY_ID[activeFilter].name}</span>
-      <span className="filter-clear" id="filter-clear" onClick={onClear}>
-        ✕
+      <span>{TAGS_BY_ID[activeFilter].name}</span>
+      <span className="filter-clear" onClick={onClear}>
+        &#10005;
       </span>
     </div>
   )
@@ -34,46 +34,31 @@ const FilterIndicator: FC<FilterIndicatorProps> = ({ activeFilter, onClear }) =>
 // ============================================
 
 interface HeaderProps {
-  focusMode: boolean
-  compactMode: boolean
   activeFilter: TagId | null
-  onToggleFocus: () => void
-  onToggleCompact: () => void
   onClearFilter: () => void
   onNewTask: () => void
+  doneCount: number
+  onOpenDone: () => void
 }
 
 export const Header: FC<HeaderProps> = ({
-  focusMode,
-  compactMode,
   activeFilter,
-  onToggleFocus,
-  onToggleCompact,
   onClearFilter,
   onNewTask,
+  doneCount,
+  onOpenDone,
 }) => {
   return (
     <header className="todo-header">
       <div className="header-left">
         <h1 className="todo-title">Todo</h1>
-        <span className="focus-indicator">Focus Mode</span>
       </div>
       <div className="header-controls">
-        <button
-          className={`header-btn ${focusMode ? 'active' : ''}`}
-          id="btn-focus"
-          onClick={onToggleFocus}
-        >
-          Focus
-        </button>
-        <button
-          className={`header-btn ${compactMode ? 'active' : ''}`}
-          id="btn-compact"
-          onClick={onToggleCompact}
-        >
-          Compact
-        </button>
         <FilterIndicator activeFilter={activeFilter} onClear={onClearFilter} />
+        <button className="header-btn done-counter" onClick={onOpenDone}>
+          Completed
+          <span className="done-counter-badge">{doneCount}</span>
+        </button>
         <button className="btn-new-task" onClick={onNewTask}>
           New Task
         </button>
@@ -81,4 +66,3 @@ export const Header: FC<HeaderProps> = ({
     </header>
   )
 }
-

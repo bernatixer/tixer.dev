@@ -16,7 +16,6 @@ interface TodoColumnProps {
   tasks: Task[]
   allTasks: Task[]
   activeFilter: TagId | null
-  onTagClick: (tagId: TagId) => void
   onAddTask: () => void
   onBlockTask: (task: Task) => void
 }
@@ -26,7 +25,6 @@ export const TodoColumn: FC<TodoColumnProps> = ({
   tasks,
   allTasks,
   activeFilter,
-  onTagClick,
   onAddTask,
   onBlockTask,
 }) => {
@@ -83,7 +81,6 @@ export const TodoColumn: FC<TodoColumnProps> = ({
               key={task.id}
               task={task}
               activeFilter={activeFilter}
-              onTagClick={onTagClick}
               allTasks={allTasks}
               onBlockTask={onBlockTask}
             />
