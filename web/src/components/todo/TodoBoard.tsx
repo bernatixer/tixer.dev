@@ -206,10 +206,7 @@ export const TodoBoard: FC<TodoBoardProps> = ({
   const blockedTasks = getTasksByColumn('blocked')
   const todoTasks = getTasksByColumn('todo')
   const inboxTasks = getTasksByColumn('inbox')
-  const activeTasks = [...doingTasks, ...blockedTasks]
-
   const doingIds = doingTasks.map(t => t.id)
-  const blockedIds = blockedTasks.map(t => t.id)
 
   return (
     <DndContext
@@ -249,33 +246,8 @@ export const TodoBoard: FC<TodoBoardProps> = ({
             </div>
           )}
 
-          {/* Blocked section */}
-          {blockedTasks.length > 0 && (
-            <div className="active-section section-blocked">
-              <div className="active-section-header">
-                <h2 className="active-section-title blocked-title">Blocked</h2>
-                <span className="active-section-count blocked-count">{blockedTasks.length}</span>
-              </div>
-              <DroppableZone id="blocked" className="active-section-tasks">
-                <SortableContext items={blockedIds} strategy={verticalListSortingStrategy}>
-                  {blockedTasks.map(task => (
-                    <TaskCard
-                      key={task.id}
-                      task={task}
-                      activeFilter={activeFilter}
-        
-                      allTasks={tasks}
-                      onBlockTask={onBlockTask}
-                      variant="active"
-                    />
-                  ))}
-                </SortableContext>
-              </DroppableZone>
-            </div>
-          )}
-
           {/* Empty state for main zone */}
-          {activeTasks.length === 0 && (
+          {doingTasks.length === 0 && (
             <DroppableZone id="doing" className="main-zone-empty">
               <div className="empty-state">
                 <span className="empty-state-icon">&#9673;</span>
@@ -288,6 +260,17 @@ export const TodoBoard: FC<TodoBoardProps> = ({
 
         {/* ===== SIDEBAR: Queue ===== */}
         <div className="sidebar-zone">
+          {blockedTasks.length > 0 && (
+            <SidebarSection
+              columnId="blocked"
+              title="Blocked"
+              tasks={blockedTasks}
+              allTasks={tasks}
+              activeFilter={activeFilter}
+              onBlockTask={onBlockTask}
+              onAddTask={() => {}}
+            />
+          )}
           <SidebarSection
             columnId="todo"
             title="Up Next"
