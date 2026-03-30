@@ -359,7 +359,8 @@ export const TaskCard: FC<TaskCardProps> = ({
           </div>
         </div>
 
-        {/* Always-visible milestones */}
+        {/* Always-visible milestones (only on doing/in-progress cards) */}
+        {task.columnId === 'doing' && (
         <div className="active-milestones" onClick={e => e.stopPropagation()}>
           {task.subtasks.map(st => (
             <label
@@ -396,6 +397,7 @@ export const TaskCard: FC<TaskCardProps> = ({
             />
           </div>
         </div>
+        )}
 
         {/* Progress bar */}
         {hasSubtasks && (
