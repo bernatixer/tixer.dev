@@ -14,7 +14,7 @@ import {
   useSensors,
   closestCorners,
 } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { SortableContext, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import type { Task, ColumnId, TagId } from '@/todo/types'
 import { COLUMNS } from '@/todo/types'
@@ -231,8 +231,8 @@ export const TodoBoard: FC<TodoBoardProps> = ({
                 <h2 className="active-section-title">In Progress</h2>
                 <span className="active-section-count">{doingTasks.length}</span>
               </div>
-              <DroppableZone id="doing" className="active-section-tasks">
-                <SortableContext items={doingIds} strategy={verticalListSortingStrategy}>
+              <DroppableZone id="doing" className="active-section-tasks doing-grid">
+                <SortableContext items={doingIds} strategy={rectSortingStrategy}>
                   {doingTasks.map(task => (
                     <TaskCard
                       key={task.id}

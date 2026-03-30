@@ -426,3 +426,41 @@ export function useAddSubtask() {
     },
   })
 }
+
+export function useDeleteSubtask() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ task, subtaskId }: { task: Task; subtaskId: string }) => {
+      const updatedTask: Task = {
+        ...task,
+        subtasks: task.subtasks.filter(st => st.id !== subtaskId),
+      }
+      return tasksApi.update(task.id, updatedTask)
+    },
+    onMutate: async ({ task, subtaskId }) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
+      const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
+
+      const updatedTask: Task = {
+        ...task,
+        subtasks: task.subtasks.filter(st => st.id !== subtaskId),
+      }
+
+      if (previousTasks) {
+        const updated = previousTasks.map(t => t.id === task.id ? updatedTask : t)
+        queryClient.setQueryData(taskKeys.list(), updated)
+      }
+
+      return { previousTasks }
+    },
+    onError: (_err, _params, context) => {
+      if (context?.previousTasks) {
+        queryClient.setQueryData(taskKeys.list(), context.previousTasks)
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() })
+    },
+  })
+}

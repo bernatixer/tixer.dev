@@ -8,7 +8,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Task, TagId, ColumnId, Priority } from '@/todo/types'
 import { TASK_TYPES_BY_ID } from '@/todo/types'
 import { useTaskAge } from '@/hooks/useAppState'
-import { useToggleSubtask, useUnblockTask, useUpdateTask, useAddSubtask, useMoveTask } from '@/hooks/useTasks'
+import { useToggleSubtask, useUnblockTask, useUpdateTask, useAddSubtask, useDeleteSubtask, useMoveTask } from '@/hooks/useTasks'
 import { DueDateBadge } from './DueDateBadge'
 import { SubtasksContainer, ProgressChip } from './Subtasks'
 import { StatusCircle } from './StatusCircle'
@@ -153,6 +153,7 @@ export const TaskCard: FC<TaskCardProps> = ({
   const { mutate: unblockTask } = useUnblockTask()
   const { mutate: updateTask } = useUpdateTask()
   const { mutate: addSubtask } = useAddSubtask()
+  const { mutate: deleteSubtask } = useDeleteSubtask()
   const { mutate: moveTask } = useMoveTask()
   const { ageState, daysSinceCreation } = useTaskAge(task)
 
@@ -272,6 +273,10 @@ export const TaskCard: FC<TaskCardProps> = ({
     toggleSubtask({ task, subtaskId })
   }
 
+  const handleSubtaskDelete = (subtaskId: string) => {
+    deleteSubtask({ task, subtaskId })
+  }
+
   const handleBlockClick = (e: MouseEvent) => {
     e.stopPropagation()
     if (onBlockTask && task.columnId !== 'blocked' && task.columnId !== 'done') {
@@ -354,16 +359,45 @@ export const TaskCard: FC<TaskCardProps> = ({
           </div>
         </div>
 
-        {/* Description preview (always visible on active cards) */}
-        {task.description && !expanded && (
-          <div className="task-description-preview" onClick={handleDescriptionClick}>
-            {task.description.length > 120
-              ? `${task.description.slice(0, 120)}...`
-              : task.description}
+        {/* Always-visible milestones */}
+        <div className="active-milestones" onClick={e => e.stopPropagation()}>
+          {task.subtasks.map(st => (
+            <label
+              key={st.id}
+              className={`milestone-item ${st.completed ? 'completed' : ''}`}
+              onClick={e => e.stopPropagation()}
+            >
+              <input
+                type="checkbox"
+                className="subtask-checkbox"
+                checked={st.completed}
+                onChange={() => handleSubtaskToggle(st.id)}
+              />
+              <span className="milestone-text">{st.text}</span>
+              <button
+                className="milestone-delete"
+                onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleSubtaskDelete(st.id) }}
+                title="Remove milestone"
+              >
+                &times;
+              </button>
+            </label>
+          ))}
+          <div className="milestone-add">
+            <input
+              ref={subtaskInputRef}
+              type="text"
+              className="milestone-add-input"
+              value={newSubtaskText}
+              onChange={e => setNewSubtaskText(e.target.value)}
+              onKeyDown={handleSubtaskKeyDown}
+              placeholder="+ Add milestone..."
+              onClick={e => e.stopPropagation()}
+            />
           </div>
-        )}
+        </div>
 
-        {/* Subtask progress bar */}
+        {/* Progress bar */}
         {hasSubtasks && (
           <SubtaskProgressBar completed={completedSubtasks} total={task.subtasks.length} />
         )}
@@ -387,54 +421,6 @@ export const TaskCard: FC<TaskCardProps> = ({
             )}
           </div>
         </div>
-
-        {/* Expanded content */}
-        {expanded && (
-          <div className="task-expanded-content" onClick={e => e.stopPropagation()}>
-            <div className="task-description-section">
-              {isEditingDescription ? (
-                <textarea
-                  ref={descriptionRef}
-                  className="task-description-input"
-                  value={descriptionValue}
-                  onChange={e => setDescriptionValue(e.target.value)}
-                  onBlur={handleDescriptionBlur}
-                  onKeyDown={handleDescriptionKeyDown}
-                  placeholder="Add a description..."
-                />
-              ) : (
-                <div
-                  className={`task-description ${!task.description ? 'empty' : ''}`}
-                  onClick={handleDescriptionClick}
-                >
-                  {task.description || 'Add a description...'}
-                </div>
-              )}
-            </div>
-
-            {hasSubtasks && (
-              <SubtasksContainer subtasks={task.subtasks} onToggle={handleSubtaskToggle} />
-            )}
-
-            <div className="add-subtask-section">
-              <input
-                ref={subtaskInputRef}
-                type="text"
-                className="add-subtask-input"
-                value={newSubtaskText}
-                onChange={e => setNewSubtaskText(e.target.value)}
-                onKeyDown={handleSubtaskKeyDown}
-                placeholder="+ Add subtask..."
-                onClick={e => e.stopPropagation()}
-              />
-              {newSubtaskText.trim() && (
-                <button type="button" className="add-subtask-btn" onClick={handleAddSubtask}>
-                  Add
-                </button>
-              )}
-            </div>
-          </div>
-        )}
       </div>
     )
   }

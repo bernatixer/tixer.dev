@@ -219,6 +219,12 @@
     min-height: 60px;
 }
 
+.active-section-tasks.doing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+}
+
 /* Empty state */
 .main-zone-empty {
     border: 1px dashed rgba(255, 255, 255, 0.08);
@@ -496,6 +502,17 @@ body.filtering .task-card.filtered-out {
 
 .task-card.variant-active {
     padding: 16px 18px;
+    display: flex;
+    flex-direction: column;
+}
+
+.task-card.variant-active .active-milestones {
+    flex: 1;
+}
+
+.task-card.variant-active .task-footer {
+    margin-top: auto;
+    padding-top: 8px;
 }
 
 .task-card.variant-active .task-title {
@@ -516,6 +533,93 @@ body.filtering .task-card.filtered-out {
 
 .task-description-preview:hover {
     opacity: 0.7;
+}
+
+/* ============================================
+   INLINE MILESTONES (active cards)
+   ============================================ */
+
+.active-milestones {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.milestone-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: background 0.1s;
+}
+
+.milestone-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.milestone-text {
+    font-size: 0.75rem;
+    color: var(--bone);
+    opacity: 0.8;
+    line-height: 1.4;
+    flex: 1;
+    min-width: 0;
+}
+
+.milestone-item.completed .milestone-text {
+    text-decoration: line-through;
+    opacity: 0.35;
+}
+
+.milestone-delete {
+    background: none;
+    border: none;
+    color: var(--bone);
+    font-size: 0.85rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+    padding: 0 4px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.milestone-item:hover .milestone-delete {
+    opacity: 0.35;
+}
+
+.milestone-delete:hover {
+    opacity: 1 !important;
+    color: var(--priority-urgent);
+}
+
+.milestone-add {
+    margin-top: 2px;
+}
+
+.milestone-add-input {
+    width: 100%;
+    padding: 4px 6px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    color: var(--bone);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.milestone-add-input:focus {
+    border-bottom-color: rgba(191, 255, 0, 0.3);
+}
+
+.milestone-add-input::placeholder {
+    color: var(--bone);
+    opacity: 0.25;
 }
 
 /* ============================================
