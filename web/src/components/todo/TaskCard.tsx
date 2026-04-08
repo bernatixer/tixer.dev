@@ -8,7 +8,7 @@ import { CSS } from '@dnd-kit/utilities'
 import type { Task, TagConfig, TagId, ColumnId, Priority } from '@/todo/types'
 import { TASK_TYPES_BY_ID } from '@/todo/types'
 import { useTaskAge } from '@/hooks/useAppState'
-import { useToggleMilestone, useUnblockTask, useUpdateTask, useAddMilestone, useDeleteMilestone, useMoveTask } from '@/hooks/useTasks'
+import { useToggleMilestone, useUnblockTask, useUpdateTask, useAddMilestone, useDeleteMilestone, useMoveTask, useDeleteTask } from '@/hooks/useTasks'
 import { DueDateBadge } from './DueDateBadge'
 import { MilestonesSection, ProgressChip } from './Milestones'
 import { StatusCircle } from './StatusCircle'
@@ -131,6 +131,7 @@ interface TaskCardProps {
   allTasks?: Task[]
   onBlockTask?: (task: Task) => void
   variant?: 'active' | 'compact'
+  isDraggable?: boolean
 }
 
 export const TaskCard: FC<TaskCardProps> = ({
@@ -140,6 +141,7 @@ export const TaskCard: FC<TaskCardProps> = ({
   allTasks,
   onBlockTask,
   variant = 'compact',
+  isDraggable = true,
 }) => {
   const [expanded, setExpanded] = useState(false)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
@@ -157,6 +159,7 @@ export const TaskCard: FC<TaskCardProps> = ({
   const { mutate: addMilestone } = useAddMilestone()
   const { mutate: deleteMilestone } = useDeleteMilestone()
   const { mutate: moveTask } = useMoveTask()
+  const { mutate: deleteTask } = useDeleteTask()
   const { ageState, daysSinceCreation } = useTaskAge(task)
 
   // dnd-kit sortable
@@ -167,7 +170,7 @@ export const TaskCard: FC<TaskCardProps> = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id })
+  } = useSortable({ id: task.id, disabled: !isDraggable })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -222,7 +225,7 @@ export const TaskCard: FC<TaskCardProps> = ({
   }
 
   // --- Title editing ---
-  const handleTitleClick = (e: MouseEvent) => {
+  const handleTitleDoubleClick = (e: MouseEvent) => {
     e.stopPropagation()
     setIsEditingTitle(true)
   }
@@ -303,6 +306,61 @@ export const TaskCard: FC<TaskCardProps> = ({
     }
   }
 
+  const handleDeleteTask = (e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    if (!window.confirm(`Delete "${task.title}"?`)) return
+    deleteTask(task.id)
+  }
+
+  const renderExpandedContent = () => (
+    <div className="task-expanded-content" onClick={e => e.stopPropagation()}>
+      <div className="task-description-section">
+        {isEditingDescription ? (
+          <textarea
+            ref={descriptionRef}
+            className="task-description-input"
+            value={descriptionValue}
+            onChange={e => setDescriptionValue(e.target.value)}
+            onBlur={handleDescriptionBlur}
+            onKeyDown={handleDescriptionKeyDown}
+            placeholder="Add a description..."
+          />
+        ) : (
+          <div
+            className={`task-description ${!task.description ? 'empty' : ''}`}
+            onClick={handleDescriptionClick}
+          >
+            {task.description || 'Add a description...'}
+          </div>
+        )}
+      </div>
+
+      {!isActive && (
+        <MilestonesSection
+          milestones={task.milestones}
+          onToggle={handleMilestoneToggle}
+          onDelete={handleMilestoneDelete}
+          newMilestoneText={newMilestoneText}
+          onNewMilestoneTextChange={setNewMilestoneText}
+          onAddMilestone={handleAddMilestone}
+          onNewMilestoneKeyDown={handleMilestoneKeyDown}
+          inputRef={milestoneInputRef}
+        />
+      )}
+
+      <div className="task-expanded-actions">
+        {onBlockTask && task.columnId !== 'blocked' && task.columnId !== 'done' && (
+          <button className="task-action-btn visible" onClick={handleBlockClick} title="Block this task">
+            Block
+          </button>
+        )}
+        <button className="task-action-btn visible danger" onClick={handleDeleteTask} title="Delete this task">
+          Delete
+        </button>
+      </div>
+    </div>
+  )
+
   // Build class names
   const classNames = [
     'task-card',
@@ -327,6 +385,7 @@ export const TaskCard: FC<TaskCardProps> = ({
         data-task-id={task.id}
         data-age={ageState}
         data-tags={task.tags.join(',')}
+        onClick={handleCardClick}
         {...attributes}
         {...listeners}
       >
@@ -354,7 +413,7 @@ export const TaskCard: FC<TaskCardProps> = ({
                 onClick={e => e.stopPropagation()}
               />
             ) : (
-              <span className="task-title" onClick={handleTitleClick}>
+              <span className="task-title" onDoubleClick={handleTitleDoubleClick}>
                 {task.title}
               </span>
             )}
@@ -389,14 +448,10 @@ export const TaskCard: FC<TaskCardProps> = ({
             {task.recurrence && <RecurringBadge recurrence={task.recurrence} />}
             <DueDateBadge dueDate={task.dueDate} />
           </div>
-          <div className="task-actions">
-            {onBlockTask && task.columnId !== 'blocked' && task.columnId !== 'done' && (
-              <button className="task-action-btn" onClick={handleBlockClick} title="Block this task">
-                Block
-              </button>
-            )}
-          </div>
+          <div className="task-actions" />
         </div>
+
+        {expanded && renderExpandedContent()}
       </div>
     )
   }
@@ -431,7 +486,7 @@ export const TaskCard: FC<TaskCardProps> = ({
               onClick={e => e.stopPropagation()}
             />
           ) : (
-            <span className="task-title" onClick={handleTitleClick}>
+            <span className="task-title" onDoubleClick={handleTitleDoubleClick}>
               {task.title}
             </span>
           )}
@@ -450,41 +505,7 @@ export const TaskCard: FC<TaskCardProps> = ({
       </div>
 
       {/* Expanded content for compact cards too */}
-      {expanded && (
-        <div className="task-expanded-content" onClick={e => e.stopPropagation()}>
-          <div className="task-description-section">
-            {isEditingDescription ? (
-              <textarea
-                ref={descriptionRef}
-                className="task-description-input"
-                value={descriptionValue}
-                onChange={e => setDescriptionValue(e.target.value)}
-                onBlur={handleDescriptionBlur}
-                onKeyDown={handleDescriptionKeyDown}
-                placeholder="Add a description..."
-              />
-            ) : (
-              <div
-                className={`task-description ${!task.description ? 'empty' : ''}`}
-                onClick={handleDescriptionClick}
-              >
-                {task.description || 'Add a description...'}
-              </div>
-            )}
-          </div>
-
-          <MilestonesSection
-            milestones={task.milestones}
-            onToggle={handleMilestoneToggle}
-            onDelete={handleMilestoneDelete}
-            newMilestoneText={newMilestoneText}
-            onNewMilestoneTextChange={setNewMilestoneText}
-            onAddMilestone={handleAddMilestone}
-            onNewMilestoneKeyDown={handleMilestoneKeyDown}
-            inputRef={milestoneInputRef}
-          />
-        </div>
-      )}
+      {expanded && renderExpandedContent()}
     </div>
   )
 }
