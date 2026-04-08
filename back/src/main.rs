@@ -4,12 +4,12 @@ mod handlers;
 mod models;
 mod state;
 
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 
 use db::SqliteRepository;
-use handlers::{health, tasks};
+use handlers::{health, tags, tasks};
 use state::AppState;
 
 #[tokio::main]
@@ -17,7 +17,7 @@ async fn main() {
     // Load environment variables based on RUN_MODE
     // Priority: .env.{mode} -> .env.local -> .env
     let run_mode = std::env::var("RUN_MODE").unwrap_or_else(|_| "development".to_string());
-    
+
     // Try to load mode-specific env file first
     let mode_env = format!(".env.{}", run_mode);
     if dotenvy::from_filename(&mode_env).is_ok() {
@@ -31,9 +31,9 @@ async fn main() {
     }
 
     // Initialize SQLite database
-    let database_url = std::env::var("DATABASE_URL")
-        .unwrap_or_else(|_| "sqlite:tixer.db?mode=rwc".to_string());
-    
+    let database_url =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:tixer.db?mode=rwc".to_string());
+
     let repo = SqliteRepository::new(&database_url)
         .await
         .expect("Failed to connect to database");
@@ -47,7 +47,11 @@ async fn main() {
     // Build the router
     let app = Router::new()
         .route("/api/health", get(health::health))
-        .route("/api/tasks", get(tasks::list_tasks).post(tasks::create_task))
+        .route(
+            "/api/tasks",
+            get(tasks::list_tasks).post(tasks::create_task),
+        )
+        .route("/api/tags", get(tags::list_tags).post(tags::create_tag))
         .route(
             "/api/tasks/:id",
             get(tasks::get_task)
@@ -61,7 +65,7 @@ async fn main() {
         .ok()
         .and_then(|p| p.parse().ok())
         .unwrap_or(5555);
-    
+
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     println!("🚀 Server running at http://{}", addr);
     println!("📁 Using database: {}", database_url);

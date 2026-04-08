@@ -107,6 +107,14 @@ export function useDeleteTask() {
   })
 }
 
+const getCompletedAtForColumn = (columnId: ColumnId, previousCompletedAt: Date | null) => {
+  if (columnId === 'done') {
+    return previousCompletedAt ?? new Date()
+  }
+
+  return null
+}
+
 export function useMoveTask() {
   const queryClient = useQueryClient()
 
@@ -149,6 +157,7 @@ export function useMoveTask() {
         ...task,
         columnId: params.targetColumnId,
         order: newOrder,
+        completedAt: getCompletedAtForColumn(params.targetColumnId, task.completedAt),
       }
 
       // Call the backend to persist the change
@@ -197,7 +206,12 @@ export function useMoveTask() {
         }
 
         // Insert the task at the target index with updated order
-        const updatedTask = { ...task, columnId: params.targetColumnId, order: newOrder }
+        const updatedTask = {
+          ...task,
+          columnId: params.targetColumnId,
+          order: newOrder,
+          completedAt: getCompletedAtForColumn(params.targetColumnId, task.completedAt),
+        }
         targetColumnTasks.splice(params.targetIndex, 0, updatedTask)
 
         // Combine all tasks back together
@@ -241,21 +255,21 @@ export function useMoveTask() {
   })
 }
 
-export function useToggleSubtask() {
+export function useToggleMilestone() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ task, subtaskId }: { task: Task; subtaskId: string }) => {
+    mutationFn: async ({ task, milestoneId }: { task: Task; milestoneId: string }) => {
       // Compute the update using the original task passed in
       const updatedTask: Task = {
         ...task,
-        subtasks: task.subtasks.map(st =>
-          st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        milestones: task.milestones.map(st =>
+          st.id === milestoneId ? { ...st, completed: !st.completed } : st
         ),
       }
       return tasksApi.update(task.id, updatedTask)
     },
-    onMutate: async ({ task, subtaskId }) => {
+    onMutate: async ({ task, milestoneId }) => {
       await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
 
       const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
@@ -263,8 +277,8 @@ export function useToggleSubtask() {
       // Create the updated task
       const updatedTask: Task = {
         ...task,
-        subtasks: task.subtasks.map(st =>
-          st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        milestones: task.milestones.map(st =>
+          st.id === milestoneId ? { ...st, completed: !st.completed } : st
         ),
       }
 
@@ -375,12 +389,12 @@ export function useUnblockTask() {
   })
 }
 
-export function useAddSubtask() {
+export function useAddMilestone() {
   const queryClient = useQueryClient()
 
   return useMutation({
     mutationFn: async ({ task, text }: { task: Task; text: string }) => {
-      const newSubtask = {
+      const newMilestone = {
         id: crypto.randomUUID(),
         text: text.trim(),
         completed: false,
@@ -388,7 +402,7 @@ export function useAddSubtask() {
 
       const updatedTask: Task = {
         ...task,
-        subtasks: [...task.subtasks, newSubtask],
+        milestones: [...task.milestones, newMilestone],
       }
 
       return tasksApi.update(task.id, updatedTask)
@@ -398,7 +412,7 @@ export function useAddSubtask() {
 
       const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
 
-      const newSubtask = {
+      const newMilestone = {
         id: crypto.randomUUID(),
         text: text.trim(),
         completed: false,
@@ -406,7 +420,7 @@ export function useAddSubtask() {
 
       const updatedTask: Task = {
         ...task,
-        subtasks: [...task.subtasks, newSubtask],
+        milestones: [...task.milestones, newMilestone],
       }
 
       if (previousTasks) {
@@ -427,24 +441,24 @@ export function useAddSubtask() {
   })
 }
 
-export function useDeleteSubtask() {
+export function useDeleteMilestone() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ task, subtaskId }: { task: Task; subtaskId: string }) => {
+    mutationFn: async ({ task, milestoneId }: { task: Task; milestoneId: string }) => {
       const updatedTask: Task = {
         ...task,
-        subtasks: task.subtasks.filter(st => st.id !== subtaskId),
+        milestones: task.milestones.filter(st => st.id !== milestoneId),
       }
       return tasksApi.update(task.id, updatedTask)
     },
-    onMutate: async ({ task, subtaskId }) => {
+    onMutate: async ({ task, milestoneId }) => {
       await queryClient.cancelQueries({ queryKey: taskKeys.lists() })
       const previousTasks = queryClient.getQueryData<Task[]>(taskKeys.list())
 
       const updatedTask: Task = {
         ...task,
-        subtasks: task.subtasks.filter(st => st.id !== subtaskId),
+        milestones: task.milestones.filter(st => st.id !== milestoneId),
       }
 
       if (previousTasks) {

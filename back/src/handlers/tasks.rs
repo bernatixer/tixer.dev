@@ -1,8 +1,8 @@
 use axum::{
+    Json,
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    Json,
 };
 use serde::Serialize;
 
@@ -15,7 +15,7 @@ struct ErrorResponse {
     error: String,
 }
 
-pub struct AppError(String, StatusCode);
+pub struct AppError(pub String, pub StatusCode);
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
@@ -31,9 +31,17 @@ pub async fn list_tasks(
     auth: AuthUser,
     State(state): State<AppState>,
 ) -> Result<Json<Vec<Task>>, AppError> {
-    state.repo.get_tasks(&auth.user_id).await
+    state
+        .repo
+        .get_tasks(&auth.user_id)
+        .await
         .map(Json)
-        .map_err(|e| AppError(format!("DB error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))
+        .map_err(|e| {
+            AppError(
+                format!("DB error: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })
 }
 
 // ============================================
@@ -48,7 +56,10 @@ pub async fn get_task(
     match state.repo.get_task(&auth.user_id, &id).await {
         Ok(Some(task)) => Ok(Json(task)),
         Ok(None) => Err(AppError("Task not found".into(), StatusCode::NOT_FOUND)),
-        Err(e) => Err(AppError(format!("DB error: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
+        Err(e) => Err(AppError(
+            format!("DB error: {}", e),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
     }
 }
 
@@ -61,9 +72,17 @@ pub async fn create_task(
     State(state): State<AppState>,
     Json(request): Json<CreateTaskRequest>,
 ) -> Result<(StatusCode, Json<Task>), AppError> {
-    state.repo.create_task(&auth.user_id, request).await
+    state
+        .repo
+        .create_task(&auth.user_id, request)
+        .await
         .map(|task| (StatusCode::CREATED, Json(task)))
-        .map_err(|e| AppError(format!("DB error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))
+        .map_err(|e| {
+            AppError(
+                format!("DB error: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })
 }
 
 // ============================================
@@ -78,8 +97,13 @@ pub async fn update_task(
 ) -> Result<Json<Task>, AppError> {
     match state.repo.update_task(&auth.user_id, &id, task).await {
         Ok(task) => Ok(Json(task)),
-        Err(crate::db::DbError::NotFound) => Err(AppError("Task not found".into(), StatusCode::NOT_FOUND)),
-        Err(e) => Err(AppError(format!("DB error: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
+        Err(crate::db::DbError::NotFound) => {
+            Err(AppError("Task not found".into(), StatusCode::NOT_FOUND))
+        }
+        Err(e) => Err(AppError(
+            format!("DB error: {}", e),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
     }
 }
 
@@ -94,7 +118,12 @@ pub async fn delete_task(
 ) -> Result<StatusCode, AppError> {
     match state.repo.delete_task(&auth.user_id, &id).await {
         Ok(()) => Ok(StatusCode::NO_CONTENT),
-        Err(crate::db::DbError::NotFound) => Err(AppError("Task not found".into(), StatusCode::NOT_FOUND)),
-        Err(e) => Err(AppError(format!("DB error: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
+        Err(crate::db::DbError::NotFound) => {
+            Err(AppError("Task not found".into(), StatusCode::NOT_FOUND))
+        }
+        Err(e) => Err(AppError(
+            format!("DB error: {}", e),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        )),
     }
 }

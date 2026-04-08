@@ -1350,6 +1350,59 @@ body.filtering .task-card.filtered-out {
     opacity: 0.6;
 }
 
+.tag-editor-create {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    margin-top: 4px;
+    padding: 10px 12px 8px;
+}
+
+.tag-editor-input {
+    width: 100%;
+    padding: 8px 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    color: var(--bone);
+    font-family: inherit;
+    font-size: 0.75rem;
+    margin-bottom: 8px;
+}
+
+.tag-editor-swatches {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.tag-editor-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    padding: 0;
+}
+
+.tag-editor-swatch.active {
+    border-color: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5) inset;
+}
+
+.tag-editor-create-btn {
+    width: 100%;
+    padding: 8px 10px;
+    background: rgba(191, 255, 0, 0.08);
+    border: 1px solid rgba(191, 255, 0, 0.18);
+    color: var(--acid);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    cursor: pointer;
+}
+
+.tag-editor-create-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 /* Task footer left group */
 .task-footer-left {
     display: flex;
@@ -1494,6 +1547,23 @@ body.filtering .task-card.filtered-out {
     padding: 12px;
 }
 
+.done-panel-group + .done-panel-group {
+    margin-top: 12px;
+}
+
+.done-panel-date {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 8px 12px;
+    background: var(--void);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--acid);
+}
+
 .done-panel-item {
     display: flex;
     align-items: center;
@@ -1517,6 +1587,14 @@ body.filtering .task-card.filtered-out {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.done-panel-time {
+    flex-shrink: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.62rem;
+    color: var(--bone);
+    opacity: 0.35;
 }
 
 .done-panel-load-more {

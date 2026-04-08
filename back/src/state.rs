@@ -7,7 +7,7 @@ use crate::db::TaskRepository;
 // ============================================
 
 /// Application state that holds the repository.
-/// 
+///
 /// The repository is abstracted behind a trait, allowing different
 /// implementations (SQLite, PostgreSQL, D1, etc.) to be swapped easily.
 #[derive(Clone)]

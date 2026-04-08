@@ -7,13 +7,15 @@ import { Link } from 'react-router-dom'
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
 import { useFilter, useAuthSync } from '@/hooks'
 import { useTasks } from '@/hooks/useTasks'
+import { useTags } from '@/hooks/useTags'
 import { Header } from './Header'
 import { TodoBoard } from './TodoBoard'
 import { NewTaskModal } from './NewTaskModal'
 import { BlockTaskModal } from './BlockTaskModal'
 import { DonePanel } from './DonePanel'
 import { SignInPage } from './SignInPage'
-import type { Task } from '@/todo/types'
+import { mergeTagsWithTaskUsage } from '@/todo/types'
+import type { TagConfig, Task } from '@/todo/types'
 import '@/styles/todo.css'
 
 // ============================================
@@ -47,12 +49,14 @@ const TodoContent: FC = () => {
   const { isReady } = useAuthSync()
   const { activeFilter, clear: clearFilter } = useFilter()
   const { data: tasks = [] } = useTasks(isReady)
+  const { data: tags = [] } = useTags(isReady)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [blockingTask, setBlockingTask] = useState<Task | null>(null)
   const [isDonePanelOpen, setIsDonePanelOpen] = useState(false)
 
   const doneTasks = tasks.filter(t => t.columnId === 'done')
+  const availableTags: TagConfig[] = mergeTagsWithTaskUsage(tags, tasks)
 
   const handleNewTask = () => {
     setIsModalOpen(true)
@@ -74,6 +78,7 @@ const TodoContent: FC = () => {
     <>
       <Header
         activeFilter={activeFilter}
+        availableTags={availableTags}
         onClearFilter={clearFilter}
         onNewTask={handleNewTask}
         doneCount={doneTasks.length}
@@ -82,6 +87,7 @@ const TodoContent: FC = () => {
 
       <TodoBoard
         activeFilter={activeFilter}
+        availableTags={availableTags}
         onAddTask={handleAddTaskToColumn}
         onBlockTask={handleBlockTask}
       />
@@ -89,6 +95,7 @@ const TodoContent: FC = () => {
       <NewTaskModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        availableTags={availableTags}
       />
 
       <BlockTaskModal

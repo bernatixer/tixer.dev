@@ -9,10 +9,14 @@ export {
   useUpdateTask,
   useDeleteTask,
   useMoveTask,
-  useToggleSubtask,
+  useToggleMilestone,
   useBlockTask,
   useUnblockTask,
+  useAddMilestone,
+  useDeleteMilestone,
 } from './useTasks'
+
+export { useTags, useCreateTag } from './useTags'
 
 export {
   useFocusMode,
@@ -23,4 +27,3 @@ export {
 } from './useAppState'
 
 export { useAuthSync } from './useAuthSync'
-

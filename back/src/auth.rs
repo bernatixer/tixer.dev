@@ -1,11 +1,10 @@
 use axum::{
-    async_trait,
+    Json, async_trait,
     extract::FromRequestParts,
-    http::{request::Parts, StatusCode},
+    http::{StatusCode, request::Parts},
     response::{IntoResponse, Response},
-    Json,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
+use jsonwebtoken::{Algorithm, DecodingKey, Validation, decode};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use std::env;
@@ -22,10 +21,10 @@ fn get_decoding_key() -> Result<&'static DecodingKey, AuthError> {
     DECODING_KEY.get_or_try_init(|| {
         let pem = env::var("CLERK_PEM_PUBLIC_KEY")
             .map_err(|_| AuthError::Configuration("CLERK_PEM_PUBLIC_KEY not set".to_string()))?;
-        
+
         // Handle escaped newlines from .env file
         let pem = pem.replace("\\n", "\n");
-        
+
         DecodingKey::from_rsa_pem(pem.as_bytes())
             .map_err(|e| AuthError::Configuration(format!("Invalid PEM key: {}", e)))
     })
@@ -87,7 +86,9 @@ impl IntoResponse for AuthError {
             AuthError::InvalidToken(_) => StatusCode::UNAUTHORIZED,
             AuthError::Configuration(_) => StatusCode::INTERNAL_SERVER_ERROR,
         };
-        let body = Json(ErrorResponse { error: self.to_string() });
+        let body = Json(ErrorResponse {
+            error: self.to_string(),
+        });
         (status, body).into_response()
     }
 }
@@ -118,7 +119,7 @@ where
         // Set up validation
         let mut validation = Validation::new(Algorithm::RS256);
         validation.validate_aud = false;
-        
+
         // Validate issuer if CLERK_ISSUER_URL is set
         if let Ok(issuer_url) = env::var("CLERK_ISSUER_URL") {
             validation.set_issuer(&[issuer_url]);

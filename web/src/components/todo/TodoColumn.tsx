@@ -5,7 +5,7 @@
 import { FC, useState, useMemo } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
-import type { Task, Column, TagId } from '@/todo/types'
+import type { Task, Column, TagConfig, TagId } from '@/todo/types'
 import { TaskCard } from './TaskCard'
 
 const DONE_INITIAL_LIMIT = 10
@@ -16,6 +16,7 @@ interface TodoColumnProps {
   tasks: Task[]
   allTasks: Task[]
   activeFilter: TagId | null
+  availableTags: TagConfig[]
   onAddTask: () => void
   onBlockTask: (task: Task) => void
 }
@@ -25,6 +26,7 @@ export const TodoColumn: FC<TodoColumnProps> = ({
   tasks,
   allTasks,
   activeFilter,
+  availableTags,
   onAddTask,
   onBlockTask,
 }) => {
@@ -81,6 +83,7 @@ export const TodoColumn: FC<TodoColumnProps> = ({
               key={task.id}
               task={task}
               activeFilter={activeFilter}
+              availableTags={availableTags}
               allTasks={allTasks}
               onBlockTask={onBlockTask}
             />
@@ -98,4 +101,3 @@ export const TodoColumn: FC<TodoColumnProps> = ({
     </div>
   )
 }
-

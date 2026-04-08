@@ -8,13 +8,13 @@ export type ColumnId = 'inbox' | 'todo' | 'blocked' | 'doing' | 'done'
 
 export type Recurrence = 'daily' | 'weekly' | 'monthly' | 'yearly'
 
-export type TagId = 'work' | 'personal' | 'ideas' | 'travel' | 'others'
+export type TagId = string
 
 export type AgeState = 'fresh' | 'aging' | 'stale' | 'dusty'
 
 export type TaskType = 'task' | 'book' | 'video' | 'article' | 'movie'
 
-export interface Subtask {
+export interface Milestone {
   id: string
   text: string
   completed: boolean
@@ -35,11 +35,12 @@ export interface Task {
   dueDate: Date | null
   createdAt: Date
   recurrence: Recurrence | null
-  subtasks: Subtask[]
+  milestones: Milestone[]
   order: number
   blockedBy: BlockedBy | null
   taskType: TaskType
   url: string | null
+  completedAt: Date | null
 }
 
 export interface Column {
@@ -64,19 +65,57 @@ export interface TagConfig {
   id: TagId
   name: string
   color: string
+  createdAt: Date
 }
 
-export const TAGS: readonly TagConfig[] = [
-  { id: 'work', name: 'Work', color: '#4ECDC4' },
-  { id: 'personal', name: 'Personal', color: '#966FD6' },
-  { id: 'ideas', name: 'Ideas', color: '#FFD166' },
-  { id: 'travel', name: 'Travel', color: '#3B82F6' },
-  { id: 'others', name: 'Others', color: '#888888' },
+const FALLBACK_TAG_COLORS = [
+  '#4ECDC4',
+  '#FF8A65',
+  '#FFD166',
+  '#5C7CFA',
+  '#F06292',
+  '#81C784',
+  '#FFB74D',
+  '#90A4AE',
 ] as const
 
-export const TAGS_BY_ID = Object.fromEntries(
-  TAGS.map(tag => [tag.id, tag])
-) as Record<TagId, TagConfig>
+const titleCase = (value: string) =>
+  value
+    .trim()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, char => char.toUpperCase())
+
+const pickFallbackColor = (value: string) => {
+  const hash = [...value].reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return FALLBACK_TAG_COLORS[hash % FALLBACK_TAG_COLORS.length]
+}
+
+export const makeFallbackTag = (id: TagId): TagConfig => ({
+  id,
+  name: titleCase(id),
+  color: pickFallbackColor(id),
+  createdAt: new Date(0),
+})
+
+export const buildTagMap = (tags: TagConfig[]) =>
+  Object.fromEntries(tags.map(tag => [tag.id, tag])) as Record<string, TagConfig>
+
+export const mergeTagsWithTaskUsage = (tags: TagConfig[], tasks: Task[]): TagConfig[] => {
+  const seen = new Set(tags.map(tag => tag.id))
+  const merged = [...tags]
+
+  for (const task of tasks) {
+    for (const tagId of task.tags) {
+      if (!seen.has(tagId)) {
+        merged.push(makeFallbackTag(tagId))
+        seen.add(tagId)
+      }
+    }
+  }
+
+  return merged
+}
 
 // ============================================
 // COLUMN CONFIGURATION
@@ -163,4 +202,3 @@ export interface MoveTaskParams {
   targetColumnId: ColumnId
   targetIndex: number
 }
-

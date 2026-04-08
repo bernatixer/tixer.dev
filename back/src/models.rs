@@ -45,15 +45,7 @@ pub enum Recurrence {
     Yearly,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum TagId {
-    Work,
-    Personal,
-    Ideas,
-    Travel,
-    Others,
-}
+pub type TagId = String;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
@@ -67,11 +59,24 @@ pub enum TaskType {
 }
 
 // ============================================
-// SUBTASK
+// TAG
 // ============================================
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Subtask {
+#[serde(rename_all = "camelCase")]
+pub struct Tag {
+    pub id: TagId,
+    pub name: String,
+    pub color: String,
+    pub created_at: DateTime<Utc>,
+}
+
+// ============================================
+// MILESTONE
+// ============================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Milestone {
     pub id: String,
     pub text: String,
     pub completed: bool,
@@ -93,13 +98,15 @@ pub struct Task {
     pub due_date: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub recurrence: Option<Recurrence>,
-    pub subtasks: Vec<Subtask>,
+    #[serde(default, alias = "subtasks")]
+    pub milestones: Vec<Milestone>,
     #[serde(default)]
     pub order: i32,
     pub blocked_by: Option<BlockedBy>,
     #[serde(default)]
     pub task_type: TaskType,
     pub url: Option<String>,
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
 // ============================================
@@ -118,12 +125,20 @@ pub struct CreateTaskRequest {
     pub due_date: Option<DateTime<Utc>>,
     pub recurrence: Option<Recurrence>,
     #[serde(default)]
-    pub subtasks: Vec<Subtask>,
+    #[serde(alias = "subtasks")]
+    pub milestones: Vec<Milestone>,
     #[serde(default)]
     pub order: i32,
     pub blocked_by: Option<BlockedBy>,
     #[serde(default)]
     pub task_type: TaskType,
     pub url: Option<String>,
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateTagRequest {
+    pub name: String,
+    pub color: String,
+}

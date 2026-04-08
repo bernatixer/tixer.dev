@@ -3,9 +3,10 @@
 // ============================================
 
 import { FC, useState, FormEvent, useEffect } from 'react'
-import type { Priority, TagId, TaskType } from '@/todo/types'
-import { TAGS, PRIORITIES, TASK_TYPES } from '@/todo/types'
+import type { Priority, TagConfig, TagId, TaskType } from '@/todo/types'
+import { PRIORITIES, TASK_TYPES } from '@/todo/types'
 import { useCreateTask } from '@/hooks/useTasks'
+import { useCreateTag } from '@/hooks/useTags'
 
 // ============================================
 // STYLES (inline to keep it simple)
@@ -426,11 +427,13 @@ const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect }) => {
 interface NewTaskModalProps {
   isOpen: boolean
   onClose: () => void
+  availableTags: TagConfig[]
 }
 
 export const NewTaskModal: FC<NewTaskModalProps> = ({
   isOpen,
   onClose,
+  availableTags,
 }) => {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -442,8 +445,11 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [taskType, setTaskType] = useState<TaskType>('task')
   const [url, setUrl] = useState('')
   const [showDescription, setShowDescription] = useState(false)
+  const [newTagName, setNewTagName] = useState('')
+  const [newTagColor, setNewTagColor] = useState('#4ECDC4')
 
   const { mutate: createTask, isPending } = useCreateTask()
+  const { mutate: createTag, isPending: isCreatingTag } = useCreateTag()
 
   // Reset form when modal opens
   useEffect(() => {
@@ -458,6 +464,8 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       setShowCalendar(false)
       setTaskType('task')
       setUrl('')
+      setNewTagName('')
+      setNewTagColor('#4ECDC4')
     }
   }, [isOpen])
   
@@ -515,11 +523,12 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
         tags: selectedTags,
         dueDate: dueDate ? new Date(dueDate + 'T12:00:00') : null,
         recurrence: null,
-        subtasks: [],
+        milestones: [],
         taskType,
         url: url.trim() || null,
         order: 0,
         blockedBy: null,
+        completedAt: null,
       },
       {
         onSuccess: () => {
@@ -532,6 +541,21 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const toggleTag = (tagId: TagId) => {
     setSelectedTags(prev =>
       prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
+    )
+  }
+
+  const handleCreateTag = () => {
+    const name = newTagName.trim()
+    if (!name || isCreatingTag) return
+
+    createTag(
+      { name, color: newTagColor },
+      {
+        onSuccess: (tag) => {
+          setSelectedTags(prev => (prev.includes(tag.id) ? prev : [...prev, tag.id]))
+          setNewTagName('')
+        },
+      }
     )
   }
 
@@ -659,7 +683,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
           <div>
             <label style={labelStyle}>Tags</label>
             <div style={tagContainerStyle}>
-              {TAGS.map(tag => (
+              {availableTags.map(tag => (
                 <button
                   key={tag.id}
                   type="button"
@@ -669,6 +693,45 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
                   {tag.name}
                 </button>
               ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+              {['#4ECDC4', '#FF8A65', '#FFD166', '#5C7CFA', '#F06292', '#81C784'].map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setNewTagColor(color)}
+                  style={{
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '999px',
+                    border: newTagColor === color ? '2px solid var(--bone)' : '1px solid rgba(255,255,255,0.15)',
+                    background: color,
+                    cursor: 'pointer',
+                  }}
+                  title={`Select ${color}`}
+                />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <input
+                type="text"
+                value={newTagName}
+                onChange={e => setNewTagName(e.target.value)}
+                placeholder="Create a personal tag"
+                style={{ ...inputStyle, marginBottom: 0 }}
+              />
+              <button
+                type="button"
+                onClick={handleCreateTag}
+                disabled={!newTagName.trim() || isCreatingTag}
+                style={{
+                  ...secondaryButtonStyle,
+                  flex: '0 0 auto',
+                  opacity: !newTagName.trim() || isCreatingTag ? 0.5 : 1,
+                }}
+              >
+                {isCreatingTag ? '...' : 'Create'}
+              </button>
             </div>
           </div>
 
@@ -739,5 +802,4 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     </div>
   )
 }
-
 

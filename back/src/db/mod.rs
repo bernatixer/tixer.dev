@@ -1,8 +1,7 @@
+mod error;
 mod repository;
 mod sqlite;
-mod error;
 
+pub use error::DbError;
 pub use repository::TaskRepository;
 pub use sqlite::SqliteRepository;
-pub use error::DbError;
-

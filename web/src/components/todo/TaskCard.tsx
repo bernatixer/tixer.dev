@@ -5,12 +5,12 @@
 import { FC, useState, MouseEvent, useRef, useEffect, KeyboardEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import type { Task, TagId, ColumnId, Priority } from '@/todo/types'
+import type { Task, TagConfig, TagId, ColumnId, Priority } from '@/todo/types'
 import { TASK_TYPES_BY_ID } from '@/todo/types'
 import { useTaskAge } from '@/hooks/useAppState'
-import { useToggleSubtask, useUnblockTask, useUpdateTask, useAddSubtask, useDeleteSubtask, useMoveTask } from '@/hooks/useTasks'
+import { useToggleMilestone, useUnblockTask, useUpdateTask, useAddMilestone, useDeleteMilestone, useMoveTask } from '@/hooks/useTasks'
 import { DueDateBadge } from './DueDateBadge'
-import { SubtasksContainer, ProgressChip } from './Subtasks'
+import { MilestonesSection, ProgressChip } from './Milestones'
 import { StatusCircle } from './StatusCircle'
 import { PriorityPill } from './PriorityPill'
 import { TagEditor } from './TagEditor'
@@ -127,6 +127,7 @@ const SubtaskProgressBar: FC<{ completed: number; total: number }> = ({ complete
 interface TaskCardProps {
   task: Task
   activeFilter: TagId | null
+  availableTags: TagConfig[]
   allTasks?: Task[]
   onBlockTask?: (task: Task) => void
   variant?: 'active' | 'compact'
@@ -135,6 +136,7 @@ interface TaskCardProps {
 export const TaskCard: FC<TaskCardProps> = ({
   task,
   activeFilter,
+  availableTags,
   allTasks,
   onBlockTask,
   variant = 'compact',
@@ -144,16 +146,16 @@ export const TaskCard: FC<TaskCardProps> = ({
   const [titleValue, setTitleValue] = useState(task.title)
   const [isEditingDescription, setIsEditingDescription] = useState(false)
   const [descriptionValue, setDescriptionValue] = useState(task.description || '')
-  const [newSubtaskText, setNewSubtaskText] = useState('')
+  const [newMilestoneText, setNewMilestoneText] = useState('')
   const titleInputRef = useRef<HTMLInputElement>(null)
   const descriptionRef = useRef<HTMLTextAreaElement>(null)
-  const subtaskInputRef = useRef<HTMLInputElement>(null)
+  const milestoneInputRef = useRef<HTMLInputElement>(null)
 
-  const { mutate: toggleSubtask } = useToggleSubtask()
+  const { mutate: toggleMilestone } = useToggleMilestone()
   const { mutate: unblockTask } = useUnblockTask()
   const { mutate: updateTask } = useUpdateTask()
-  const { mutate: addSubtask } = useAddSubtask()
-  const { mutate: deleteSubtask } = useDeleteSubtask()
+  const { mutate: addMilestone } = useAddMilestone()
+  const { mutate: deleteMilestone } = useDeleteMilestone()
   const { mutate: moveTask } = useMoveTask()
   const { ageState, daysSinceCreation } = useTaskAge(task)
 
@@ -172,8 +174,8 @@ export const TaskCard: FC<TaskCardProps> = ({
     transition,
   }
 
-  const hasSubtasks = task.subtasks.length > 0
-  const completedSubtasks = task.subtasks.filter(st => st.completed).length
+  const hasMilestones = task.milestones.length > 0
+  const completedMilestones = task.milestones.filter(st => st.completed).length
   const isFilteredOut = activeFilter !== null && !task.tags.includes(activeFilter)
   const isActive = variant === 'active'
 
@@ -269,12 +271,12 @@ export const TaskCard: FC<TaskCardProps> = ({
   }
 
   // --- Subtasks ---
-  const handleSubtaskToggle = (subtaskId: string) => {
-    toggleSubtask({ task, subtaskId })
+  const handleMilestoneToggle = (milestoneId: string) => {
+    toggleMilestone({ task, milestoneId })
   }
 
-  const handleSubtaskDelete = (subtaskId: string) => {
-    deleteSubtask({ task, subtaskId })
+  const handleMilestoneDelete = (milestoneId: string) => {
+    deleteMilestone({ task, milestoneId })
   }
 
   const handleBlockClick = (e: MouseEvent) => {
@@ -284,20 +286,20 @@ export const TaskCard: FC<TaskCardProps> = ({
     }
   }
 
-  const handleAddSubtask = (e: MouseEvent | KeyboardEvent) => {
+  const handleAddMilestone = (e: MouseEvent | KeyboardEvent) => {
     e.stopPropagation()
-    if (newSubtaskText.trim()) {
-      addSubtask({ task, text: newSubtaskText.trim() })
-      setNewSubtaskText('')
-      subtaskInputRef.current?.focus()
+    if (newMilestoneText.trim()) {
+      addMilestone({ task, text: newMilestoneText.trim() })
+      setNewMilestoneText('')
+      milestoneInputRef.current?.focus()
     }
   }
 
-  const handleSubtaskKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  const handleMilestoneKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handleAddSubtask(e)
+      handleAddMilestone(e)
     } else if (e.key === 'Escape') {
-      setNewSubtaskText('')
+      setNewMilestoneText('')
     }
   }
 
@@ -359,56 +361,28 @@ export const TaskCard: FC<TaskCardProps> = ({
           </div>
         </div>
 
-        {/* Always-visible milestones (only on doing/in-progress cards) */}
-        {task.columnId === 'doing' && (
-        <div className="active-milestones" onClick={e => e.stopPropagation()}>
-          {task.subtasks.map(st => (
-            <label
-              key={st.id}
-              className={`milestone-item ${st.completed ? 'completed' : ''}`}
-              onClick={e => e.stopPropagation()}
-            >
-              <input
-                type="checkbox"
-                className="subtask-checkbox"
-                checked={st.completed}
-                onChange={() => handleSubtaskToggle(st.id)}
-              />
-              <span className="milestone-text">{st.text}</span>
-              <button
-                className="milestone-delete"
-                onClick={(e) => { e.stopPropagation(); e.preventDefault(); handleSubtaskDelete(st.id) }}
-                title="Remove milestone"
-              >
-                &times;
-              </button>
-            </label>
-          ))}
-          <div className="milestone-add">
-            <input
-              ref={subtaskInputRef}
-              type="text"
-              className="milestone-add-input"
-              value={newSubtaskText}
-              onChange={e => setNewSubtaskText(e.target.value)}
-              onKeyDown={handleSubtaskKeyDown}
-              placeholder="+ Add milestone..."
-              onClick={e => e.stopPropagation()}
-            />
-          </div>
-        </div>
-        )}
+        <MilestonesSection
+          milestones={task.milestones}
+          onToggle={handleMilestoneToggle}
+          onDelete={handleMilestoneDelete}
+          newMilestoneText={newMilestoneText}
+          onNewMilestoneTextChange={setNewMilestoneText}
+          onAddMilestone={handleAddMilestone}
+          onNewMilestoneKeyDown={handleMilestoneKeyDown}
+          inputRef={milestoneInputRef}
+          variant="active"
+        />
 
         {/* Progress bar */}
-        {hasSubtasks && (
-          <SubtaskProgressBar completed={completedSubtasks} total={task.subtasks.length} />
+        {hasMilestones && (
+          <SubtaskProgressBar completed={completedMilestones} total={task.milestones.length} />
         )}
 
         {/* Meta row: priority, tags, actions */}
         <div className="task-footer">
           <div className="task-footer-left">
             <PriorityPill priority={task.priority} onChange={handlePriorityChange} />
-            <TagEditor tags={task.tags} onChange={handleTagsChange} />
+            <TagEditor tags={task.tags} availableTags={availableTags} onChange={handleTagsChange} />
             {daysSinceCreation > 3 && (
               <span className="age-badge">{daysSinceCreation}d</span>
             )}
@@ -464,14 +438,14 @@ export const TaskCard: FC<TaskCardProps> = ({
         </div>
         <div className="task-meta">
           <PriorityPill priority={task.priority} onChange={handlePriorityChange} />
-          {hasSubtasks && (
-            <ProgressChip completed={completedSubtasks} total={task.subtasks.length} />
+          {hasMilestones && (
+            <ProgressChip completed={completedMilestones} total={task.milestones.length} />
           )}
           {daysSinceCreation > 3 && (
             <span className="age-badge">{daysSinceCreation}d</span>
           )}
           <DueDateBadge dueDate={task.dueDate} />
-          <TagEditor tags={task.tags} onChange={handleTagsChange} />
+          <TagEditor tags={task.tags} availableTags={availableTags} onChange={handleTagsChange} />
         </div>
       </div>
 
@@ -499,27 +473,16 @@ export const TaskCard: FC<TaskCardProps> = ({
             )}
           </div>
 
-          {hasSubtasks && (
-            <SubtasksContainer subtasks={task.subtasks} onToggle={handleSubtaskToggle} />
-          )}
-
-          <div className="add-subtask-section">
-            <input
-              ref={subtaskInputRef}
-              type="text"
-              className="add-subtask-input"
-              value={newSubtaskText}
-              onChange={e => setNewSubtaskText(e.target.value)}
-              onKeyDown={handleSubtaskKeyDown}
-              placeholder="+ Add subtask..."
-              onClick={e => e.stopPropagation()}
-            />
-            {newSubtaskText.trim() && (
-              <button type="button" className="add-subtask-btn" onClick={handleAddSubtask}>
-                Add
-              </button>
-            )}
-          </div>
+          <MilestonesSection
+            milestones={task.milestones}
+            onToggle={handleMilestoneToggle}
+            onDelete={handleMilestoneDelete}
+            newMilestoneText={newMilestoneText}
+            onNewMilestoneTextChange={setNewMilestoneText}
+            onAddMilestone={handleAddMilestone}
+            onNewMilestoneKeyDown={handleMilestoneKeyDown}
+            inputRef={milestoneInputRef}
+          />
         </div>
       )}
     </div>

@@ -16,11 +16,10 @@ import {
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
-import type { Task, ColumnId, TagId } from '@/todo/types'
+import type { Task, ColumnId, TagConfig, TagId } from '@/todo/types'
 import { COLUMNS } from '@/todo/types'
 import { useTasks, useMoveTask } from '@/hooks/useTasks'
 import { TaskCard } from './TaskCard'
-import { QuickAdd } from './QuickAdd'
 
 interface PendingMove {
   taskId: string
@@ -30,6 +29,7 @@ interface PendingMove {
 
 interface TodoBoardProps {
   activeFilter: TagId | null
+  availableTags: TagConfig[]
   onAddTask: (columnId: ColumnId) => void
   onBlockTask: (task: Task) => void
 }
@@ -59,12 +59,13 @@ interface SidebarSectionProps {
   tasks: Task[]
   allTasks: Task[]
   activeFilter: TagId | null
+  availableTags: TagConfig[]
   onBlockTask: (task: Task) => void
   onAddTask: () => void
 }
 
 const SidebarSection: FC<SidebarSectionProps> = ({
-  columnId, title, tasks, allTasks, activeFilter, onBlockTask, onAddTask,
+  columnId, title, tasks, allTasks, activeFilter, availableTags, onBlockTask, onAddTask,
 }) => {
   const taskIds = tasks.map(t => t.id)
 
@@ -81,6 +82,7 @@ const SidebarSection: FC<SidebarSectionProps> = ({
               key={task.id}
               task={task}
               activeFilter={activeFilter}
+              availableTags={availableTags}
               allTasks={allTasks}
               onBlockTask={onBlockTask}
               variant="compact"
@@ -101,6 +103,7 @@ const SidebarSection: FC<SidebarSectionProps> = ({
 
 export const TodoBoard: FC<TodoBoardProps> = ({
   activeFilter,
+  availableTags,
   onAddTask,
   onBlockTask,
 }) => {
@@ -219,8 +222,6 @@ export const TodoBoard: FC<TodoBoardProps> = ({
       <div className="todo-board-v2">
         {/* ===== MAIN ZONE: Active work ===== */}
         <div className="main-zone">
-          <QuickAdd targetColumn="todo" />
-
           {/* Doing section */}
           {doingTasks.length > 0 && (
             <div className="active-section section-doing">
@@ -235,7 +236,7 @@ export const TodoBoard: FC<TodoBoardProps> = ({
                       key={task.id}
                       task={task}
                       activeFilter={activeFilter}
-        
+                      availableTags={availableTags}
                       allTasks={tasks}
                       onBlockTask={onBlockTask}
                       variant="active"
@@ -267,6 +268,7 @@ export const TodoBoard: FC<TodoBoardProps> = ({
               tasks={blockedTasks}
               allTasks={tasks}
               activeFilter={activeFilter}
+              availableTags={availableTags}
               onBlockTask={onBlockTask}
               onAddTask={() => {}}
             />
@@ -277,7 +279,7 @@ export const TodoBoard: FC<TodoBoardProps> = ({
             tasks={todoTasks}
             allTasks={tasks}
             activeFilter={activeFilter}
-
+            availableTags={availableTags}
             onBlockTask={onBlockTask}
             onAddTask={() => onAddTask('todo')}
           />
@@ -287,7 +289,7 @@ export const TodoBoard: FC<TodoBoardProps> = ({
             tasks={inboxTasks}
             allTasks={tasks}
             activeFilter={activeFilter}
-
+            availableTags={availableTags}
             onBlockTask={onBlockTask}
             onAddTask={() => onAddTask('inbox')}
           />
@@ -299,7 +301,7 @@ export const TodoBoard: FC<TodoBoardProps> = ({
           <TaskCard
             task={activeTask}
             activeFilter={activeFilter}
-
+            availableTags={availableTags}
             allTasks={tasks}
             variant="compact"
           />

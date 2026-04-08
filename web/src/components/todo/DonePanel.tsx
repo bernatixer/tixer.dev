@@ -15,6 +15,11 @@ interface DonePanelProps {
   tasks: Task[]
 }
 
+interface DoneGroup {
+  label: string
+  tasks: Task[]
+}
+
 export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
   const [limit, setLimit] = useState(DONE_PAGE_SIZE)
   const { mutate: moveTask } = useMoveTask()
@@ -34,8 +39,34 @@ export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
     return () => document.removeEventListener('keydown', handleKey)
   }, [isOpen, onClose])
 
-  const sortedTasks = useMemo(() => {
-    return [...tasks].sort((a, b) => b.order - a.order).slice(0, limit)
+  const groupedTasks = useMemo<DoneGroup[]>(() => {
+    const sorted = [...tasks]
+      .sort((a, b) => {
+        const left = new Date(b.completedAt ?? b.createdAt).getTime()
+        const right = new Date(a.completedAt ?? a.createdAt).getTime()
+        return left - right
+      })
+      .slice(0, limit)
+
+    const groups: DoneGroup[] = []
+
+    for (const task of sorted) {
+      const completedAt = new Date(task.completedAt ?? task.createdAt)
+      const label = completedAt.toLocaleDateString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+      })
+      const lastGroup = groups.length > 0 ? groups[groups.length - 1] : undefined
+
+      if (!lastGroup || lastGroup.label !== label) {
+        groups.push({ label, tasks: [task] })
+      } else {
+        lastGroup.tasks.push(task)
+      }
+    }
+
+    return groups
   }, [tasks, limit])
 
   const hasMore = tasks.length > limit
@@ -58,14 +89,25 @@ export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
           </button>
         </div>
         <div className="done-panel-list">
-          {sortedTasks.map(task => (
-            <div key={task.id} className="done-panel-item">
-              <StatusCircle
-                columnId="done"
-                size={14}
-                onChange={(newCol) => handleStatusChange(task, newCol)}
-              />
-              <span className="done-panel-title">{task.title}</span>
+          {groupedTasks.map(group => (
+            <div key={group.label} className="done-panel-group">
+              <div className="done-panel-date">{group.label}</div>
+              {group.tasks.map(task => (
+                <div key={task.id} className="done-panel-item">
+                  <StatusCircle
+                    columnId="done"
+                    size={14}
+                    onChange={(newCol) => handleStatusChange(task, newCol)}
+                  />
+                  <span className="done-panel-title">{task.title}</span>
+                  <span className="done-panel-time">
+                    {new Date(task.completedAt ?? task.createdAt).toLocaleTimeString('en-US', {
+                      hour: 'numeric',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              ))}
             </div>
           ))}
           {hasMore && (
