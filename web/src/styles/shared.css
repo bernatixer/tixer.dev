@@ -6,13 +6,17 @@
     --acid: #BFFF00;
     --void: #0a0a0a;
     --bone: #F5F5F0;
-    
+
+    /* RGB channels for rgba() usage */
+    --white-rgb: 255, 255, 255;
+    --acid-rgb: 191, 255, 0;
+
     /* Priority colors */
     --priority-urgent: #FF4444;
     --priority-high: #FF9500;
     --priority-medium: var(--acid);
     --priority-low: #666666;
-    
+
     /* Tag colors */
     --tag-work: #4ECDC4;
     --tag-personal: #966FD6;
@@ -33,7 +37,7 @@ html {
 }
 
 body {
-    font-family: 'Space Grotesk', sans-serif;
+    font-family: var(--font-family, 'Space Grotesk', sans-serif);
     background: var(--void);
     color: var(--bone);
     min-height: 100vh;
@@ -66,7 +70,7 @@ section {
 }
 
 .section-title {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     letter-spacing: 0.15em;
     text-transform: uppercase;
@@ -90,7 +94,7 @@ section {
     padding: 3px 6px;
     background: var(--acid);
     color: var(--void);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     letter-spacing: 0.02em;
     white-space: nowrap;
@@ -109,14 +113,14 @@ section {
 footer {
     margin-top: 80px;
     padding: 32px 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(var(--white-rgb), 0.08);
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
 .footer-text {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.6rem;
     opacity: 0.25;
 }
@@ -128,7 +132,7 @@ footer {
 }
 
 .links-list a {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.75rem;
     letter-spacing: 0.05em;
     display: flex;

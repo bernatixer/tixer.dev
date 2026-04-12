@@ -88,7 +88,7 @@ export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange })
                 <span
                   key={tagId}
                   className="tag-dot"
-                  style={{ backgroundColor: tag?.color ?? 'rgba(255,255,255,0.3)' }}
+                  style={{ backgroundColor: tag?.color ?? 'rgba(var(--white-rgb),0.3)' }}
                 />
               )
             })}
@@ -110,7 +110,7 @@ export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange })
               >
                 <span
                   className="tag-editor-color"
-                  style={{ background: isActive ? tag.color : 'rgba(255,255,255,0.1)' }}
+                  style={{ background: isActive ? tag.color : 'rgba(var(--white-rgb),0.1)' }}
                 />
                 <span style={{ color: isActive ? tag.color : undefined }}>{tag.name}</span>
                 {isActive && <span className="tag-editor-check">&#10003;</span>}

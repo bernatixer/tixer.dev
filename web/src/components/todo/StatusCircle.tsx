@@ -23,7 +23,7 @@ const StatusIcon: FC<{ columnId: ColumnId; size?: number }> = ({ columnId, size 
           <circle
             cx={cx} cy={cy} r={r}
             fill="none"
-            stroke="rgba(255,255,255,0.3)"
+            stroke="rgba(var(--white-rgb),0.3)"
             strokeWidth="1.5"
             strokeDasharray="2 2"
           />
@@ -36,7 +36,7 @@ const StatusIcon: FC<{ columnId: ColumnId; size?: number }> = ({ columnId, size 
           <circle
             cx={cx} cy={cy} r={r}
             fill="none"
-            stroke="rgba(255,255,255,0.5)"
+            stroke="rgba(var(--white-rgb),0.5)"
             strokeWidth="1.5"
           />
         </svg>
@@ -48,7 +48,7 @@ const StatusIcon: FC<{ columnId: ColumnId; size?: number }> = ({ columnId, size 
           <circle
             cx={cx} cy={cy} r={r}
             fill="none"
-            stroke="rgba(191,255,0,0.2)"
+            stroke="rgba(var(--acid-rgb),0.2)"
             strokeWidth="1.5"
           />
           <circle
@@ -106,8 +106,8 @@ const StatusIcon: FC<{ columnId: ColumnId; size?: number }> = ({ columnId, size 
 // ============================================
 
 const STATUS_CONFIG: Record<ColumnId, { label: string; color: string }> = {
-  inbox: { label: 'Inbox', color: 'rgba(255,255,255,0.5)' },
-  todo: { label: 'To Do', color: 'rgba(255,255,255,0.7)' },
+  inbox: { label: 'Inbox', color: 'rgba(var(--white-rgb),0.5)' },
+  todo: { label: 'To Do', color: 'rgba(var(--white-rgb),0.7)' },
   doing: { label: 'In Progress', color: 'var(--acid)' },
   blocked: { label: 'Blocked', color: 'var(--priority-high)' },
   done: { label: 'Done', color: 'var(--acid)' },

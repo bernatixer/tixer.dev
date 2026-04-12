@@ -6,6 +6,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { ClerkProvider } from '@clerk/clerk-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { ThemeProvider } from '@/hooks'
 import { AppRouter } from './router'
 import '@/styles/shared.css'
 
@@ -45,7 +46,9 @@ if (container) {
     <StrictMode>
       <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
         <QueryClientProvider client={queryClient}>
-          <AppRouter />
+          <ThemeProvider>
+            <AppRouter />
+          </ThemeProvider>
         </QueryClientProvider>
       </ClerkProvider>
     </StrictMode>

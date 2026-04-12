@@ -20,8 +20,8 @@
     align-items: center;
     margin-bottom: 32px;
     padding: 20px 24px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(var(--white-rgb), 0.08);
+    background: rgba(var(--white-rgb), 0.02);
     flex-wrap: wrap;
     gap: 16px;
 }
@@ -57,12 +57,12 @@
 }
 
 .header-btn {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     letter-spacing: 0.05em;
     padding: 8px 14px;
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(var(--white-rgb), 0.12);
     color: var(--bone);
     cursor: pointer;
     transition: all 0.2s ease;
@@ -71,7 +71,7 @@
 
 .header-btn:hover {
     opacity: 1;
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(var(--white-rgb), 0.3);
 }
 
 /* Done counter button */
@@ -84,22 +84,22 @@
 .done-counter-badge {
     font-size: 0.6rem;
     padding: 2px 6px;
-    background: rgba(191, 255, 0, 0.1);
+    background: rgba(var(--acid-rgb), 0.1);
     color: var(--acid);
 }
 
 .done-counter:hover .done-counter-badge {
-    background: rgba(191, 255, 0, 0.2);
+    background: rgba(var(--acid-rgb), 0.2);
 }
 
 .filter-indicator {
     display: none;
     align-items: center;
     gap: 8px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     padding: 8px 14px;
-    background: rgba(191, 255, 0, 0.1);
+    background: rgba(var(--acid-rgb), 0.1);
     border: 1px solid var(--acid);
     color: var(--acid);
 }
@@ -119,7 +119,7 @@
 }
 
 .btn-new-task {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.75rem;
     letter-spacing: 0.05em;
     padding: 10px 18px;
@@ -139,6 +139,27 @@
     content: '+';
     margin-right: 8px;
     font-weight: 600;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--acid);
+    color: var(--acid);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.theme-toggle:hover {
+    opacity: 1;
+    background: var(--acid);
+    color: var(--void);
 }
 
 /* ============================================
@@ -165,12 +186,12 @@
 
 /* Active sections (Doing / Blocked) */
 .active-section {
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(var(--white-rgb), 0.06);
+    background: rgba(var(--white-rgb), 0.015);
 }
 
 .active-section.section-doing {
-    border-color: rgba(191, 255, 0, 0.12);
+    border-color: rgba(var(--acid-rgb), 0.12);
 }
 
 .active-section.section-blocked {
@@ -179,7 +200,7 @@
 
 .active-section-header {
     padding: 14px 18px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(var(--white-rgb), 0.06);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -194,7 +215,7 @@
 }
 
 .active-section-title {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -207,10 +228,10 @@
 }
 
 .active-section-count {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.6rem;
     padding: 2px 8px;
-    background: rgba(191, 255, 0, 0.1);
+    background: rgba(var(--acid-rgb), 0.1);
     color: var(--acid);
 }
 
@@ -235,7 +256,7 @@
 
 /* Empty state */
 .main-zone-empty {
-    border: 1px dashed rgba(255, 255, 255, 0.08);
+    border: 1px dashed rgba(var(--white-rgb), 0.08);
     min-height: 300px;
     display: flex;
     align-items: center;
@@ -255,7 +276,7 @@
 }
 
 .empty-state p {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.75rem;
     margin: 4px 0;
 }
@@ -276,8 +297,8 @@
 }
 
 .sidebar-section {
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid rgba(var(--white-rgb), 0.06);
+    background: rgba(var(--white-rgb), 0.015);
 }
 
 .sidebar-section.section-blocked {
@@ -297,7 +318,7 @@
 
 .sidebar-section-header {
     padding: 12px 16px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    border-bottom: 1px solid rgba(var(--white-rgb), 0.06);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -305,7 +326,7 @@
 }
 
 .sidebar-section-title {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.6rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -314,10 +335,10 @@
 }
 
 .sidebar-section-count {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     padding: 2px 6px;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--white-rgb), 0.06);
     color: var(--bone);
     opacity: 0.5;
 }
@@ -337,7 +358,7 @@
 }
 
 .section-sort-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -346,10 +367,10 @@
 }
 
 .section-sort-select {
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(var(--white-rgb), 0.04);
+    border: 1px solid rgba(var(--white-rgb), 0.1);
     color: var(--bone);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.62rem;
     padding: 5px 8px;
     cursor: pointer;
@@ -364,15 +385,15 @@
     align-items: center;
     gap: 10px;
     padding: 10px 16px;
-    border: 1px dashed rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed rgba(var(--white-rgb), 0.1);
+    background: rgba(var(--white-rgb), 0.02);
     transition: all 0.2s;
 }
 
 .quick-add:focus-within {
     border-color: var(--acid);
     border-style: solid;
-    background: rgba(191, 255, 0, 0.02);
+    background: rgba(var(--acid-rgb), 0.02);
 }
 
 .quick-add-icon {
@@ -407,8 +428,8 @@
    ============================================ */
 
 .task-card {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(var(--white-rgb), 0.03);
+    border: 1px solid rgba(var(--white-rgb), 0.08);
     padding: 12px 14px;
     cursor: grab;
     transition: all 0.15s ease;
@@ -427,8 +448,8 @@
 }
 
 .task-card:hover {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.12);
+    background: rgba(var(--white-rgb), 0.05);
+    border-color: rgba(var(--white-rgb), 0.12);
 }
 
 /* Priority left border */
@@ -465,7 +486,7 @@
 }
 
 .drag-over {
-    background: rgba(191, 255, 0, 0.03);
+    background: rgba(var(--acid-rgb), 0.03);
 }
 
 /* Filtered out */
@@ -504,14 +525,14 @@ body.filtering .task-card.filtered-out {
 }
 
 .task-title:hover {
-    color: #fff;
+    color: var(--acid);
 }
 
 /* Inline title editing */
 .task-title-input {
     flex: 1;
     min-width: 0;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(var(--white-rgb), 0.05);
     border: 1px solid var(--acid);
     color: var(--bone);
     font-family: inherit;
@@ -606,7 +627,7 @@ body.filtering .task-card.filtered-out {
 }
 
 .milestone-item:hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--white-rgb), 0.04);
 }
 
 .milestone-text {
@@ -654,16 +675,16 @@ body.filtering .task-card.filtered-out {
     padding: 4px 6px;
     background: transparent;
     border: none;
-    border-bottom: 1px dashed rgba(255, 255, 255, 0.08);
+    border-bottom: 1px dashed rgba(var(--white-rgb), 0.08);
     color: var(--bone);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     outline: none;
     transition: border-color 0.15s;
 }
 
 .milestone-add-input:focus {
-    border-bottom-color: rgba(191, 255, 0, 0.3);
+    border-bottom-color: rgba(var(--acid-rgb), 0.3);
 }
 
 .milestone-add-input::placeholder {
@@ -705,14 +726,14 @@ body.filtering .task-card.filtered-out {
 .subtask-progress-bar {
     flex: 1;
     height: 3px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(var(--white-rgb), 0.08);
     border-radius: 2px;
     overflow: hidden;
 }
 
 .subtask-progress-fill {
     height: 100%;
-    background: rgba(191, 255, 0, 0.4);
+    background: rgba(var(--acid-rgb), 0.4);
     border-radius: 2px;
     transition: width 0.3s ease;
 }
@@ -722,7 +743,7 @@ body.filtering .task-card.filtered-out {
 }
 
 .subtask-progress-text {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.5rem;
     color: var(--bone);
     opacity: 0.4;
@@ -739,7 +760,7 @@ body.filtering .task-card.filtered-out {
    ============================================ */
 
 .blocked-badge {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.6rem;
     padding: 6px 10px;
     margin-bottom: 10px;
@@ -762,7 +783,7 @@ body.filtering .task-card.filtered-out {
     background: transparent;
     border: 1px solid rgba(255, 149, 0, 0.3);
     color: var(--priority-high);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     padding: 3px 8px;
     cursor: pointer;
@@ -801,9 +822,9 @@ body.filtering .task-card.filtered-out {
 
 .task-action-btn {
     background: transparent;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(var(--white-rgb), 0.1);
     color: var(--bone);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     padding: 3px 8px;
     cursor: pointer;
@@ -818,7 +839,7 @@ body.filtering .task-card.filtered-out {
 
 .task-action-btn:hover {
     opacity: 1 !important;
-    border-color: rgba(255, 255, 255, 0.3);
+    border-color: rgba(var(--white-rgb), 0.3);
 }
 
 .task-action-btn.visible {
@@ -842,7 +863,7 @@ body.filtering .task-card.filtered-out {
 }
 
 .task-tag {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     letter-spacing: 0.05em;
     padding: 3px 8px;
@@ -906,7 +927,7 @@ body.filtering .task-card.filtered-out {
    ============================================ */
 
 .due-date {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     padding: 3px 7px;
     border-radius: 2px;
@@ -929,7 +950,7 @@ body.filtering .task-card.filtered-out {
 }
 
 .due-date.future {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--white-rgb), 0.06);
     color: var(--bone);
     opacity: 0.5;
 }
@@ -939,7 +960,7 @@ body.filtering .task-card.filtered-out {
    ============================================ */
 
 .age-badge {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.5rem;
     padding: 2px 6px;
     border-radius: 2px;
@@ -979,7 +1000,7 @@ body.filtering .task-card.filtered-out {
    ============================================ */
 
 .recurring-badge {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.5rem;
     padding: 2px 6px;
     background: rgba(150, 111, 214, 0.2);
@@ -999,17 +1020,17 @@ body.filtering .task-card.filtered-out {
    ============================================ */
 
 .progress-chip {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.5rem;
     padding: 2px 6px;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.08);
+    background: rgba(var(--white-rgb), 0.08);
     color: var(--bone);
     opacity: 0.6;
 }
 
 .progress-chip.complete {
-    background: rgba(191, 255, 0, 0.2);
+    background: rgba(var(--acid-rgb), 0.2);
     color: var(--acid);
     opacity: 1;
 }
@@ -1025,7 +1046,7 @@ body.filtering .task-card.filtered-out {
 .task-expanded-content {
     margin-top: 12px;
     padding-top: 12px;
-    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    border-top: 1px solid rgba(var(--white-rgb), 0.06);
 }
 
 .task-expanded-actions {
@@ -1046,14 +1067,14 @@ body.filtering .task-card.filtered-out {
     opacity: 0.8;
     cursor: pointer;
     padding: 8px;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(var(--white-rgb), 0.02);
     border: 1px solid transparent;
     transition: all 0.15s;
 }
 
 .task-description:hover {
-    background: rgba(255, 255, 255, 0.04);
-    border-color: rgba(255, 255, 255, 0.1);
+    background: rgba(var(--white-rgb), 0.04);
+    border-color: rgba(var(--white-rgb), 0.1);
 }
 
 .task-description.empty {
@@ -1064,7 +1085,7 @@ body.filtering .task-card.filtered-out {
 .task-description-input {
     width: 100%;
     padding: 8px;
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(var(--white-rgb), 0.05);
     border: 1px solid var(--acid);
     color: var(--bone);
     font-family: inherit;
@@ -1106,7 +1127,7 @@ body.filtering .task-card.filtered-out {
     -webkit-appearance: none;
     width: 14px;
     height: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(var(--white-rgb), 0.3);
     border-radius: 2px;
     background: transparent;
     cursor: pointer;
@@ -1157,10 +1178,10 @@ body.filtering .task-card.filtered-out {
 .add-subtask-input {
     flex: 1;
     padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px dashed rgba(255, 255, 255, 0.15);
+    background: rgba(var(--white-rgb), 0.03);
+    border: 1px dashed rgba(var(--white-rgb), 0.15);
     color: var(--bone);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     outline: none;
     transition: all 0.15s;
@@ -1168,8 +1189,8 @@ body.filtering .task-card.filtered-out {
 
 .add-subtask-input:focus {
     border-style: solid;
-    border-color: rgba(255, 255, 255, 0.3);
-    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(var(--white-rgb), 0.3);
+    background: rgba(var(--white-rgb), 0.05);
 }
 
 .add-subtask-input::placeholder {
@@ -1182,7 +1203,7 @@ body.filtering .task-card.filtered-out {
     background: var(--acid);
     border: none;
     color: var(--void);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     font-weight: 600;
     cursor: pointer;
@@ -1234,7 +1255,7 @@ body.filtering .task-card.filtered-out {
     display: flex;
     align-items: center;
     gap: 4px;
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--white-rgb), 0.06);
     border: none;
     padding: 3px 6px;
     border-radius: 3px;
@@ -1243,11 +1264,11 @@ body.filtering .task-card.filtered-out {
 }
 
 .priority-pill:hover {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(var(--white-rgb), 0.12);
 }
 
 .priority-pill-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     color: var(--bone);
     opacity: 0.7;
@@ -1259,14 +1280,14 @@ body.filtering .task-card.filtered-out {
     left: -4px;
     z-index: 100;
     background: var(--void);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(var(--white-rgb), 0.15);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     min-width: 170px;
     padding: 4px 0;
 }
 
 .priority-dropdown-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     letter-spacing: 0.05em;
     padding: 6px 12px 8px;
@@ -1283,7 +1304,7 @@ body.filtering .task-card.filtered-out {
     background: none;
     border: none;
     color: var(--bone);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     cursor: pointer;
     transition: background 0.1s;
@@ -1291,11 +1312,11 @@ body.filtering .task-card.filtered-out {
 }
 
 .priority-dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--white-rgb), 0.06);
 }
 
 .priority-dropdown-item.active {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--white-rgb), 0.04);
 }
 
 .priority-check {
@@ -1319,7 +1340,7 @@ body.filtering .task-card.filtered-out {
     display: flex;
     align-items: center;
     gap: 3px;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--white-rgb), 0.04);
     border: none;
     padding: 3px 6px;
     border-radius: 3px;
@@ -1331,7 +1352,7 @@ body.filtering .task-card.filtered-out {
 }
 
 .tag-editor-trigger:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(var(--white-rgb), 0.1);
 }
 
 .tag-editor-dots {
@@ -1352,14 +1373,14 @@ body.filtering .task-card.filtered-out {
     left: -4px;
     z-index: 100;
     background: var(--void);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(var(--white-rgb), 0.15);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     min-width: 160px;
     padding: 4px 0;
 }
 
 .tag-editor-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     letter-spacing: 0.05em;
     padding: 6px 12px 8px;
@@ -1376,7 +1397,7 @@ body.filtering .task-card.filtered-out {
     background: none;
     border: none;
     color: var(--bone);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     cursor: pointer;
     transition: background 0.1s;
@@ -1384,11 +1405,11 @@ body.filtering .task-card.filtered-out {
 }
 
 .tag-editor-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--white-rgb), 0.06);
 }
 
 .tag-editor-item.active {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--white-rgb), 0.04);
 }
 
 .tag-editor-color {
@@ -1405,7 +1426,7 @@ body.filtering .task-card.filtered-out {
 }
 
 .tag-editor-create {
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid rgba(var(--white-rgb), 0.08);
     margin-top: 4px;
     padding: 10px 12px 8px;
 }
@@ -1413,8 +1434,8 @@ body.filtering .task-card.filtered-out {
 .tag-editor-input {
     width: 100%;
     padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(var(--white-rgb), 0.04);
+    border: 1px solid rgba(var(--white-rgb), 0.12);
     color: var(--bone);
     font-family: inherit;
     font-size: 0.75rem;
@@ -1437,17 +1458,17 @@ body.filtering .task-card.filtered-out {
 }
 
 .tag-editor-swatch.active {
-    border-color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(var(--white-rgb), 0.8);
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5) inset;
 }
 
 .tag-editor-create-btn {
     width: 100%;
     padding: 8px 10px;
-    background: rgba(191, 255, 0, 0.08);
-    border: 1px solid rgba(191, 255, 0, 0.18);
+    background: rgba(var(--acid-rgb), 0.08);
+    border: 1px solid rgba(var(--acid-rgb), 0.18);
     color: var(--acid);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     cursor: pointer;
 }
@@ -1473,14 +1494,14 @@ body.filtering .task-card.filtered-out {
     left: -4px;
     z-index: 100;
     background: var(--void);
-    border: 1px solid rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(var(--white-rgb), 0.15);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
     min-width: 180px;
     padding: 4px 0;
 }
 
 .status-dropdown-label {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
     letter-spacing: 0.05em;
     padding: 6px 12px 8px;
@@ -1497,7 +1518,7 @@ body.filtering .task-card.filtered-out {
     background: none;
     border: none;
     color: var(--bone);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     cursor: pointer;
     transition: background 0.1s;
@@ -1505,11 +1526,11 @@ body.filtering .task-card.filtered-out {
 }
 
 .status-dropdown-item:hover {
-    background: rgba(255, 255, 255, 0.06);
+    background: rgba(var(--white-rgb), 0.06);
 }
 
 .status-dropdown-item.active {
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--white-rgb), 0.04);
 }
 
 .status-check {
@@ -1538,7 +1559,7 @@ body.filtering .task-card.filtered-out {
     width: 400px;
     max-width: 90vw;
     background: var(--void);
-    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 1px solid rgba(var(--white-rgb), 0.1);
     z-index: 901;
     display: flex;
     flex-direction: column;
@@ -1560,11 +1581,11 @@ body.filtering .task-card.filtered-out {
     align-items: center;
     gap: 10px;
     padding: 20px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(var(--white-rgb), 0.08);
 }
 
 .done-panel-header h2 {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.75rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -1572,10 +1593,10 @@ body.filtering .task-card.filtered-out {
 }
 
 .done-panel-count {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.6rem;
     padding: 2px 8px;
-    background: rgba(191, 255, 0, 0.1);
+    background: rgba(var(--acid-rgb), 0.1);
     color: var(--acid);
 }
 
@@ -1611,7 +1632,7 @@ body.filtering .task-card.filtered-out {
     z-index: 1;
     padding: 8px 12px;
     background: var(--void);
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.62rem;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -1623,12 +1644,12 @@ body.filtering .task-card.filtered-out {
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    border-bottom: 1px solid rgba(var(--white-rgb), 0.04);
     transition: background 0.1s;
 }
 
 .done-panel-item:hover {
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(var(--white-rgb), 0.03);
 }
 
 .done-panel-title {
@@ -1645,18 +1666,18 @@ body.filtering .task-card.filtered-out {
 
 .done-panel-time {
     flex-shrink: 0;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.62rem;
     color: var(--bone);
     opacity: 0.35;
 }
 
 .done-panel-load-more {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     padding: 10px;
-    background: rgba(191, 255, 0, 0.05);
-    border: 1px solid rgba(191, 255, 0, 0.15);
+    background: rgba(var(--acid-rgb), 0.05);
+    border: 1px solid rgba(var(--acid-rgb), 0.15);
     color: var(--acid);
     cursor: pointer;
     width: 100%;
@@ -1666,13 +1687,13 @@ body.filtering .task-card.filtered-out {
 }
 
 .done-panel-load-more:hover {
-    background: rgba(191, 255, 0, 0.1);
+    background: rgba(var(--acid-rgb), 0.1);
 }
 
 .done-panel-empty {
     text-align: center;
     padding: 40px 20px;
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     color: var(--bone);
     opacity: 0.3;
@@ -1683,11 +1704,11 @@ body.filtering .task-card.filtered-out {
    ============================================ */
 
 .add-task-inline {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.65rem;
     padding: 10px 14px;
     background: transparent;
-    border: 1px dashed rgba(255, 255, 255, 0.06);
+    border: 1px dashed rgba(var(--white-rgb), 0.06);
     color: var(--bone);
     opacity: 0.3;
     cursor: pointer;
@@ -1698,8 +1719,8 @@ body.filtering .task-card.filtered-out {
 
 .add-task-inline:hover {
     opacity: 0.6;
-    border-color: rgba(255, 255, 255, 0.15);
-    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(var(--white-rgb), 0.15);
+    background: rgba(var(--white-rgb), 0.02);
 }
 
 .add-task-inline::before {
@@ -1734,11 +1755,11 @@ body.filtering .task-card.filtered-out {
 }
 
 .user-avatar:hover {
-    box-shadow: 0 0 12px rgba(191, 255, 0, 0.4);
+    box-shadow: 0 0 12px rgba(var(--acid-rgb), 0.4);
 }
 
 .back-link {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     letter-spacing: 0.05em;
     display: inline-block;
@@ -1771,9 +1792,9 @@ body.filtering .task-card.filtered-out {
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(191, 255, 0, 0.08), transparent),
-        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(191, 255, 0, 0.05), transparent),
-        radial-gradient(circle at 20% 80%, rgba(191, 255, 0, 0.03), transparent);
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(var(--acid-rgb), 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(var(--acid-rgb), 0.05), transparent),
+        radial-gradient(circle at 20% 80%, rgba(var(--acid-rgb), 0.03), transparent);
     z-index: 0;
 }
 
@@ -1820,17 +1841,17 @@ body.filtering .task-card.filtered-out {
 
 @keyframes logo-pulse {
     0%, 100% {
-        box-shadow: 0 0 0 rgba(191, 255, 0, 0);
+        box-shadow: 0 0 0 rgba(var(--acid-rgb), 0);
         transform: scale(1);
     }
     50% {
-        box-shadow: 0 0 30px rgba(191, 255, 0, 0.3);
+        box-shadow: 0 0 30px rgba(var(--acid-rgb), 0.3);
         transform: scale(1.05);
     }
 }
 
 .logo-text {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 2.5rem;
     font-weight: 700;
     letter-spacing: 0.1em;
@@ -1839,7 +1860,7 @@ body.filtering .task-card.filtered-out {
 }
 
 .signin-tagline {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.8rem;
     letter-spacing: 0.2em;
     text-transform: uppercase;
@@ -1848,8 +1869,8 @@ body.filtering .task-card.filtered-out {
 }
 
 .signin-card {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: rgba(var(--white-rgb), 0.02);
+    border: 1px solid rgba(var(--white-rgb), 0.08);
     padding: 8px;
     position: relative;
 }
@@ -1876,12 +1897,12 @@ body.filtering .task-card.filtered-out {
 }
 
 /* Clerk overrides */
-.clerk-root { font-family: 'JetBrains Mono', monospace !important; }
+.clerk-root { font-family: var(--font-mono, 'JetBrains Mono', monospace) !important; }
 .clerk-card { background: transparent !important; box-shadow: none !important; }
 .clerk-button {
     background: var(--acid) !important;
     color: var(--void) !important;
-    font-family: 'JetBrains Mono', monospace !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
     font-weight: 600 !important;
     letter-spacing: 0.05em !important;
     text-transform: uppercase !important;
@@ -1889,13 +1910,13 @@ body.filtering .task-card.filtered-out {
     transition: all 0.2s ease !important;
 }
 .clerk-button:hover {
-    box-shadow: 4px 4px 0 rgba(191, 255, 0, 0.3) !important;
+    box-shadow: 4px 4px 0 rgba(var(--acid-rgb), 0.3) !important;
     transform: translate(-2px, -2px) !important;
 }
 .clerk-input {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    font-family: 'JetBrains Mono', monospace !important;
+    background: rgba(var(--white-rgb), 0.05) !important;
+    border: 1px solid rgba(var(--white-rgb), 0.15) !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
 }
 .clerk-input:focus {
     border-color: var(--acid) !important;
@@ -1903,8 +1924,8 @@ body.filtering .task-card.filtered-out {
 }
 .clerk-social-button {
     background: transparent !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-    font-family: 'JetBrains Mono', monospace !important;
+    border: 1px solid rgba(var(--white-rgb), 0.15) !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
     color: var(--bone) !important;
     transition: all 0.2s ease !important;
 }
@@ -1913,19 +1934,19 @@ body.filtering .task-card.filtered-out {
 .clerk-social-button:last-child svg { filter: brightness(0) invert(1) !important; }
 .clerk-social-button:hover {
     border-color: var(--acid) !important;
-    background: rgba(191, 255, 0, 0.05) !important;
+    background: rgba(var(--acid-rgb), 0.05) !important;
 }
-.clerk-divider { background: rgba(255, 255, 255, 0.1) !important; }
+.clerk-divider { background: rgba(var(--white-rgb), 0.1) !important; }
 .clerk-divider-text {
     color: rgba(245, 245, 240, 0.4) !important;
-    font-family: 'JetBrains Mono', monospace !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
     font-size: 0.65rem !important;
     letter-spacing: 0.1em !important;
     text-transform: uppercase !important;
 }
 .clerk-link { color: var(--acid) !important; }
 .clerk-label {
-    font-family: 'JetBrains Mono', monospace !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
     font-size: 0.7rem !important;
     letter-spacing: 0.05em !important;
     text-transform: uppercase !important;
@@ -1987,6 +2008,6 @@ body.filtering .task-card.filtered-out {
    ============================================ */
 
 @keyframes flash-new {
-    0% { background: rgba(191, 255, 0, 0.2); }
-    100% { background: rgba(255, 255, 255, 0.03); }
+    0% { background: rgba(var(--acid-rgb), 0.2); }
+    100% { background: rgba(var(--white-rgb), 0.03); }
 }

@@ -21,7 +21,7 @@ const PriorityIcon: FC<{ priority: Priority; size?: number }> = ({ priority, siz
   const color = priority === 'urgent' ? 'var(--priority-urgent)'
     : priority === 'high' ? 'var(--priority-high)'
     : priority === 'medium' ? 'var(--priority-medium)'
-    : 'rgba(255,255,255,0.3)'
+    : 'rgba(var(--white-rgb),0.3)'
 
   // Bar heights: short, medium, tall
   const barHeights = [0.4, 0.65, 1.0]
@@ -42,7 +42,7 @@ const PriorityIcon: FC<{ priority: Priority; size?: number }> = ({ priority, siz
               width={barWidth}
               height={barH}
               rx={0.5}
-              fill={isFilled ? color : 'rgba(255,255,255,0.12)'}
+              fill={isFilled ? color : 'rgba(var(--white-rgb),0.12)'}
             />
           )
         })}

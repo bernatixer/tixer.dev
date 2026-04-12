@@ -35,7 +35,7 @@ const modalStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   letterSpacing: '0.1em',
   textTransform: 'uppercase',
@@ -46,8 +46,8 @@ const labelStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '12px 14px',
-  background: 'rgba(255, 255, 255, 0.05)',
-  border: '1px solid rgba(255, 255, 255, 0.15)',
+  background: 'rgba(var(--white-rgb), 0.05)',
+  border: '1px solid rgba(var(--white-rgb), 0.15)',
   color: 'var(--bone)',
   fontFamily: 'inherit',
   fontSize: '0.9rem',
@@ -68,7 +68,7 @@ const primaryButtonStyle: React.CSSProperties = {
   background: 'var(--priority-high)',
   border: 'none',
   color: 'var(--void)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.75rem',
   letterSpacing: '0.05em',
   cursor: 'pointer',
@@ -79,9 +79,9 @@ const secondaryButtonStyle: React.CSSProperties = {
   flex: 1,
   padding: '12px 20px',
   background: 'transparent',
-  border: '1px solid rgba(255, 255, 255, 0.2)',
+  border: '1px solid rgba(var(--white-rgb), 0.2)',
   color: 'var(--bone)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.75rem',
   letterSpacing: '0.05em',
   cursor: 'pointer',
@@ -90,7 +90,7 @@ const secondaryButtonStyle: React.CSSProperties = {
 const toggleGroupStyle: React.CSSProperties = {
   display: 'flex',
   marginBottom: '16px',
-  border: '1px solid rgba(255, 255, 255, 0.15)',
+  border: '1px solid rgba(var(--white-rgb), 0.15)',
 }
 
 const toggleButtonStyle = (isSelected: boolean): React.CSSProperties => ({
@@ -99,7 +99,7 @@ const toggleButtonStyle = (isSelected: boolean): React.CSSProperties => ({
   background: isSelected ? 'rgba(255, 149, 0, 0.2)' : 'transparent',
   border: 'none',
   color: isSelected ? 'var(--priority-high)' : 'var(--bone)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   cursor: 'pointer',
   opacity: isSelected ? 1 : 0.5,
@@ -198,7 +198,7 @@ export const BlockTaskModal: FC<BlockTaskModalProps> = ({
       <div style={modalStyle} onClick={e => e.stopPropagation()}>
         <h2
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: 'var(--font-mono)',
             fontSize: '0.8rem',
             letterSpacing: '0.1em',
             textTransform: 'uppercase',

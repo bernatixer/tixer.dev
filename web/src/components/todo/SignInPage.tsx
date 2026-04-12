@@ -43,11 +43,11 @@ export const SignInPage: FC = () => {
                 colorBackground: '#0a0a0a',
                 colorText: '#f5f5f0',
                 colorTextSecondary: 'rgba(245, 245, 240, 0.6)',
-                colorInputBackground: 'rgba(255, 255, 255, 0.05)',
+                colorInputBackground: 'rgba(var(--white-rgb), 0.05)',
                 colorInputText: '#f5f5f0',
                 colorNeutral: '#f5f5f0',
                 borderRadius: '2px',
-                fontFamily: '"JetBrains Mono", monospace',
+                fontFamily: 'var(--font-mono)',
               },
             }}
           />

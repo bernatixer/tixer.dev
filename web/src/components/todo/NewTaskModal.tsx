@@ -39,8 +39,8 @@ const modalStyle: React.CSSProperties = {
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '12px 14px',
-  background: 'rgba(255, 255, 255, 0.05)',
-  border: '1px solid rgba(255, 255, 255, 0.15)',
+  background: 'rgba(var(--white-rgb), 0.05)',
+  border: '1px solid rgba(var(--white-rgb), 0.15)',
   color: 'var(--bone)',
   fontFamily: 'inherit',
   fontSize: '0.9rem',
@@ -51,7 +51,7 @@ const inputStyle: React.CSSProperties = {
 
 const labelStyle: React.CSSProperties = {
   display: 'block',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   letterSpacing: '0.1em',
   textTransform: 'uppercase',
@@ -71,7 +71,7 @@ const primaryButtonStyle: React.CSSProperties = {
   background: 'var(--acid)',
   border: 'none',
   color: 'var(--void)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.75rem',
   letterSpacing: '0.05em',
   cursor: 'pointer',
@@ -82,9 +82,9 @@ const secondaryButtonStyle: React.CSSProperties = {
   flex: 1,
   padding: '12px 20px',
   background: 'transparent',
-  border: '1px solid rgba(255, 255, 255, 0.2)',
+  border: '1px solid rgba(var(--white-rgb), 0.2)',
   color: 'var(--bone)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.75rem',
   letterSpacing: '0.05em',
   cursor: 'pointer',
@@ -100,9 +100,9 @@ const tagContainerStyle: React.CSSProperties = {
 const tagButtonStyle = (isSelected: boolean, color: string): React.CSSProperties => ({
   padding: '6px 12px',
   background: isSelected ? `${color}33` : 'transparent',
-  border: `1px solid ${isSelected ? color : 'rgba(255, 255, 255, 0.15)'}`,
+  border: `1px solid ${isSelected ? color : 'rgba(var(--white-rgb), 0.15)'}`,
   color: isSelected ? color : 'var(--bone)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   letterSpacing: '0.05em',
   textTransform: 'uppercase',
@@ -115,7 +115,7 @@ const priorityGroupStyle: React.CSSProperties = {
   display: 'flex',
   gap: '0',
   marginBottom: '16px',
-  border: '1px solid rgba(255, 255, 255, 0.15)',
+  border: '1px solid rgba(var(--white-rgb), 0.15)',
 }
 
 const priorityButtonStyle = (isSelected: boolean, color: string, _isFirst: boolean, isLast: boolean): React.CSSProperties => ({
@@ -123,9 +123,9 @@ const priorityButtonStyle = (isSelected: boolean, color: string, _isFirst: boole
   padding: '10px 8px',
   background: isSelected ? `${color}22` : 'transparent',
   border: 'none',
-  borderRight: isLast ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
+  borderRight: isLast ? 'none' : '1px solid rgba(var(--white-rgb), 0.15)',
   color: isSelected ? color : 'var(--bone)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   letterSpacing: '0.03em',
   cursor: 'pointer',
@@ -147,10 +147,10 @@ const dueDateContainerStyle: React.CSSProperties = {
 
 const dueDateButtonStyle = (isSelected: boolean): React.CSSProperties => ({
   padding: '8px 14px',
-  background: isSelected ? 'rgba(191, 255, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-  border: `1px solid ${isSelected ? 'var(--acid)' : 'rgba(255, 255, 255, 0.15)'}`,
+  background: isSelected ? 'rgba(var(--acid-rgb), 0.15)' : 'rgba(var(--white-rgb), 0.05)',
+  border: `1px solid ${isSelected ? 'var(--acid)' : 'rgba(var(--white-rgb), 0.15)'}`,
   color: isSelected ? 'var(--acid)' : 'var(--bone)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   letterSpacing: '0.03em',
   cursor: 'pointer',
@@ -175,10 +175,10 @@ const typeGroupStyle: React.CSSProperties = {
 
 const typeButtonStyle = (isSelected: boolean): React.CSSProperties => ({
   padding: '8px 12px',
-  background: isSelected ? 'rgba(191, 255, 0, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-  border: `1px solid ${isSelected ? 'var(--acid)' : 'rgba(255, 255, 255, 0.15)'}`,
+  background: isSelected ? 'rgba(var(--acid-rgb), 0.15)' : 'rgba(var(--white-rgb), 0.05)',
+  border: `1px solid ${isSelected ? 'var(--acid)' : 'rgba(var(--white-rgb), 0.15)'}`,
   color: isSelected ? 'var(--acid)' : 'var(--bone)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   letterSpacing: '0.03em',
   cursor: 'pointer',
@@ -192,10 +192,10 @@ const typeButtonStyle = (isSelected: boolean): React.CSSProperties => ({
 const urlInputStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px 14px',
-  background: 'rgba(255, 255, 255, 0.05)',
-  border: '1px solid rgba(255, 255, 255, 0.15)',
+  background: 'rgba(var(--white-rgb), 0.05)',
+  border: '1px solid rgba(var(--white-rgb), 0.15)',
   color: 'var(--bone)',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.75rem',
   marginBottom: '16px',
   outline: 'none',
@@ -205,8 +205,8 @@ const urlInputStyle: React.CSSProperties = {
 const textareaStyle: React.CSSProperties = {
   width: '100%',
   padding: '12px 14px',
-  background: 'rgba(255, 255, 255, 0.05)',
-  border: '1px solid rgba(255, 255, 255, 0.15)',
+  background: 'rgba(var(--white-rgb), 0.05)',
+  border: '1px solid rgba(var(--white-rgb), 0.15)',
   color: 'var(--bone)',
   fontFamily: 'inherit',
   fontSize: '0.85rem',
@@ -257,8 +257,8 @@ const calendarStyle: React.CSSProperties = {
   marginTop: '12px',
   marginBottom: '16px',
   padding: '12px',
-  background: 'rgba(255, 255, 255, 0.03)',
-  border: '1px solid rgba(255, 255, 255, 0.1)',
+  background: 'rgba(var(--white-rgb), 0.03)',
+  border: '1px solid rgba(var(--white-rgb), 0.1)',
 }
 
 const calendarHeaderStyle: React.CSSProperties = {
@@ -274,13 +274,13 @@ const calendarNavBtnStyle: React.CSSProperties = {
   color: 'var(--bone)',
   cursor: 'pointer',
   padding: '4px 8px',
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.7rem',
   opacity: 0.6,
 }
 
 const calendarMonthStyle: React.CSSProperties = {
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   letterSpacing: '0.05em',
   textTransform: 'uppercase',
@@ -294,7 +294,7 @@ const calendarGridStyle: React.CSSProperties = {
 }
 
 const calendarDayHeaderStyle: React.CSSProperties = {
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.5rem',
   textAlign: 'center',
   padding: '4px',
@@ -304,13 +304,13 @@ const calendarDayHeaderStyle: React.CSSProperties = {
 }
 
 const calendarDayStyle = (isSelected: boolean, isToday: boolean, isCurrentMonth: boolean): React.CSSProperties => ({
-  fontFamily: "'JetBrains Mono', monospace",
+  fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
   padding: '6px 4px',
   textAlign: 'center',
   cursor: isCurrentMonth ? 'pointer' : 'default',
-  background: isSelected ? 'var(--acid)' : isToday ? 'rgba(191, 255, 0, 0.15)' : 'transparent',
-  color: isSelected ? 'var(--void)' : isCurrentMonth ? 'var(--bone)' : 'rgba(255,255,255,0.2)',
+  background: isSelected ? 'var(--acid)' : isToday ? 'rgba(var(--acid-rgb), 0.15)' : 'transparent',
+  color: isSelected ? 'var(--void)' : isCurrentMonth ? 'var(--bone)' : 'rgba(var(--white-rgb),0.2)',
   border: 'none',
   transition: 'all 0.1s',
 })
@@ -566,7 +566,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       <div style={modalStyle} onClick={e => e.stopPropagation()}>
         <h2
           style={{
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: 'var(--font-mono)',
             fontSize: '0.8rem',
             letterSpacing: '0.1em',
             textTransform: 'uppercase',
@@ -630,7 +630,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
                 border: 'none',
                 color: 'var(--bone)',
                 opacity: 0.4,
-                fontFamily: "'JetBrains Mono', monospace",
+                fontFamily: 'var(--font-mono)',
                 fontSize: '0.65rem',
                 cursor: 'pointer',
                 padding: '4px 0',
@@ -704,7 +704,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
                     width: '22px',
                     height: '22px',
                     borderRadius: '999px',
-                    border: newTagColor === color ? '2px solid var(--bone)' : '1px solid rgba(255,255,255,0.15)',
+                    border: newTagColor === color ? '2px solid var(--bone)' : '1px solid rgba(var(--white-rgb),0.15)',
                     background: color,
                     cursor: 'pointer',
                   }}

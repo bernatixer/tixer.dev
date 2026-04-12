@@ -61,7 +61,7 @@
 }
 
 .hero-subtitle {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.8rem;
     margin-bottom: 10px;
     display: flex;
@@ -75,7 +75,7 @@
 }
 
 .hero-note {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.75rem;
     opacity: 0.5;
 }
@@ -277,7 +277,7 @@
 
 .blog-item {
     padding: 20px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-bottom: 1px solid rgba(var(--white-rgb), 0.08);
     display: flex;
     justify-content: space-between;
     align-items: baseline;
@@ -304,7 +304,7 @@
 }
 
 .blog-date {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     opacity: 0.4;
     flex-shrink: 0;

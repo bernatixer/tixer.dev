@@ -27,3 +27,5 @@ export {
 } from './useAppState'
 
 export { useAuthSync } from './useAuthSync'
+
+export { ThemeProvider, useTheme } from './useTheme'
