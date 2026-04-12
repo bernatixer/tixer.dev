@@ -12,7 +12,11 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  closestCorners,
+  closestCenter,
+  pointerWithin,
+  rectIntersection,
+  CollisionDetection,
+  getFirstCollision,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
@@ -124,6 +128,16 @@ interface TodoBoardProps {
   availableTags: TagConfig[]
   onAddTask: (columnId: ColumnId) => void
   onBlockTask: (task: Task) => void
+}
+
+// Layered collision: try pointer-within first (precise for lists),
+// then closest-center (stable for grids), then rect-intersection (for empty zones)
+const collisionStrategy: CollisionDetection = (args) => {
+  const pointer = pointerWithin(args)
+  if (getFirstCollision(pointer)) return pointer
+  const center = closestCenter(args)
+  if (getFirstCollision(center)) return center
+  return rectIntersection(args)
 }
 
 // ============================================
@@ -269,46 +283,64 @@ export const TodoBoard: FC<TodoBoardProps> = ({
 
     const activeId = active.id as string
     const overId = over.id as string
+    if (activeId === overId) return
+
     const draggedTask = tasks.find(t => t.id === activeId)
     if (!draggedTask) return
 
+    let nextMove: PendingMove | null = null
+
+    // Hovering over a column droppable (empty area)
     const overColumn = COLUMNS.find(c => c.id === overId)
     if (overColumn) {
-      const targetColumnTasks = displayTasks.filter(
+      const count = displayTasks.filter(
         t => t.columnId === overColumn.id && t.id !== activeId
-      )
-      setPendingMove({
-        taskId: activeId,
-        targetColumnId: overColumn.id,
-        targetIndex: targetColumnTasks.length,
-      })
-      return
+      ).length
+      nextMove = { taskId: activeId, targetColumnId: overColumn.id, targetIndex: count }
+    } else {
+      // Hovering over another task card
+      const overTask = displayTasks.find(t => t.id === overId)
+      if (overTask && draggedTask.id !== overTask.id) {
+        const columnTasks = displayTasks.filter(
+          t => t.columnId === overTask.columnId && t.id !== activeId
+        )
+        const overIndex = columnTasks.findIndex(t => t.id === overId)
+        nextMove = {
+          taskId: activeId,
+          targetColumnId: overTask.columnId,
+          targetIndex: overIndex >= 0 ? overIndex : columnTasks.length,
+        }
+      }
     }
 
-    const overTask = tasks.find(t => t.id === overId)
-    if (overTask && draggedTask.id !== overTask.id) {
-      const targetColumnTasks = displayTasks.filter(
-        t => t.columnId === overTask.columnId && t.id !== activeId
-      )
-      const overIndex = targetColumnTasks.findIndex(t => t.id === overId)
-      setPendingMove({
-        taskId: activeId,
-        targetColumnId: overTask.columnId,
-        targetIndex: overIndex >= 0 ? overIndex : targetColumnTasks.length,
+    // Only update state if the move actually changed
+    if (nextMove) {
+      setPendingMove(prev => {
+        if (
+          prev &&
+          prev.taskId === nextMove.taskId &&
+          prev.targetColumnId === nextMove.targetColumnId &&
+          prev.targetIndex === nextMove.targetIndex
+        ) {
+          return prev // no change — skip re-render
+        }
+        return nextMove
       })
     }
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { over } = event
+  const handleDragEnd = (_event: DragEndEvent) => {
     setActiveTask(null)
 
-    if (pendingMove && over) {
+    if (pendingMove) {
       isDropping.current = true
       moveTask(pendingMove)
-    } else {
-      setPendingMove(null)
     }
+  }
+
+  const handleDragCancel = () => {
+    setActiveTask(null)
+    setPendingMove(null)
   }
 
   const handleSortChange = (columnId: ColumnId, value: SortMode) => {
@@ -327,10 +359,11 @@ export const TodoBoard: FC<TodoBoardProps> = ({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={collisionStrategy}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="todo-board-v2">
         {/* ===== MAIN ZONE: Active work ===== */}
@@ -419,16 +452,18 @@ export const TodoBoard: FC<TodoBoardProps> = ({
         </div>
       </div>
 
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeTask && (
-          <TaskCard
-            task={activeTask}
-            activeFilter={activeFilter}
-            availableTags={availableTags}
-            allTasks={tasks}
-            variant="compact"
-            isDraggable={false}
-          />
+          <div className="drag-overlay-card">
+            <TaskCard
+              task={activeTask}
+              activeFilter={activeFilter}
+              availableTags={availableTags}
+              allTasks={tasks}
+              variant="compact"
+              isDraggable={false}
+            />
+          </div>
         )}
       </DragOverlay>
     </DndContext>

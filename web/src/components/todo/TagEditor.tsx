@@ -1,8 +1,7 @@
 import { FC, useState, useRef, useEffect, MouseEvent } from 'react'
 import type { TagConfig, TagId } from '@/todo/types'
 import { useCreateTag } from '@/hooks/useTags'
-
-const TAG_COLOR_PRESETS = ['#4ECDC4', '#FF8A65', '#FFD166', '#5C7CFA', '#F06292', '#81C784'] as const
+import { randomPastel } from '@/todo/colors'
 
 interface TagEditorProps {
   tags: TagId[]
@@ -13,7 +12,7 @@ interface TagEditorProps {
 export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange }) => {
   const [isOpen, setIsOpen] = useState(false)
   const [newTagName, setNewTagName] = useState('')
-  const [selectedColor, setSelectedColor] = useState<string>(TAG_COLOR_PRESETS[0])
+  const [selectedColor, setSelectedColor] = useState<string>(randomPastel)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const { mutate: createTag, isPending } = useCreateTag()
@@ -67,6 +66,7 @@ export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange })
         onSuccess: (tag) => {
           onChange(tags.includes(tag.id) ? tags : [...tags, tag.id])
           setNewTagName('')
+          setSelectedColor(randomPastel())
         },
       }
     )
@@ -118,32 +118,30 @@ export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange })
             )
           })}
           <div className="tag-editor-create">
-            <input
-              className="tag-editor-input"
-              value={newTagName}
-              onChange={e => setNewTagName(e.target.value)}
-              onClick={e => e.stopPropagation()}
-              placeholder="New tag"
-            />
-            <div className="tag-editor-swatches">
-              {TAG_COLOR_PRESETS.map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  className={`tag-editor-swatch ${selectedColor === color ? 'active' : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    e.preventDefault()
-                    setSelectedColor(color)
-                  }}
-                  title={`Pick ${color}`}
-                />
-              ))}
+            <div className="tag-editor-create-row">
+              <button
+                type="button"
+                className="tag-editor-color-dot"
+                style={{ backgroundColor: selectedColor }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  e.preventDefault()
+                  setSelectedColor(randomPastel())
+                }}
+                title="Click to change color"
+              />
+              <input
+                className="tag-editor-input"
+                value={newTagName}
+                onChange={e => setNewTagName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.stopPropagation(); e.preventDefault(); handleCreateTag(e as unknown as MouseEvent<HTMLButtonElement>) } }}
+                onClick={e => e.stopPropagation()}
+                placeholder="New tag"
+              />
+              <button className="tag-editor-create-btn" onClick={handleCreateTag} disabled={!newTagName.trim() || isPending}>
+                {isPending ? '...' : 'Create'}
+              </button>
             </div>
-            <button className="tag-editor-create-btn" onClick={handleCreateTag} disabled={!newTagName.trim() || isPending}>
-              {isPending ? 'Creating...' : 'Create tag'}
-            </button>
           </div>
         </div>
       )}

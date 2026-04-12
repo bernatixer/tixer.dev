@@ -2,11 +2,22 @@
 // HOME PAGE COMPONENT
 // ============================================
 
-import { FC } from 'react'
+import { FC, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
+import { useTheme } from '@/hooks'
+import type { ThemeId } from '@/styles/theme'
 import '@/styles/home.css'
 
 export const HomePage: FC = () => {
+  const { themeId, setTheme } = useTheme()
+  const prevTheme = useRef<ThemeId>(themeId)
+
+  useEffect(() => {
+    prevTheme.current = themeId
+    setTheme('cyberDark')
+    return () => { setTheme(prevTheme.current) }
+  }, [])
+
   return (
     <div className="container">
       <div className="hero-card">

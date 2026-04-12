@@ -7,6 +7,7 @@ import type { Priority, TagConfig, TagId, TaskType } from '@/todo/types'
 import { PRIORITIES, TASK_TYPES } from '@/todo/types'
 import { useCreateTask } from '@/hooks/useTasks'
 import { useCreateTag } from '@/hooks/useTags'
+import { randomPastel } from '@/todo/colors'
 
 // ============================================
 // STYLES (inline to keep it simple)
@@ -446,7 +447,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [url, setUrl] = useState('')
   const [showDescription, setShowDescription] = useState(false)
   const [newTagName, setNewTagName] = useState('')
-  const [newTagColor, setNewTagColor] = useState('#4ECDC4')
+  const [newTagColor, setNewTagColor] = useState(randomPastel)
 
   const { mutate: createTask, isPending } = useCreateTask()
   const { mutate: createTag, isPending: isCreatingTag } = useCreateTag()
@@ -465,7 +466,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       setTaskType('task')
       setUrl('')
       setNewTagName('')
-      setNewTagColor('#4ECDC4')
+      setNewTagColor(randomPastel())
     }
   }, [isOpen])
   
@@ -554,6 +555,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
         onSuccess: (tag) => {
           setSelectedTags(prev => (prev.includes(tag.id) ? prev : [...prev, tag.id]))
           setNewTagName('')
+          setNewTagColor(randomPastel())
         },
       }
     )
@@ -694,31 +696,29 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
                 </button>
               ))}
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-              {['#4ECDC4', '#FF8A65', '#FFD166', '#5C7CFA', '#F06292', '#81C784'].map(color => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setNewTagColor(color)}
-                  style={{
-                    width: '22px',
-                    height: '22px',
-                    borderRadius: '999px',
-                    border: newTagColor === color ? '2px solid var(--bone)' : '1px solid rgba(var(--white-rgb),0.15)',
-                    background: color,
-                    cursor: 'pointer',
-                  }}
-                  title={`Select ${color}`}
-                />
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
+              <button
+                type="button"
+                onClick={() => setNewTagColor(randomPastel())}
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  minWidth: '20px',
+                  borderRadius: '999px',
+                  border: 'none',
+                  background: newTagColor,
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+                title="Click to change color"
+              />
               <input
                 type="text"
                 value={newTagName}
                 onChange={e => setNewTagName(e.target.value)}
-                placeholder="Create a personal tag"
-                style={{ ...inputStyle, marginBottom: 0 }}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateTag() } }}
+                placeholder="New tag name"
+                style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
               />
               <button
                 type="button"

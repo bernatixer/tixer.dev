@@ -64,6 +64,7 @@ interface ThemeContextValue {
   themeId: ThemeId
   theme: Theme
   toggle: () => void
+  setTheme: (id: ThemeId) => void
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
@@ -82,8 +83,10 @@ export const ThemeProvider: FC<{ children: ReactNode }> = ({ children }) => {
     setThemeId(prev => (prev === 'cyberDark' ? 'softLight' : 'cyberDark'))
   }
 
+  const setTheme = (id: ThemeId) => setThemeId(id)
+
   return (
-    <ThemeContext.Provider value={{ themeId, theme, toggle }}>
+    <ThemeContext.Provider value={{ themeId, theme, toggle, setTheme }}>
       {children}
     </ThemeContext.Provider>
   )

@@ -432,7 +432,7 @@
     border: 1px solid rgba(var(--white-rgb), 0.08);
     padding: 12px 14px;
     cursor: grab;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease, border-color 0.15s ease;
     position: relative;
     user-select: none;
 }
@@ -481,12 +481,26 @@
 
 /* Drag states */
 .task-card.dragging {
-    opacity: 0.5;
-    cursor: grabbing;
+    opacity: 0.25;
+    pointer-events: none;
 }
 
 .drag-over {
-    background: rgba(var(--acid-rgb), 0.03);
+    background: rgba(var(--acid-rgb), 0.04);
+    border-color: rgba(var(--acid-rgb), 0.15);
+}
+
+/* The floating card that follows the cursor */
+.drag-overlay-card {
+    cursor: grabbing;
+    pointer-events: none;
+}
+
+.drag-overlay-card .task-card {
+    background: var(--void);
+    border-color: var(--acid);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(var(--acid-rgb), 0.2);
+    opacity: 0.95;
 }
 
 /* Filtered out */
@@ -720,7 +734,6 @@ body.filtering .task-card.filtered-out {
     align-items: center;
     gap: 8px;
     margin-top: 8px;
-    padding-left: 26px;
 }
 
 .subtask-progress-bar {
@@ -1431,46 +1444,43 @@ body.filtering .task-card.filtered-out {
     padding: 10px 12px 8px;
 }
 
+.tag-editor-create-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tag-editor-color-dot {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s;
+}
+
 .tag-editor-input {
-    width: 100%;
-    padding: 8px 10px;
+    flex: 1;
+    min-width: 0;
+    padding: 6px 8px;
     background: rgba(var(--white-rgb), 0.04);
     border: 1px solid rgba(var(--white-rgb), 0.12);
     color: var(--bone);
     font-family: inherit;
     font-size: 0.75rem;
-    margin-bottom: 8px;
-}
-
-.tag-editor-swatches {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 8px;
-}
-
-.tag-editor-swatch {
-    width: 16px;
-    height: 16px;
-    border-radius: 999px;
-    border: 1px solid transparent;
-    cursor: pointer;
-    padding: 0;
-}
-
-.tag-editor-swatch.active {
-    border-color: rgba(var(--white-rgb), 0.8);
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5) inset;
 }
 
 .tag-editor-create-btn {
-    width: 100%;
-    padding: 8px 10px;
+    padding: 6px 10px;
     background: rgba(var(--acid-rgb), 0.08);
     border: 1px solid rgba(var(--acid-rgb), 0.18);
     color: var(--acid);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.65rem;
+    font-size: 0.6rem;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 .tag-editor-create-btn:disabled {

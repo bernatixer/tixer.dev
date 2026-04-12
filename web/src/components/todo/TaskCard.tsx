@@ -2,9 +2,8 @@
 // TASK CARD COMPONENT
 // ============================================
 
-import { FC, useState, MouseEvent, useRef, useEffect, KeyboardEvent } from 'react'
+import { memo, FC, useState, MouseEvent, useRef, useEffect, KeyboardEvent } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import type { Task, TagConfig, TagId, ColumnId, Priority } from '@/todo/types'
 import { TASK_TYPES_BY_ID } from '@/todo/types'
 import { useTaskAge } from '@/hooks/useAppState'
@@ -134,7 +133,7 @@ interface TaskCardProps {
   isDraggable?: boolean
 }
 
-export const TaskCard: FC<TaskCardProps> = ({
+export const TaskCard: FC<TaskCardProps> = memo(({
   task,
   activeFilter,
   availableTags,
@@ -162,20 +161,18 @@ export const TaskCard: FC<TaskCardProps> = ({
   const { mutate: deleteTask } = useDeleteTask()
   const { ageState, daysSinceCreation } = useTaskAge(task)
 
-  // dnd-kit sortable
+  // dnd-kit sortable — we handle visual reorder via pendingMove,
+  // so we only need the drag handle + isDragging state, no transforms.
   const {
     attributes,
     listeners,
     setNodeRef,
-    transform,
-    transition,
     isDragging,
-  } = useSortable({ id: task.id, disabled: !isDraggable })
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+  } = useSortable({
+    id: task.id,
+    disabled: !isDraggable,
+    transition: null,
+  })
 
   const hasMilestones = task.milestones.length > 0
   const completedMilestones = task.milestones.filter(st => st.completed).length
@@ -380,7 +377,6 @@ export const TaskCard: FC<TaskCardProps> = ({
     return (
       <div
         ref={setNodeRef}
-        style={style}
         className={classNames}
         data-task-id={task.id}
         data-age={ageState}
@@ -462,7 +458,6 @@ export const TaskCard: FC<TaskCardProps> = ({
   return (
     <div
       ref={setNodeRef}
-      style={style}
       className={classNames}
       data-task-id={task.id}
       data-age={ageState}
@@ -508,4 +503,4 @@ export const TaskCard: FC<TaskCardProps> = ({
       {expanded && renderExpandedContent()}
     </div>
   )
-}
+})

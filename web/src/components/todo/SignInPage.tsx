@@ -2,10 +2,21 @@
 // SIGN IN PAGE
 // ============================================
 
-import { FC } from 'react'
+import { FC, useEffect, useRef } from 'react'
 import { SignIn } from '@clerk/clerk-react'
+import { useTheme } from '@/hooks'
+import type { ThemeId } from '@/styles/theme'
 
 export const SignInPage: FC = () => {
+  const { themeId, setTheme } = useTheme()
+  const prevTheme = useRef<ThemeId>(themeId)
+
+  useEffect(() => {
+    prevTheme.current = themeId
+    setTheme('cyberDark')
+    return () => { setTheme(prevTheme.current) }
+  }, [])
+
   return (
     <div className="signin-container">
       <div className="signin-background" />
