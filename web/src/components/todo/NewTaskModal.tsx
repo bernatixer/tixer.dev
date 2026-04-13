@@ -6,8 +6,7 @@ import { FC, useState, FormEvent, useEffect } from 'react'
 import type { Priority, TagConfig, TagId, TaskType } from '@/todo/types'
 import { PRIORITIES, TASK_TYPES } from '@/todo/types'
 import { useCreateTask } from '@/hooks/useTasks'
-import { useCreateTag } from '@/hooks/useTags'
-import { randomPastel } from '@/todo/colors'
+import { TagEditor } from './TagEditor'
 
 // ============================================
 // STYLES (inline to keep it simple)
@@ -91,24 +90,25 @@ const secondaryButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
-const tagContainerStyle: React.CSSProperties = {
+const tagSectionStyle: React.CSSProperties = {
   display: 'flex',
-  flexWrap: 'wrap',
-  gap: '8px',
+  alignItems: 'center',
+  gap: '10px',
   marginBottom: '16px',
 }
 
-const tagButtonStyle = (isSelected: boolean, color: string): React.CSSProperties => ({
-  padding: '6px 12px',
-  background: isSelected ? `${color}33` : 'transparent',
-  border: `1px solid ${isSelected ? color : 'rgba(var(--white-rgb), 0.15)'}`,
-  color: isSelected ? color : 'var(--bone)',
+const selectedTagStyle = (color: string): React.CSSProperties => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  padding: '4px 10px',
+  background: `${color}22`,
+  border: `1px solid ${color}55`,
+  color: color,
   fontFamily: 'var(--font-mono)',
   fontSize: '0.65rem',
-  letterSpacing: '0.05em',
-  textTransform: 'uppercase',
-  cursor: 'pointer',
-  transition: 'all 0.2s',
+  letterSpacing: '0.03em',
+  borderRadius: '2px',
 })
 
 // Priority button group styles
@@ -429,12 +429,14 @@ interface NewTaskModalProps {
   isOpen: boolean
   onClose: () => void
   availableTags: TagConfig[]
+  columnId?: string
 }
 
 export const NewTaskModal: FC<NewTaskModalProps> = ({
   isOpen,
   onClose,
   availableTags,
+  columnId = 'todo',
 }) => {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
@@ -446,11 +448,8 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [taskType, setTaskType] = useState<TaskType>('task')
   const [url, setUrl] = useState('')
   const [showDescription, setShowDescription] = useState(false)
-  const [newTagName, setNewTagName] = useState('')
-  const [newTagColor, setNewTagColor] = useState(randomPastel)
 
   const { mutate: createTask, isPending } = useCreateTask()
-  const { mutate: createTag, isPending: isCreatingTag } = useCreateTag()
 
   // Reset form when modal opens
   useEffect(() => {
@@ -465,8 +464,6 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       setShowCalendar(false)
       setTaskType('task')
       setUrl('')
-      setNewTagName('')
-      setNewTagColor(randomPastel())
     }
   }, [isOpen])
   
@@ -520,7 +517,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
         title: title.trim(),
         description: description.trim() || null,
         priority,
-        columnId: 'todo',
+        columnId: columnId as 'inbox' | 'todo' | 'doing' | 'blocked' | 'done',
         tags: selectedTags,
         dueDate: dueDate ? new Date(dueDate + 'T12:00:00') : null,
         recurrence: null,
@@ -539,26 +536,8 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     )
   }
 
-  const toggleTag = (tagId: TagId) => {
-    setSelectedTags(prev =>
-      prev.includes(tagId) ? prev.filter(t => t !== tagId) : [...prev, tagId]
-    )
-  }
-
-  const handleCreateTag = () => {
-    const name = newTagName.trim()
-    if (!name || isCreatingTag) return
-
-    createTag(
-      { name, color: newTagColor },
-      {
-        onSuccess: (tag) => {
-          setSelectedTags(prev => (prev.includes(tag.id) ? prev : [...prev, tag.id]))
-          setNewTagName('')
-          setNewTagColor(randomPastel())
-        },
-      }
-    )
+  const handleTagsChange = (newTags: TagId[]) => {
+    setSelectedTags(newTags)
   }
 
   if (!isOpen) return null
@@ -684,54 +663,21 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
           {/* Tags */}
           <div>
             <label style={labelStyle}>Tags</label>
-            <div style={tagContainerStyle}>
-              {availableTags.map(tag => (
-                <button
-                  key={tag.id}
-                  type="button"
-                  onClick={() => toggleTag(tag.id)}
-                  style={tagButtonStyle(selectedTags.includes(tag.id), tag.color)}
-                >
-                  {tag.name}
-                </button>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'center' }}>
-              <button
-                type="button"
-                onClick={() => setNewTagColor(randomPastel())}
-                style={{
-                  width: '20px',
-                  height: '20px',
-                  minWidth: '20px',
-                  borderRadius: '999px',
-                  border: 'none',
-                  background: newTagColor,
-                  cursor: 'pointer',
-                  transition: 'background 0.15s',
-                }}
-                title="Click to change color"
+            <div style={tagSectionStyle}>
+              {selectedTags.map(tagId => {
+                const tag = availableTags.find(t => t.id === tagId)
+                if (!tag) return null
+                return (
+                  <span key={tagId} style={selectedTagStyle(tag.color)}>
+                    {tag.name}
+                  </span>
+                )
+              })}
+              <TagEditor
+                tags={selectedTags}
+                availableTags={availableTags}
+                onChange={handleTagsChange}
               />
-              <input
-                type="text"
-                value={newTagName}
-                onChange={e => setNewTagName(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleCreateTag() } }}
-                placeholder="New tag name"
-                style={{ ...inputStyle, marginBottom: 0, flex: 1 }}
-              />
-              <button
-                type="button"
-                onClick={handleCreateTag}
-                disabled={!newTagName.trim() || isCreatingTag}
-                style={{
-                  ...secondaryButtonStyle,
-                  flex: '0 0 auto',
-                  opacity: !newTagName.trim() || isCreatingTag ? 0.5 : 1,
-                }}
-              >
-                {isCreatingTag ? '...' : 'Create'}
-              </button>
             </div>
           </div>
 

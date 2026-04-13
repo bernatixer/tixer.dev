@@ -24,3 +24,16 @@ export function useCreateTag() {
     },
   })
 }
+
+export function useDeleteTag() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: tagsApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: tagKeys.all })
+      // Also invalidate tasks since tag references are removed server-side
+      queryClient.invalidateQueries({ queryKey: ['tasks'] })
+    },
+  })
+}

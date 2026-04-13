@@ -501,4 +501,41 @@ impl TaskRepository for SqliteRepository {
 
         Ok(())
     }
+
+    async fn delete_tag(&self, user_id: &str, id: &str) -> Result<(), DbError> {
+        // Delete the tag
+        let result = sqlx::query("DELETE FROM tags WHERE id = ? AND user_id = ?")
+            .bind(id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(DbError::NotFound);
+        }
+
+        // Remove the tag from all tasks that reference it
+        // Tags are stored as JSON arrays, so we need to fetch, filter, and update
+        let rows: Vec<TaskRow> = sqlx::query_as(
+            "SELECT id, user_id, title, description, priority, column_id, tags, due_date, created_at, recurrence, subtasks, \"order\", blocked_by, task_type, url, completed_at FROM tasks WHERE user_id = ? AND tags LIKE ?",
+        )
+        .bind(user_id)
+        .bind(format!("%{}%", id))
+        .fetch_all(&self.pool)
+        .await?;
+
+        for row in rows {
+            let mut tags: Vec<String> = serde_json::from_str(&row.tags)?;
+            tags.retain(|t| t != id);
+            let updated_tags = serde_json::to_string(&tags)?;
+            sqlx::query("UPDATE tasks SET tags = ? WHERE id = ? AND user_id = ?")
+                .bind(&updated_tags)
+                .bind(&row.id)
+                .bind(user_id)
+                .execute(&self.pool)
+                .await?;
+        }
+
+        Ok(())
+    }
 }

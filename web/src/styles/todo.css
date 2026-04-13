@@ -714,6 +714,30 @@ body.filtering .task-card.filtered-out {
     padding: 8px 10px;
 }
 
+.drag-handle {
+    cursor: grab;
+    opacity: 0;
+    font-size: 0.7rem;
+    color: var(--bone);
+    user-select: none;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+    line-height: 1;
+    padding: 2px 0;
+}
+
+.task-card.variant-compact:hover .drag-handle {
+    opacity: 0.35;
+}
+
+.drag-handle:hover {
+    opacity: 0.7 !important;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
 .task-card.variant-compact .task-title {
     font-size: 0.78rem;
     white-space: nowrap;
@@ -1438,6 +1462,37 @@ body.filtering .task-card.filtered-out {
     opacity: 0.6;
 }
 
+.tag-editor-item-row {
+    display: flex;
+    align-items: center;
+}
+
+.tag-editor-item-row .tag-editor-item {
+    flex: 1;
+    min-width: 0;
+}
+
+.tag-editor-delete {
+    background: none;
+    border: none;
+    color: var(--bone);
+    opacity: 0;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    transition: opacity 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.tag-editor-item-row:hover .tag-editor-delete {
+    opacity: 0.35;
+}
+
+.tag-editor-delete:hover {
+    opacity: 1 !important;
+    color: var(--priority-urgent);
+}
+
 .tag-editor-create {
     border-top: 1px solid rgba(var(--white-rgb), 0.08);
     margin-top: 4px;
@@ -2020,4 +2075,29 @@ body.filtering .task-card.filtered-out {
 @keyframes flash-new {
     0% { background: rgba(var(--acid-rgb), 0.2); }
     100% { background: rgba(var(--white-rgb), 0.03); }
+}
+
+/* ============================================
+   LIGHT MODE OVERRIDES
+   ============================================ */
+
+[data-theme="softLight"] .due-date.soon {
+    background: rgba(217, 119, 6, 0.12);
+    color: #92400E;
+}
+
+[data-theme="softLight"] .task-card[data-age="aging"] .age-badge {
+    background: rgba(217, 119, 6, 0.12);
+    color: #92400E;
+}
+
+[data-theme="softLight"] .tag-ideas {
+    background: rgba(217, 119, 6, 0.12);
+    color: #92400E;
+}
+
+[data-theme="softLight"] .tag-editor-dropdown {
+    background: var(--bg-surface);
+    border-color: var(--border-default);
+    box-shadow: var(--shadow-md);
 }

@@ -52,6 +52,7 @@ async fn main() {
             get(tasks::list_tasks).post(tasks::create_task),
         )
         .route("/api/tags", get(tags::list_tags).post(tags::create_tag))
+        .route("/api/tags/:id", axum::routing::delete(tags::delete_tag))
         .route(
             "/api/tasks/:id",
             get(tasks::get_task)

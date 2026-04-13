@@ -52,6 +52,7 @@ const TodoContent: FC = () => {
   const { data: tags = [] } = useTags(isReady)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [modalColumnId, setModalColumnId] = useState<string>('todo')
   const [blockingTask, setBlockingTask] = useState<Task | null>(null)
   const [isDonePanelOpen, setIsDonePanelOpen] = useState(false)
 
@@ -59,10 +60,12 @@ const TodoContent: FC = () => {
   const availableTags: TagConfig[] = mergeTagsWithTaskUsage(tags, tasks)
 
   const handleNewTask = () => {
+    setModalColumnId('todo')
     setIsModalOpen(true)
   }
 
-  const handleAddTaskToColumn = (_columnId: string) => {
+  const handleAddTaskToColumn = (columnId: string) => {
+    setModalColumnId(columnId)
     setIsModalOpen(true)
   }
 
@@ -96,6 +99,7 @@ const TodoContent: FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         availableTags={availableTags}
+        columnId={modalColumnId}
       />
 
       <BlockTaskModal

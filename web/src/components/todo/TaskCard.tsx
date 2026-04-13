@@ -463,11 +463,14 @@ export const TaskCard: FC<TaskCardProps> = memo(({
       data-age={ageState}
       data-tags={task.tags.join(',')}
       onClick={handleCardClick}
-      {...attributes}
-      {...listeners}
     >
       <div className="task-header">
         <div className="task-title-row">
+          {isDraggable && (
+            <span className="drag-handle" {...attributes} {...listeners} title="Drag to reorder">
+              ⠿
+            </span>
+          )}
           <StatusCircle columnId={task.columnId} onChange={handleStatusChange} size={14} />
           <TaskTypeIcon task={task} />
           {isEditingTitle ? (

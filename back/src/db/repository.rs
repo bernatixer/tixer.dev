@@ -32,4 +32,7 @@ pub trait TaskRepository: Send + Sync {
 
     /// Delete a task by ID (only if owned by user)
     async fn delete_task(&self, user_id: &str, id: &str) -> Result<(), DbError>;
+
+    /// Delete a tag by ID (only if owned by user), also removes tag from all tasks
+    async fn delete_tag(&self, user_id: &str, id: &str) -> Result<(), DbError>;
 }

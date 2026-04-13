@@ -1,6 +1,6 @@
 import { FC, useState, useRef, useEffect, MouseEvent } from 'react'
 import type { TagConfig, TagId } from '@/todo/types'
-import { useCreateTag } from '@/hooks/useTags'
+import { useCreateTag, useDeleteTag } from '@/hooks/useTags'
 import { randomPastel } from '@/todo/colors'
 
 interface TagEditorProps {
@@ -16,6 +16,7 @@ export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange })
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
   const { mutate: createTag, isPending } = useCreateTag()
+  const { mutate: deleteTag } = useDeleteTag()
 
   useEffect(() => {
     if (!isOpen) return
@@ -51,6 +52,15 @@ export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange })
       ? tags.filter(t => t !== tagId)
       : [...tags, tagId]
     onChange(newTags)
+  }
+
+  const handleDeleteTag = (tagId: TagId, e: MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    // Remove from current task's tags
+    onChange(tags.filter(t => t !== tagId))
+    // Delete from server
+    deleteTag(tagId)
   }
 
   const handleCreateTag = (e: MouseEvent<HTMLButtonElement>) => {
@@ -103,18 +113,26 @@ export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange })
           {availableTags.map((tag) => {
             const isActive = tags.includes(tag.id)
             return (
-              <button
-                key={tag.id}
-                className={`tag-editor-item ${isActive ? 'active' : ''}`}
-                onClick={(e) => handleToggleTag(tag.id, e)}
-              >
-                <span
-                  className="tag-editor-color"
-                  style={{ background: isActive ? tag.color : 'rgba(var(--white-rgb),0.1)' }}
-                />
-                <span style={{ color: isActive ? tag.color : undefined }}>{tag.name}</span>
-                {isActive && <span className="tag-editor-check">&#10003;</span>}
-              </button>
+              <div key={tag.id} className="tag-editor-item-row">
+                <button
+                  className={`tag-editor-item ${isActive ? 'active' : ''}`}
+                  onClick={(e) => handleToggleTag(tag.id, e)}
+                >
+                  <span
+                    className="tag-editor-color"
+                    style={{ background: isActive ? tag.color : 'rgba(var(--white-rgb),0.1)' }}
+                  />
+                  <span style={{ color: isActive ? tag.color : undefined }}>{tag.name}</span>
+                  {isActive && <span className="tag-editor-check">&#10003;</span>}
+                </button>
+                <button
+                  className="tag-editor-delete"
+                  onClick={(e) => handleDeleteTag(tag.id, e)}
+                  title="Delete tag"
+                >
+                  &times;
+                </button>
+              </div>
             )
           })}
           <div className="tag-editor-create">
