@@ -7,6 +7,26 @@ import type { Task, ColumnId } from '@/todo/types'
 import { StatusCircle } from './StatusCircle'
 import { useMoveTask } from '@/hooks/useTasks'
 
+const copyToClipboard = async (text: string): Promise<boolean> => {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const ok = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    return ok
+  } catch {
+    return false
+  }
+}
+
 const DONE_PAGE_SIZE = 15
 
 interface DonePanelProps {
@@ -22,6 +42,7 @@ interface DoneGroup {
 
 export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
   const [limit, setLimit] = useState(DONE_PAGE_SIZE)
+  const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
   const { mutate: moveTask } = useMoveTask()
 
   // Reset limit when panel opens
@@ -75,6 +96,20 @@ export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
     moveTask({ taskId: task.id, targetColumnId: newColumnId, targetIndex: 0 })
   }
 
+  const handleCopyGroup = async (group: DoneGroup) => {
+    const lines = [
+      `Done — ${group.label}:`,
+      ...group.tasks.map(task => `• ${task.title}`),
+    ]
+    const ok = await copyToClipboard(lines.join('\n'))
+    if (ok) {
+      setCopiedLabel(group.label)
+      window.setTimeout(() => {
+        setCopiedLabel(prev => (prev === group.label ? null : prev))
+      }, 1500)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -91,7 +126,16 @@ export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
         <div className="done-panel-list">
           {groupedTasks.map(group => (
             <div key={group.label} className="done-panel-group">
-              <div className="done-panel-date">{group.label}</div>
+              <div className="done-panel-date">
+                <span>{group.label}</span>
+                <button
+                  className="done-panel-copy"
+                  onClick={() => handleCopyGroup(group)}
+                  title="Copy this day's tasks for daily sync"
+                >
+                  {copiedLabel === group.label ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
               {group.tasks.map(task => (
                 <div key={task.id} className="done-panel-item">
                   <StatusCircle

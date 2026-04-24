@@ -91,20 +91,23 @@ export const TagEditor: FC<TagEditorProps> = ({ tags, availableTags, onChange })
         title="Edit tags"
       >
         {tags.length > 0 ? (
-          <div className="tag-editor-dots">
+          <div className="tag-editor-chips">
             {tags.map(tagId => {
               const tag = availableTags.find(item => item.id === tagId)
+              const color = tag?.color ?? 'rgba(var(--white-rgb),0.3)'
               return (
                 <span
                   key={tagId}
-                  className="tag-dot"
-                  style={{ backgroundColor: tag?.color ?? 'rgba(var(--white-rgb),0.3)' }}
-                />
+                  className="tag-editor-chip"
+                  style={{ color, borderColor: `${color}55` }}
+                >
+                  {tag?.name ?? tagId}
+                </span>
               )
             })}
           </div>
         ) : (
-          <span className="tag-editor-empty">+</span>
+          <span className="tag-editor-empty">+ tag</span>
         )}
       </button>
       {isOpen && (

@@ -15,6 +15,29 @@ import { PriorityPill } from './PriorityPill'
 import { TagEditor } from './TagEditor'
 
 // ============================================
+// EXPAND TOGGLE
+// ============================================
+
+interface ExpandToggleProps {
+  expanded: boolean
+  onToggle: (e: MouseEvent) => void
+}
+
+const ExpandToggle: FC<ExpandToggleProps> = ({ expanded, onToggle }) => (
+  <button
+    type="button"
+    className={`task-expand-toggle ${expanded ? 'expanded' : ''}`}
+    onClick={onToggle}
+    title={expanded ? 'Hide details' : 'Show details'}
+    aria-label={expanded ? 'Hide details' : 'Show details'}
+  >
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  </button>
+)
+
+// ============================================
 // RECURRING BADGE
 // ============================================
 
@@ -209,6 +232,11 @@ export const TaskCard: FC<TaskCardProps> = memo(({
     }
   }
 
+  const handleExpandToggle = (e: MouseEvent) => {
+    e.stopPropagation()
+    setExpanded(prev => !prev)
+  }
+
   const handleStatusChange = (newColumnId: ColumnId) => {
     moveTask({ taskId: task.id, targetColumnId: newColumnId, targetIndex: 0 })
   }
@@ -219,6 +247,10 @@ export const TaskCard: FC<TaskCardProps> = memo(({
 
   const handleTagsChange = (newTags: TagId[]) => {
     updateTask({ ...task, tags: newTags })
+  }
+
+  const handleDueDateChange = (newDate: Date | null) => {
+    updateTask({ ...task, dueDate: newDate })
   }
 
   // --- Title editing ---
@@ -385,15 +417,6 @@ export const TaskCard: FC<TaskCardProps> = memo(({
         {...attributes}
         {...listeners}
       >
-        {/* Blocked badge at the top */}
-        {task.blockedBy && (
-          <BlockedBadge
-            task={task}
-            allTasks={allTasks}
-            onUnblock={() => unblockTask(task.id)}
-          />
-        )}
-
         <div className="task-header">
           <div className="task-title-row">
             <StatusCircle columnId={task.columnId} onChange={handleStatusChange} size={18} />
@@ -442,9 +465,11 @@ export const TaskCard: FC<TaskCardProps> = memo(({
               <span className="age-badge">{daysSinceCreation}d</span>
             )}
             {task.recurrence && <RecurringBadge recurrence={task.recurrence} />}
-            <DueDateBadge dueDate={task.dueDate} />
+            <DueDateBadge dueDate={task.dueDate} onChange={handleDueDateChange} />
           </div>
-          <div className="task-actions" />
+          <div className="task-actions">
+            <ExpandToggle expanded={expanded} onToggle={handleExpandToggle} />
+          </div>
         </div>
 
         {expanded && renderExpandedContent()}
@@ -455,6 +480,8 @@ export const TaskCard: FC<TaskCardProps> = memo(({
   // ============================================
   // COMPACT CARD (Todo / Inbox sidebar)
   // ============================================
+  const showBlockedBadge = task.columnId === 'blocked' && task.blockedBy
+
   return (
     <div
       ref={setNodeRef}
@@ -497,10 +524,19 @@ export const TaskCard: FC<TaskCardProps> = memo(({
           {daysSinceCreation > 3 && (
             <span className="age-badge">{daysSinceCreation}d</span>
           )}
-          <DueDateBadge dueDate={task.dueDate} />
+          <DueDateBadge dueDate={task.dueDate} onChange={handleDueDateChange} />
           <TagEditor tags={task.tags} availableTags={availableTags} onChange={handleTagsChange} />
+          <ExpandToggle expanded={expanded} onToggle={handleExpandToggle} />
         </div>
       </div>
+
+      {showBlockedBadge && (
+        <BlockedBadge
+          task={task}
+          allTasks={allTasks}
+          onUnblock={() => unblockTask(task.id)}
+        />
+      )}
 
       {/* Expanded content for compact cards too */}
       {expanded && renderExpandedContent()}
