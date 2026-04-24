@@ -18,6 +18,10 @@ export const HomePage: FC = () => {
     return () => { setTheme(prevTheme.current) }
   }, [])
 
+  useEffect(() => {
+    document.title = 'Bernat Torres'
+  }, [])
+
   return (
     <div className="container">
       <div className="hero-card">

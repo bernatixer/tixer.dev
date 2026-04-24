@@ -2,7 +2,7 @@
 // TODO APP COMPONENT
 // ============================================
 
-import { FC, useState } from 'react'
+import { FC, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
 import { useFilter, useAuthSync } from '@/hooks'
@@ -123,6 +123,10 @@ const TodoContent: FC = () => {
 // ============================================
 
 export const TodoApp: FC = () => {
+  useEffect(() => {
+    document.title = 'TODO'
+  }, [])
+
   return (
     <>
       <SignedOut>

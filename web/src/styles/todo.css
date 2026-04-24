@@ -585,7 +585,10 @@ body.filtering .task-card.filtered-out {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-shrink: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    min-width: 0;
+    flex-shrink: 1;
 }
 
 /* ============================================
@@ -1690,6 +1693,9 @@ body.filtering .task-card.filtered-out {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
+    min-width: 0;
+    flex: 1;
 }
 
 /* Status circle - no animation, static indicators */
