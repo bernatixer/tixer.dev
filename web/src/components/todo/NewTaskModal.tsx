@@ -2,12 +2,13 @@
 // NEW TASK MODAL COMPONENT
 // ============================================
 
-import { FC, useState, FormEvent, useEffect } from 'react'
+import { FC, useState, FormEvent, useEffect, KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Priority, TagConfig, TagId, TaskType } from '@/todo/types'
 import { PRIORITIES, TASK_TYPES } from '@/todo/types'
 import { useCreateTask } from '@/hooks/useTasks'
 import { TagEditor } from './TagEditor'
 import { MiniCalendar, formatDateLocal } from './MiniCalendar'
+import { isAiEnabled, parseTaskFromText } from '@/api/ai'
 
 // ============================================
 // STYLES (inline to keep it simple)
@@ -218,6 +219,36 @@ const textareaStyle: React.CSSProperties = {
   minHeight: '60px',
 }
 
+const titleLabelRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '8px',
+  marginBottom: '8px',
+}
+
+const aiButtonStyle = (isLoading: boolean, isDisabled: boolean): React.CSSProperties => ({
+  background: isLoading ? 'rgba(var(--acid-rgb), 0.15)' : 'transparent',
+  border: '1px solid rgba(var(--acid-rgb), 0.4)',
+  color: 'var(--acid)',
+  fontFamily: 'var(--font-mono)',
+  fontSize: '0.6rem',
+  letterSpacing: '0.05em',
+  padding: '4px 10px',
+  cursor: isDisabled ? 'not-allowed' : 'pointer',
+  opacity: isDisabled ? 0.4 : 1,
+  transition: 'all 0.15s',
+})
+
+const parseErrorStyle: React.CSSProperties = {
+  marginTop: '-8px',
+  marginBottom: '12px',
+  fontFamily: 'var(--font-mono)',
+  fontSize: '0.6rem',
+  color: 'var(--priority-urgent)',
+  opacity: 0.8,
+}
+
 // Due date options
 type DueDateOption = 'none' | 'today' | 'tomorrow' | 'next-week' | 'custom'
 
@@ -270,6 +301,9 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [taskType, setTaskType] = useState<TaskType>('task')
   const [url, setUrl] = useState('')
   const [showDescription, setShowDescription] = useState(false)
+  const [isParsing, setIsParsing] = useState(false)
+  const [parseError, setParseError] = useState<string | null>(null)
+  const aiAvailable = isAiEnabled()
 
   const { mutate: createTask, isPending } = useCreateTask()
 
@@ -286,8 +320,64 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       setShowCalendar(false)
       setTaskType('task')
       setUrl('')
+      setIsParsing(false)
+      setParseError(null)
     }
   }, [isOpen])
+
+  const applyParsedDate = (dateStr: string | null) => {
+    if (!dateStr) {
+      setDueDate('')
+      setDueDateMode('none')
+      return
+    }
+    setDueDate(dateStr)
+    const today = new Date()
+    today.setHours(12, 0, 0, 0)
+    const todayStr = formatDateLocal(today)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStr = formatDateLocal(tomorrow)
+    const nextWeek = new Date(today)
+    nextWeek.setDate(nextWeek.getDate() + 7)
+    const nextWeekStr = formatDateLocal(nextWeek)
+    if (dateStr === todayStr) setDueDateMode('today')
+    else if (dateStr === tomorrowStr) setDueDateMode('tomorrow')
+    else if (dateStr === nextWeekStr) setDueDateMode('next-week')
+    else setDueDateMode('custom')
+  }
+
+  const handleAiParse = async () => {
+    const text = title.trim()
+    if (!text || isParsing) return
+    setIsParsing(true)
+    setParseError(null)
+    try {
+      const parsed = await parseTaskFromText(text, availableTags)
+      setTitle(parsed.title)
+      if (parsed.description) {
+        setDescription(parsed.description)
+        setShowDescription(true)
+      }
+      setPriority(parsed.priority)
+      applyParsedDate(parsed.dueDate)
+      const tagIds = parsed.tags
+        .map(name => availableTags.find(t => t.name.toLowerCase() === name.toLowerCase())?.id)
+        .filter((id): id is TagId => Boolean(id))
+      setSelectedTags(tagIds)
+    } catch (err) {
+      setParseError(err instanceof Error ? err.message : 'AI parse failed')
+    } finally {
+      setIsParsing(false)
+    }
+  }
+
+  const handleTitleKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (aiAvailable && (e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault()
+      handleAiParse()
+    }
+  }
   
   const handleDueDateSelect = (option: DueDateOption) => {
     if (option === 'custom') {
@@ -401,15 +491,34 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
 
           {/* Title */}
           <div>
-            <label style={labelStyle}>Title</label>
+            <div style={titleLabelRowStyle}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>Title</label>
+              {aiAvailable && (
+                <button
+                  type="button"
+                  onClick={handleAiParse}
+                  disabled={!title.trim() || isParsing}
+                  style={aiButtonStyle(isParsing, !title.trim())}
+                  title="Parse natural language into structured task fields (Cmd/Ctrl+Enter)"
+                >
+                  {isParsing ? '✨ …' : '✨ AI'}
+                </button>
+              )}
+            </div>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder={taskType === 'task' ? 'What needs to be done?' : `What ${taskType} to check out?`}
+              onKeyDown={handleTitleKeyDown}
+              placeholder={
+                aiAvailable
+                  ? 'e.g. "follow up with Sarah about the contract by friday, urgent"'
+                  : taskType === 'task' ? 'What needs to be done?' : `What ${taskType} to check out?`
+              }
               style={inputStyle}
               autoFocus
             />
+            {parseError && <div style={parseErrorStyle}>{parseError}</div>}
           </div>
 
           {/* Description - collapsible */}

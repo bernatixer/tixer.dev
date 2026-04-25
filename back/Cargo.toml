@@ -27,3 +27,6 @@ once_cell = "1"
 
 # Environment
 dotenvy = "0.15"
+
+# Outbound HTTP client (for AI proxy)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }

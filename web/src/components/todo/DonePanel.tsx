@@ -6,6 +6,7 @@ import { FC, useState, useEffect, useMemo } from 'react'
 import type { Task, ColumnId } from '@/todo/types'
 import { StatusCircle } from './StatusCircle'
 import { useMoveTask } from '@/hooks/useTasks'
+import { composeStandup, isAiEnabled } from '@/api/ai'
 
 const copyToClipboard = async (text: string): Promise<boolean> => {
   try {
@@ -40,10 +41,18 @@ interface DoneGroup {
   tasks: Task[]
 }
 
+type AiState = 'idle' | 'loading' | 'copied' | 'error'
+
 export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
   const [limit, setLimit] = useState(DONE_PAGE_SIZE)
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
+  const [aiStates, setAiStates] = useState<Record<string, AiState>>({})
+  const aiAvailable = isAiEnabled()
   const { mutate: moveTask } = useMoveTask()
+
+  useEffect(() => {
+    if (!isOpen) setAiStates({})
+  }, [isOpen])
 
   // Reset limit when panel opens
   useEffect(() => {
@@ -110,6 +119,41 @@ export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
     }
   }
 
+  const setAiState = (label: string, state: AiState) => {
+    setAiStates(prev => ({ ...prev, [label]: state }))
+  }
+
+  const handleAiCompose = async (group: DoneGroup) => {
+    setAiState(group.label, 'loading')
+    try {
+      const message = await composeStandup(
+        group.label,
+        group.tasks.map(t => t.title)
+      )
+      const ok = await copyToClipboard(message)
+      if (!ok) throw new Error('clipboard write failed')
+      setAiState(group.label, 'copied')
+      window.setTimeout(() => {
+        setAiStates(prev => {
+          if (prev[group.label] !== 'copied') return prev
+          const next = { ...prev }
+          delete next[group.label]
+          return next
+        })
+      }, 1800)
+    } catch {
+      setAiState(group.label, 'error')
+      window.setTimeout(() => {
+        setAiStates(prev => {
+          if (prev[group.label] !== 'error') return prev
+          const next = { ...prev }
+          delete next[group.label]
+          return next
+        })
+      }, 2000)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -128,13 +172,28 @@ export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
             <div key={group.label} className="done-panel-group">
               <div className="done-panel-date">
                 <span>{group.label}</span>
-                <button
-                  className="done-panel-copy"
-                  onClick={() => handleCopyGroup(group)}
-                  title="Copy this day's tasks for daily sync"
-                >
-                  {copiedLabel === group.label ? 'Copied!' : 'Copy'}
-                </button>
+                <div className="done-panel-date-actions">
+                  <button
+                    className="done-panel-copy"
+                    onClick={() => handleCopyGroup(group)}
+                    title="Copy this day's tasks as plain text"
+                  >
+                    {copiedLabel === group.label ? 'Copied!' : 'Copy'}
+                  </button>
+                  {aiAvailable && (
+                    <button
+                      className="done-panel-ai"
+                      onClick={() => handleAiCompose(group)}
+                      disabled={aiStates[group.label] === 'loading'}
+                      title="Compose a polished Slack message with AI and copy it"
+                    >
+                      {aiStates[group.label] === 'loading' && '✨ …'}
+                      {aiStates[group.label] === 'copied' && '✨ Copied!'}
+                      {aiStates[group.label] === 'error' && '✨ Failed'}
+                      {!aiStates[group.label] && '✨ Slack'}
+                    </button>
+                  )}
+                </div>
               </div>
               {group.tasks.map(task => (
                 <div key={task.id} className="done-panel-item">

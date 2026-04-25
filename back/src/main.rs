@@ -9,7 +9,7 @@ use std::net::SocketAddr;
 use tower_http::cors::CorsLayer;
 
 use db::SqliteRepository;
-use handlers::{health, tags, tasks};
+use handlers::{ai, health, tags, tasks};
 use state::AppState;
 
 #[tokio::main]
@@ -59,6 +59,8 @@ async fn main() {
                 .put(tasks::update_task)
                 .delete(tasks::delete_task),
         )
+        .route("/api/ai/parse-task", axum::routing::post(ai::parse_task))
+        .route("/api/ai/daily-standup", axum::routing::post(ai::daily_standup))
         .layer(cors)
         .with_state(state);
 

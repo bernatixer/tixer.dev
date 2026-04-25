@@ -1856,7 +1856,14 @@ body.filtering .task-card.filtered-out {
     gap: 8px;
 }
 
-.done-panel-copy {
+.done-panel-date-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.done-panel-copy,
+.done-panel-ai {
     background: transparent;
     border: 1px solid rgba(var(--acid-rgb), 0.25);
     color: var(--acid);
@@ -1870,10 +1877,16 @@ body.filtering .task-card.filtered-out {
     transition: all 0.15s;
 }
 
-.done-panel-copy:hover {
+.done-panel-copy:hover,
+.done-panel-ai:hover {
     opacity: 1;
     background: rgba(var(--acid-rgb), 0.12);
     border-color: var(--acid);
+}
+
+.done-panel-ai:disabled {
+    opacity: 0.7;
+    cursor: progress;
 }
 
 .done-panel-item {
