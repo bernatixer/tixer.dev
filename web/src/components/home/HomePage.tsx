@@ -126,7 +126,7 @@ export const HomePage: FC = () => {
           <a href="https://github.com/bernatixer" target="_blank" rel="noopener">
             GitHub
           </a>
-          <Link to="/todo">Todo</Link>
+          <Link to="/todo">Focus</Link>
         </div>
         <p className="footer-text">© 2025</p>
       </footer>

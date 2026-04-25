@@ -93,7 +93,27 @@ export const Header: FC<HeaderProps> = ({
   return (
     <header className="todo-header">
       <div className="header-left">
-        <h1 className="todo-title">Todo</h1>
+        <h1 className="todo-title">
+          <svg className="todo-title-logo" width="28" height="28" viewBox="0 0 256 256" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="focus-ring" x1="72" y1="54" x2="196" y2="214" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stopColor="#5A5A5A" />
+                <stop offset="0.55" stopColor="#454545" />
+                <stop offset="1" stopColor="#3E3E3E" />
+              </linearGradient>
+            </defs>
+            <path
+              d="M 205.055 99.954 A 82 82 0 1 1 150.602 49.177"
+              stroke="url(#focus-ring)"
+              strokeWidth="18"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              fill="none"
+            />
+            <circle cx="186.690" cy="69.310" r="22" fill="#BFFF00" />
+          </svg>
+          Focus
+        </h1>
       </div>
       <div className="header-controls">
         <FilterIndicator activeFilter={activeFilter} availableTags={availableTags} onClear={onClearFilter} />

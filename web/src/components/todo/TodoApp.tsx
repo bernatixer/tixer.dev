@@ -124,7 +124,7 @@ const TodoContent: FC = () => {
 
 export const TodoApp: FC = () => {
   useEffect(() => {
-    document.title = 'TODO'
+    document.title = 'FOCUS'
   }, [])
 
   return (
