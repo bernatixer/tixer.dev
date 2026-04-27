@@ -749,9 +749,8 @@ body.filtering .task-card.filtered-out {
 
 .task-card.variant-compact .task-title {
     font-size: 0.78rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: anywhere;
 }
 
 .task-card.variant-compact .task-header {
