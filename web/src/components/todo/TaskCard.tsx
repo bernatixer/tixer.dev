@@ -515,6 +515,7 @@ export const TaskCard: FC<TaskCardProps> = memo(({
               {task.title}
             </span>
           )}
+          <ExpandToggle expanded={expanded} onToggle={handleExpandToggle} />
         </div>
         <div className="task-meta">
           <PriorityPill priority={task.priority} onChange={handlePriorityChange} />
@@ -526,7 +527,6 @@ export const TaskCard: FC<TaskCardProps> = memo(({
           )}
           <DueDateBadge dueDate={task.dueDate} onChange={handleDueDateChange} />
           <TagEditor tags={task.tags} availableTags={availableTags} onChange={handleTagsChange} />
-          <ExpandToggle expanded={expanded} onToggle={handleExpandToggle} />
         </div>
       </div>
 

@@ -3,13 +3,14 @@
 // ============================================
 
 import { FC, useState, FormEvent, useEffect, KeyboardEvent as ReactKeyboardEvent, useRef, MouseEvent } from 'react'
-import type { ColumnId, Priority, TagConfig, TagId, TaskType } from '@/todo/types'
+import type { ColumnId, Milestone, Priority, TagConfig, TagId, TaskType } from '@/todo/types'
 import { TASK_TYPES, TASK_TYPES_BY_ID } from '@/todo/types'
 import { useCreateTask } from '@/hooks/useTasks'
 import { TagEditor } from './TagEditor'
 import { DueDateBadge } from './DueDateBadge'
 import { PriorityPill } from './PriorityPill'
 import { StatusCircle } from './StatusCircle'
+import { MilestonesSection } from './Milestones'
 import { isAiEnabled, parseTaskFromText } from '@/api/ai'
 
 // ============================================
@@ -118,11 +119,14 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [dueDate, setDueDate] = useState<Date | null>(null)
   const [taskType, setTaskType] = useState<TaskType>('task')
   const [url, setUrl] = useState('')
+  const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [newMilestoneText, setNewMilestoneText] = useState('')
   const [isParsing, setIsParsing] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
   const aiAvailable = isAiEnabled()
 
   const titleInputRef = useRef<HTMLInputElement>(null)
+  const milestoneInputRef = useRef<HTMLInputElement>(null)
   const { mutate: createTask, isPending } = useCreateTask()
 
   // Reset on open
@@ -137,6 +141,8 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     setDueDate(null)
     setTaskType('task')
     setUrl('')
+    setMilestones([])
+    setNewMilestoneText('')
     setIsParsing(false)
     setParseError(null)
     // Defer focus so the input is mounted
@@ -185,6 +191,31 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     }
   }
 
+  const handleMilestoneToggle = (milestoneId: string) => {
+    setMilestones(prev => prev.map(m => (m.id === milestoneId ? { ...m, completed: !m.completed } : m)))
+  }
+
+  const handleMilestoneDelete = (milestoneId: string) => {
+    setMilestones(prev => prev.filter(m => m.id !== milestoneId))
+  }
+
+  const handleAddMilestone = () => {
+    const text = newMilestoneText.trim()
+    if (!text) return
+    setMilestones(prev => [...prev, { id: crypto.randomUUID(), text, completed: false }])
+    setNewMilestoneText('')
+    milestoneInputRef.current?.focus()
+  }
+
+  const handleMilestoneKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleAddMilestone()
+    } else if (e.key === 'Escape') {
+      setNewMilestoneText('')
+    }
+  }
+
   const handleSubmit = (e?: FormEvent) => {
     e?.preventDefault()
     if (!title.trim() || isPending) return
@@ -197,7 +228,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
         tags: selectedTags,
         dueDate,
         recurrence: null,
-        milestones: [],
+        milestones,
         taskType,
         url: url.trim() || null,
         order: 0,
@@ -283,6 +314,21 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
               placeholder="https://..."
             />
           )}
+
+          {/* Milestones */}
+          <div className="new-task-milestones">
+            <MilestonesSection
+              milestones={milestones}
+              onToggle={handleMilestoneToggle}
+              onDelete={handleMilestoneDelete}
+              newMilestoneText={newMilestoneText}
+              onNewMilestoneTextChange={setNewMilestoneText}
+              onAddMilestone={handleAddMilestone}
+              onNewMilestoneKeyDown={handleMilestoneKeyDown}
+              inputRef={milestoneInputRef}
+              variant="active"
+            />
+          </div>
 
           {/* Footer: pills + actions */}
           <div className="task-footer">

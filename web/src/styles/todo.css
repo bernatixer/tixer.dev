@@ -756,6 +756,14 @@ body.filtering .task-card.filtered-out {
 
 .task-card.variant-compact .task-header {
     margin-bottom: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.task-card.variant-compact .task-meta {
+    justify-content: flex-start;
+    padding-left: 22px;
 }
 
 /* ============================================
@@ -1053,6 +1061,15 @@ body.filtering .task-card.filtered-out {
     color: var(--bone);
     opacity: 0;
     transition: opacity 0.15s;
+}
+
+/* Hide the whole wrapper (not just the inner span) so the flex `gap` collapses too */
+.task-card .due-date-wrapper:has(.due-date.empty) {
+    display: none;
+}
+
+.task-card:hover .due-date-wrapper:has(.due-date.empty) {
+    display: inline-flex;
 }
 
 .task-card:hover .due-date.empty {
@@ -2293,33 +2310,37 @@ body.filtering .task-card.filtered-out {
     inset: 0;
     background: rgba(0, 0, 0, 0.8);
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
     z-index: 1000;
-    padding: 10vh 20px 20vh;
+    padding: 20px;
     overflow-y: auto;
 }
 
 .new-task-card-wrapper {
     width: 100%;
-    max-width: 560px;
+    max-width: 720px;
+    margin: auto;
 }
 
 .task-card.new-task-card {
     cursor: default;
     user-select: auto;
     background: var(--void);
-    border: 1px solid rgba(var(--white-rgb), 0.18);
-    box-shadow: 8px 8px 0 var(--acid);
-    padding: 18px 20px;
+    border: none;
+    box-shadow: none;
+    padding: 24px 28px;
 }
 
 .task-card.new-task-card:hover {
     background: var(--void);
-    border-color: rgba(var(--white-rgb), 0.18);
 }
 
 /* Always show empty placeholders inside the modal (no hover required) */
+.new-task-card .due-date-wrapper:has(.due-date.empty) {
+    display: inline-flex;
+}
+
 .new-task-card .due-date.empty {
     opacity: 0.6;
 }
@@ -2439,6 +2460,15 @@ body.filtering .task-card.filtered-out {
 
 .new-task-url-input:focus {
     border-color: rgba(var(--acid-rgb), 0.4);
+}
+
+/* Milestones inside the modal — align with the description input */
+.new-task-milestones {
+    margin: 8px 0 0 28px;
+}
+
+.new-task-milestones .active-milestones {
+    margin-top: 0;
 }
 
 /* Footer pills + actions */
