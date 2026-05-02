@@ -1,0 +1,12 @@
+name = "tixer"
+main = "src/index.ts"
+compatibility_date = "2025-01-15"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "focus"
+database_id = "d9a0d7bf-86b8-46ae-a9a7-0eb3cce7a0ec"
+
+[dev]
+port = 5555
