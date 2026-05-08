@@ -2476,7 +2476,7 @@ body.filtering .task-card.filtered-out {
     opacity: 1;
 }
 
-/* Title input — borderless, looks like the card title */
+/* Title input — borderless, dominant */
 .new-task-title-input {
     flex: 1;
     min-width: 0;
@@ -2485,19 +2485,21 @@ body.filtering .task-card.filtered-out {
     outline: none;
     color: var(--bone);
     font-family: inherit;
-    font-size: 1.15rem;
-    line-height: 1.4;
+    font-size: 1.4rem;
+    line-height: 1.35;
     font-weight: 500;
-    padding: 4px 0;
+    padding: 6px 0;
+    letter-spacing: -0.01em;
 }
 
 .new-task-title-input::placeholder {
     color: var(--bone);
-    opacity: 0.28;
+    opacity: 0.22;
+    font-weight: 400;
 }
 
 .task-card.new-task-card .task-header {
-    margin-bottom: 4px;
+    margin-bottom: 0;
 }
 
 .task-card.new-task-card .task-title-row {
@@ -2539,48 +2541,27 @@ body.filtering .task-card.filtered-out {
     opacity: 0.85;
 }
 
-/* Description trigger / textarea */
-.new-task-description-trigger {
-    background: none;
-    border: none;
-    color: var(--bone);
-    opacity: 0.4;
-    font-family: inherit;
-    font-style: italic;
-    font-size: 0.82rem;
-    cursor: pointer;
-    padding: 0;
-    margin: 12px 0 0 30px;
-    text-align: left;
-    display: block;
-    transition: opacity 0.15s, color 0.15s;
-}
-
-.new-task-description-trigger:hover {
-    opacity: 0.85;
-    color: var(--acid);
-}
-
+/* Description — Linear-style borderless textarea, always visible */
 .new-task-description-input {
     display: block;
     width: calc(100% - 30px);
-    margin: 16px 0 0 30px;
-    background: rgba(var(--white-rgb), 0.05);
-    border: 1px solid rgba(var(--white-rgb), 0.08);
+    margin: 4px 0 0 30px;
+    background: transparent;
+    border: none;
     color: var(--bone);
     font-family: inherit;
-    font-size: 0.85rem;
+    font-size: 0.92rem;
     line-height: 1.55;
-    padding: 12px 14px;
+    padding: 6px 0;
     outline: none;
     resize: vertical;
     box-sizing: border-box;
-    transition: border-color 0.15s, background 0.15s;
+    min-height: 56px;
 }
 
-.new-task-description-input:focus {
-    border-color: rgba(var(--acid-rgb), 0.45);
-    background: rgba(var(--white-rgb), 0.06);
+.new-task-description-input::placeholder {
+    color: var(--bone);
+    opacity: 0.32;
 }
 
 .new-task-url-input {
@@ -2624,11 +2605,55 @@ body.filtering .task-card.filtered-out {
 }
 
 .new-task-pills {
-    gap: 8px;
+    gap: 6px;
     align-items: center;
     flex-wrap: wrap;
     flex: 1;
     min-width: 0;
+}
+
+/* Linear-inspired rounded pills inside the modal */
+.task-card.new-task-card .priority-pill,
+.task-card.new-task-card .tag-editor-trigger,
+.task-card.new-task-card .tag-pill,
+.task-card.new-task-card .due-date,
+.task-card.new-task-card .new-task-meta-pill {
+    border-radius: 999px;
+}
+
+/* Generic meta pill (Milestones toggle, etc.) */
+.new-task-meta-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(var(--white-rgb), 0.04);
+    border: 1px solid rgba(var(--white-rgb), 0.1);
+    color: var(--bone);
+    opacity: 0.7;
+    font-family: inherit;
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 999px;
+}
+
+.new-task-meta-pill:hover {
+    opacity: 1;
+    border-color: rgba(var(--white-rgb), 0.22);
+    background: rgba(var(--white-rgb), 0.07);
+}
+
+.new-task-meta-pill.active {
+    opacity: 1;
+    color: var(--acid);
+    border-color: rgba(var(--acid-rgb), 0.45);
+    background: rgba(var(--acid-rgb), 0.08);
+}
+
+.new-task-meta-pill svg {
+    flex-shrink: 0;
+    opacity: 0.9;
 }
 
 .new-task-actions {

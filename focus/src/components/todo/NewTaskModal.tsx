@@ -113,7 +113,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [columnId, setColumnId] = useState<ColumnId>(initialColumnId as ColumnId)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [showDescription, setShowDescription] = useState(false)
+  const [showMilestones, setShowMilestones] = useState(false)
   const [priority, setPriority] = useState<Priority>('medium')
   const [selectedTags, setSelectedTags] = useState<TagId[]>([])
   const [dueDate, setDueDate] = useState<Date | null>(null)
@@ -135,7 +135,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     setColumnId(initialColumnId as ColumnId)
     setTitle('')
     setDescription('')
-    setShowDescription(false)
+    setShowMilestones(false)
     setPriority('medium')
     setSelectedTags([])
     setDueDate(null)
@@ -169,7 +169,6 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
       setTitle(parsed.title)
       if (parsed.description) {
         setDescription(parsed.description)
-        setShowDescription(true)
       }
       setPriority(parsed.priority)
       setDueDate(parsed.dueDate ? new Date(`${parsed.dueDate}T12:00:00`) : null)
@@ -284,25 +283,14 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
 
           {parseError && <div className="new-task-parse-error">{parseError}</div>}
 
-          {/* Description */}
-          {showDescription ? (
-            <textarea
-              className="new-task-description-input"
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              placeholder="Add more details..."
-              rows={3}
-              autoFocus
-            />
-          ) : (
-            <button
-              type="button"
-              className="new-task-description-trigger"
-              onClick={() => setShowDescription(true)}
-            >
-              Add description
-            </button>
-          )}
+          {/* Description — always visible, Linear-style borderless */}
+          <textarea
+            className="new-task-description-input"
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Add description…"
+            rows={2}
+          />
 
           {/* URL for non-task types */}
           {taskType !== 'task' && (
@@ -315,20 +303,22 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
             />
           )}
 
-          {/* Milestones */}
-          <div className="new-task-milestones">
-            <MilestonesSection
-              milestones={milestones}
-              onToggle={handleMilestoneToggle}
-              onDelete={handleMilestoneDelete}
-              newMilestoneText={newMilestoneText}
-              onNewMilestoneTextChange={setNewMilestoneText}
-              onAddMilestone={handleAddMilestone}
-              onNewMilestoneKeyDown={handleMilestoneKeyDown}
-              inputRef={milestoneInputRef}
-              variant="active"
-            />
-          </div>
+          {/* Milestones — toggled via the Milestones pill in the footer */}
+          {showMilestones && (
+            <div className="new-task-milestones">
+              <MilestonesSection
+                milestones={milestones}
+                onToggle={handleMilestoneToggle}
+                onDelete={handleMilestoneDelete}
+                newMilestoneText={newMilestoneText}
+                onNewMilestoneTextChange={setNewMilestoneText}
+                onAddMilestone={handleAddMilestone}
+                onNewMilestoneKeyDown={handleMilestoneKeyDown}
+                inputRef={milestoneInputRef}
+                variant="active"
+              />
+            </div>
+          )}
 
           {/* Footer: pills + actions */}
           <div className="task-footer">
@@ -336,6 +326,18 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
               <PriorityPill priority={priority} onChange={setPriority} />
               <TagEditor tags={selectedTags} availableTags={availableTags} onChange={setSelectedTags} />
               <DueDateBadge dueDate={dueDate} onChange={setDueDate} />
+              <button
+                type="button"
+                className={`new-task-meta-pill ${showMilestones ? 'active' : ''}`}
+                onClick={() => setShowMilestones(prev => !prev)}
+                title={milestones.length > 0 ? `${milestones.length} milestone${milestones.length === 1 ? '' : 's'}` : 'Add milestones'}
+              >
+                <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+                  <rect x="1.5" y="1.5" width="9" height="9" rx="2" fill="none" stroke="currentColor" strokeWidth="1" />
+                  <path d="M3.8 6.2l1.5 1.5L8.4 4.5" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span>{milestones.length > 0 ? `Milestones · ${milestones.length}` : 'Milestones'}</span>
+              </button>
             </div>
             <div className="new-task-actions">
               <button type="button" onClick={onClose} className="new-task-btn-cancel">
