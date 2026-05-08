@@ -35,10 +35,17 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_COMMIT_SHA: ${{ github.sha }}
 
+      - name: Ensure Pages project exists
+        run: npx wrangler@4 pages project create focus-tixer-dev --production-branch=main || true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: focus
+          wranglerVersion: '4'
           packageManager: pnpm
-          command: pages deploy dist --project-name=focus-tixer-dev --branch=main
+          command: pages deploy dist --project-name=focus-tixer-dev --branch=main --commit-dirty=true
