@@ -70,6 +70,7 @@ export interface Env {
   CLERK_PEM_PUBLIC_KEY: string;
   CLERK_ISSUER_URL?: string;
   ZAI_API_KEY: string;
+  COMMIT_SHA?: string;
 }
 
 export interface Variables {

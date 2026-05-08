@@ -3,6 +3,7 @@
 // ============================================
 
 import { FC, useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
 import { useFilter, useAuthSync } from '@/hooks'
@@ -14,9 +15,25 @@ import { NewTaskModal } from './NewTaskModal'
 import { BlockTaskModal } from './BlockTaskModal'
 import { DonePanel } from './DonePanel'
 import { SignInPage } from './SignInPage'
+import { get } from '@/api'
 import { mergeTagsWithTaskUsage } from '@/todo/types'
 import type { TagConfig, Task } from '@/todo/types'
 import '@/styles/todo.css'
+
+const VersionTag: FC = () => {
+  const { data } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => get<{ status: string; commit: string }>('/health'),
+    staleTime: 5 * 60_000,
+    retry: false,
+  })
+  const backend = data?.commit ?? '…'
+  return (
+    <div className="version-tag" title={`web ${__APP_VERSION__} · api ${backend}`}>
+      {__APP_VERSION__} · {backend}
+    </div>
+  )
+}
 
 // ============================================
 // TOP BAR
@@ -136,6 +153,7 @@ export const TodoApp: FC = () => {
         <div className="todo-container">
           <TopBar />
           <TodoContent />
+          <VersionTag />
         </div>
       </SignedIn>
     </>

@@ -2615,3 +2615,22 @@ body.filtering .task-card.filtered-out {
     opacity: 0.6;
     font-size: 0.7rem;
 }
+
+/* Hidden version tag — bottom-right corner, only shows on hover */
+.version-tag {
+    position: fixed;
+    bottom: 6px;
+    right: 8px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.55rem;
+    color: rgba(var(--white-rgb), 1);
+    opacity: 0.1;
+    pointer-events: auto;
+    user-select: text;
+    transition: opacity 0.2s;
+    z-index: 1;
+}
+
+.version-tag:hover {
+    opacity: 0.5;
+}
