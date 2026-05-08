@@ -28,9 +28,10 @@ const VersionTag: FC = () => {
     retry: false,
   })
   const backend = data?.commit ?? '…'
+  const backendShort = backend.length > 7 ? backend.slice(0, 7) : backend
   return (
     <div className="version-tag" title={`web ${__APP_VERSION__} · api ${backend}`}>
-      {__APP_VERSION__} · {backend}
+      {__APP_VERSION__} · {backendShort}
     </div>
   )
 }
