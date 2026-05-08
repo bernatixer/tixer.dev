@@ -300,7 +300,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
               className="new-task-description-trigger"
               onClick={() => setShowDescription(true)}
             >
-              + Add description
+              Add description
             </button>
           )}
 

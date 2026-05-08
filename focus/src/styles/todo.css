@@ -702,23 +702,29 @@ body.filtering .task-card.filtered-out {
 
 .milestone-add-input {
     width: 100%;
-    padding: 4px 6px;
+    padding: 4px 0;
     background: transparent;
     border: none;
-    border-bottom: 1px dashed rgba(var(--white-rgb), 0.08);
     color: var(--bone);
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.65rem;
+    font-family: inherit;
+    font-style: italic;
+    font-size: 0.78rem;
     outline: none;
-    transition: border-color 0.15s;
+    transition: color 0.15s;
 }
 
 .milestone-add-input:focus {
-    border-bottom-color: rgba(var(--acid-rgb), 0.3);
+    font-style: normal;
+    color: var(--bone);
 }
 
 .milestone-add-input::placeholder {
     color: var(--bone);
+    opacity: 0.4;
+    font-style: italic;
+}
+
+.milestone-add-input:focus::placeholder {
     opacity: 0.25;
 }
 
@@ -2424,7 +2430,7 @@ body.filtering .task-card.filtered-out {
     box-shadow:
         0 16px 48px rgba(0, 0, 0, 0.5),
         0 2px 8px rgba(0, 0, 0, 0.4);
-    padding: 36px 40px;
+    padding: 22px 26px;
     animation: new-task-card-in 0.22s cubic-bezier(0.2, 0, 0, 1);
 }
 
@@ -2538,20 +2544,20 @@ body.filtering .task-card.filtered-out {
     background: none;
     border: none;
     color: var(--bone);
-    opacity: 0.45;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.72rem;
+    opacity: 0.4;
+    font-family: inherit;
+    font-style: italic;
+    font-size: 0.82rem;
     cursor: pointer;
     padding: 0;
-    margin: 16px 0 0 30px;
-    letter-spacing: 0.03em;
+    margin: 12px 0 0 30px;
     text-align: left;
     display: block;
     transition: opacity 0.15s, color 0.15s;
 }
 
 .new-task-description-trigger:hover {
-    opacity: 0.9;
+    opacity: 0.85;
     color: var(--acid);
 }
 
@@ -2608,8 +2614,8 @@ body.filtering .task-card.filtered-out {
 
 /* Footer pills + actions */
 .task-card.new-task-card .task-footer {
-    margin-top: 24px;
-    padding-top: 18px;
+    margin-top: 18px;
+    padding-top: 14px;
     border-top: 1px solid rgba(var(--white-rgb), 0.07);
 }
 

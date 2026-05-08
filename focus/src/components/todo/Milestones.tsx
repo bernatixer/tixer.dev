@@ -67,7 +67,7 @@ export const MilestonesSection: FC<MilestonesSectionProps> = ({
             value={newMilestoneText}
             onChange={e => onNewMilestoneTextChange(e.target.value)}
             onKeyDown={onNewMilestoneKeyDown}
-            placeholder="+ Add milestone..."
+            placeholder="Add milestone…"
             onClick={e => e.stopPropagation()}
           />
           {!isActive && newMilestoneText.trim() && (
