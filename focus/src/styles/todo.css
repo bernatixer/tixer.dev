@@ -1234,7 +1234,7 @@ body.filtering .task-card.filtered-out {
 
 .task-expanded-content {
     margin-top: 12px;
-    padding-top: 12px;
+    padding: 12px 6px 0 6px;
     border-top: 1px solid rgba(var(--white-rgb), 0.06);
 }
 
@@ -1371,7 +1371,7 @@ body.filtering .task-card.filtered-out {
     align-items: center;
     gap: 8px;
     margin-top: 4px;
-    padding: 2px 0 2px 22px; /* align under milestone text (after checkbox + gap) */
+    padding: 2px 0;
 }
 
 .add-subtask-input {
