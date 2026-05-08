@@ -1250,22 +1250,21 @@ body.filtering .task-card.filtered-out {
 }
 
 .task-description {
-    font-size: 0.8rem;
-    line-height: 1.5;
+    font-size: 0.82rem;
+    line-height: 1.55;
     color: var(--bone);
-    opacity: 0.8;
-    cursor: pointer;
-    padding: 8px;
-    background: rgba(var(--white-rgb), 0.02);
-    border: 1px solid transparent;
-    transition: all 0.15s;
+    opacity: 0.82;
+    cursor: text;
+    padding: 4px 0;
+    background: transparent;
+    border: none;
+    transition: opacity 0.15s;
     overflow-wrap: anywhere;
     white-space: pre-wrap;
 }
 
 .task-description:hover {
-    background: rgba(var(--white-rgb), 0.04);
-    border-color: rgba(var(--white-rgb), 0.1);
+    opacity: 1;
 }
 
 .task-description.empty {
@@ -1273,16 +1272,20 @@ body.filtering .task-card.filtered-out {
     font-style: italic;
 }
 
+.task-description.empty:hover {
+    opacity: 0.6;
+}
+
 .task-description-input {
     width: 100%;
     box-sizing: border-box;
-    padding: 8px;
-    background: rgba(var(--white-rgb), 0.05);
-    border: 1px solid var(--acid);
+    padding: 4px 0;
+    background: transparent;
+    border: none;
     color: var(--bone);
     font-family: inherit;
-    font-size: 0.8rem;
-    line-height: 1.5;
+    font-size: 0.82rem;
+    line-height: 1.55;
     resize: vertical;
     min-height: 60px;
     outline: none;
@@ -1365,47 +1368,56 @@ body.filtering .task-card.filtered-out {
 /* Add subtask */
 .add-subtask-section {
     display: flex;
+    align-items: center;
     gap: 8px;
-    margin-top: 12px;
+    margin-top: 4px;
+    padding: 2px 0 2px 22px; /* align under milestone text (after checkbox + gap) */
 }
 
 .add-subtask-input {
     flex: 1;
-    padding: 8px 10px;
-    background: rgba(var(--white-rgb), 0.03);
-    border: 1px dashed rgba(var(--white-rgb), 0.15);
+    padding: 4px 0;
+    background: transparent;
+    border: none;
     color: var(--bone);
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.7rem;
+    font-family: inherit;
+    font-style: italic;
+    font-size: 0.78rem;
     outline: none;
-    transition: all 0.15s;
+    transition: color 0.15s;
 }
 
 .add-subtask-input:focus {
-    border-style: solid;
-    border-color: rgba(var(--white-rgb), 0.3);
-    background: rgba(var(--white-rgb), 0.05);
+    font-style: normal;
 }
 
 .add-subtask-input::placeholder {
     color: var(--bone);
     opacity: 0.4;
+    font-style: italic;
+}
+
+.add-subtask-input:focus::placeholder {
+    opacity: 0.25;
 }
 
 .add-subtask-btn {
-    padding: 8px 12px;
+    padding: 4px 12px;
     background: var(--acid);
     border: none;
     color: var(--void);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.65rem;
+    font-size: 0.62rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
     font-weight: 600;
     cursor: pointer;
+    border-radius: 999px;
     transition: opacity 0.15s;
 }
 
 .add-subtask-btn:hover {
-    opacity: 0.8;
+    opacity: 0.85;
 }
 
 /* ============================================
