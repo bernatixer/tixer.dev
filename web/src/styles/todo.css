@@ -2616,21 +2616,20 @@ body.filtering .task-card.filtered-out {
     font-size: 0.7rem;
 }
 
-/* Hidden version tag — bottom-right corner, only shows on hover */
+/* Hidden version tag — bottom-right corner, faint until hovered */
 .version-tag {
     position: fixed;
     bottom: 6px;
-    right: 8px;
+    right: 10px;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.55rem;
+    font-size: 0.6rem;
     color: rgba(var(--white-rgb), 1);
-    opacity: 0.1;
-    pointer-events: auto;
+    opacity: 0.25;
     user-select: text;
     transition: opacity 0.2s;
-    z-index: 1;
+    z-index: 100;
 }
 
 .version-tag:hover {
-    opacity: 0.5;
+    opacity: 0.75;
 }
