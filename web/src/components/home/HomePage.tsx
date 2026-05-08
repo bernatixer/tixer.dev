@@ -3,7 +3,6 @@
 // ============================================
 
 import { FC, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
 import { useTheme } from '@/hooks'
 import type { ThemeId } from '@/styles/theme'
 import '@/styles/home.css'
@@ -126,7 +125,7 @@ export const HomePage: FC = () => {
           <a href="https://github.com/bernatixer" target="_blank" rel="noopener">
             GitHub
           </a>
-          <Link to="/todo">Focus</Link>
+          <a href="https://focus.tixer.dev">Focus</a>
         </div>
         <p className="footer-text">© 2025</p>
       </footer>

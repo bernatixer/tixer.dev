@@ -20,8 +20,7 @@ import type { Env, Variables } from "./types";
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 const ALLOWED_ORIGINS = new Set([
-  "https://tixer.dev",
-  "https://www.tixer.dev",
+  "https://focus.tixer.dev",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
 ]);

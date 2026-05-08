@@ -4,7 +4,6 @@
 
 import { FC, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
 import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
 import { useFilter, useAuthSync } from '@/hooks'
 import { useTasks } from '@/hooks/useTasks'
@@ -43,9 +42,9 @@ const VersionTag: FC = () => {
 const TopBar: FC = () => {
   return (
     <div className="top-bar">
-      <Link to="/" className="back-link">
+      <a href="https://tixer.dev" className="back-link">
         Back to home
-      </Link>
+      </a>
       <div className="top-bar-right">
         <UserButton
           appearance={{
