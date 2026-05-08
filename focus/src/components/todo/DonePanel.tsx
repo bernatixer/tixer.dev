@@ -47,11 +47,15 @@ export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
   const [limit, setLimit] = useState(DONE_PAGE_SIZE)
   const [copiedLabel, setCopiedLabel] = useState<string | null>(null)
   const [aiStates, setAiStates] = useState<Record<string, AiState>>({})
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const aiAvailable = isAiEnabled()
   const { mutate: moveTask } = useMoveTask()
 
   useEffect(() => {
-    if (!isOpen) setAiStates({})
+    if (!isOpen) {
+      setAiStates({})
+      setExpandedId(null)
+    }
   }, [isOpen])
 
   // Reset limit when panel opens
@@ -195,22 +199,58 @@ export const DonePanel: FC<DonePanelProps> = ({ isOpen, onClose, tasks }) => {
                   )}
                 </div>
               </div>
-              {group.tasks.map(task => (
-                <div key={task.id} className="done-panel-item">
-                  <StatusCircle
-                    columnId="done"
-                    size={14}
-                    onChange={(newCol) => handleStatusChange(task, newCol)}
-                  />
-                  <span className="done-panel-title">{task.title}</span>
-                  <span className="done-panel-time">
-                    {new Date(task.completedAt ?? task.createdAt).toLocaleTimeString('en-US', {
-                      hour: 'numeric',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-              ))}
+              {group.tasks.map(task => {
+                const hasDetails = Boolean(task.description) || task.milestones.length > 0
+                const isExpanded = expandedId === task.id
+                return (
+                  <div key={task.id} className={`done-panel-item ${isExpanded ? 'expanded' : ''}`}>
+                    <div
+                      className={`done-panel-row ${hasDetails ? 'has-details' : ''}`}
+                      onClick={hasDetails ? () => setExpandedId(prev => prev === task.id ? null : task.id) : undefined}
+                    >
+                      <StatusCircle
+                        columnId="done"
+                        size={14}
+                        onChange={(newCol) => handleStatusChange(task, newCol)}
+                      />
+                      <span className="done-panel-title">{task.title}</span>
+                      <span className="done-panel-time">
+                        {new Date(task.completedAt ?? task.createdAt).toLocaleTimeString('en-US', {
+                          hour: 'numeric',
+                          minute: '2-digit',
+                        })}
+                      </span>
+                      {hasDetails && (
+                        <span className={`done-panel-chevron ${isExpanded ? 'open' : ''}`} aria-hidden>
+                          ⌄
+                        </span>
+                      )}
+                    </div>
+                    {isExpanded && hasDetails && (
+                      <div className="done-panel-details">
+                        {task.description && (
+                          <div className="done-panel-description">{task.description}</div>
+                        )}
+                        {task.milestones.length > 0 && (
+                          <ul className="done-panel-milestones">
+                            {task.milestones.map(m => (
+                              <li
+                                key={m.id}
+                                className={`done-panel-milestone ${m.completed ? 'completed' : ''}`}
+                              >
+                                <span className="done-panel-milestone-mark">
+                                  {m.completed ? '✓' : '·'}
+                                </span>
+                                <span>{m.text}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           ))}
           {hasMore && (

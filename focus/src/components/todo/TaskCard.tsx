@@ -436,6 +436,7 @@ export const TaskCard: FC<TaskCardProps> = memo(({
                 {task.title}
               </span>
             )}
+            <ExpandToggle expanded={expanded} onToggle={handleExpandToggle} />
           </div>
         </div>
 
@@ -466,9 +467,6 @@ export const TaskCard: FC<TaskCardProps> = memo(({
             )}
             {task.recurrence && <RecurringBadge recurrence={task.recurrence} />}
             <DueDateBadge dueDate={task.dueDate} onChange={handleDueDateChange} />
-          </div>
-          <div className="task-actions">
-            <ExpandToggle expanded={expanded} onToggle={handleExpandToggle} />
           </div>
         </div>
 

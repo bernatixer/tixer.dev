@@ -373,12 +373,19 @@
 }
 
 .section-sort-select {
+    appearance: none;
+    -webkit-appearance: none;
     background: rgba(var(--white-rgb), 0.04);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'><path d='M1 3l3 3 3-3' fill='none' stroke='rgb(255,255,255)' stroke-opacity='0.55' stroke-width='1.2' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 8px 8px;
     border: 1px solid rgba(var(--white-rgb), 0.1);
     color: var(--bone);
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.62rem;
-    padding: 5px 8px;
+    padding: 5px 22px 5px 8px;
+    line-height: 1;
     cursor: pointer;
 }
 
@@ -1246,6 +1253,8 @@ body.filtering .task-card.filtered-out {
     background: rgba(var(--white-rgb), 0.02);
     border: 1px solid transparent;
     transition: all 0.15s;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
 }
 
 .task-description:hover {
@@ -1260,6 +1269,7 @@ body.filtering .task-card.filtered-out {
 
 .task-description-input {
     width: 100%;
+    box-sizing: border-box;
     padding: 8px;
     background: rgba(var(--white-rgb), 0.05);
     border: 1px solid var(--acid);
@@ -1270,6 +1280,8 @@ body.filtering .task-card.filtered-out {
     resize: vertical;
     min-height: 60px;
     outline: none;
+    overflow-wrap: anywhere;
+    word-break: break-word;
 }
 
 /* Subtasks */
@@ -1904,16 +1916,90 @@ body.filtering .task-card.filtered-out {
 }
 
 .done-panel-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
     border-bottom: 1px solid rgba(var(--white-rgb), 0.04);
     transition: background 0.1s;
 }
 
+.done-panel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+}
+
+.done-panel-row.has-details {
+    cursor: pointer;
+}
+
 .done-panel-item:hover {
     background: rgba(var(--white-rgb), 0.03);
+}
+
+.done-panel-chevron {
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--bone);
+    opacity: 0.4;
+    transition: transform 0.15s, opacity 0.15s;
+    line-height: 1;
+}
+
+.done-panel-row.has-details:hover .done-panel-chevron {
+    opacity: 0.7;
+}
+
+.done-panel-chevron.open {
+    transform: rotate(180deg);
+}
+
+.done-panel-details {
+    padding: 0 12px 12px 36px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.done-panel-description {
+    font-size: 0.75rem;
+    line-height: 1.5;
+    color: var(--bone);
+    opacity: 0.7;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.done-panel-milestones {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.done-panel-milestone {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 0.72rem;
+    color: var(--bone);
+    opacity: 0.6;
+}
+
+.done-panel-milestone.completed {
+    opacity: 0.4;
+    text-decoration: line-through;
+}
+
+.done-panel-milestone-mark {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    color: var(--acid);
+    width: 10px;
+    flex-shrink: 0;
+}
+
+.done-panel-milestone.completed .done-panel-milestone-mark {
+    color: var(--acid);
 }
 
 .done-panel-title {
