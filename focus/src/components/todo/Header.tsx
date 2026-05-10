@@ -3,6 +3,7 @@
 // ============================================
 
 import { FC } from 'react'
+import { UserButton } from '@clerk/clerk-react'
 import { useTheme } from '@/hooks'
 import { buildTagMap } from '@/todo/types'
 import type { TagConfig, TagId } from '@/todo/types'
@@ -94,7 +95,7 @@ export const Header: FC<HeaderProps> = ({
     <header className="todo-header">
       <div className="header-left">
         <h1 className="todo-title">
-          <svg className="todo-title-logo" width="28" height="28" viewBox="0 0 256 256" fill="none" aria-hidden="true">
+          <svg className="todo-title-logo" width="22" height="22" viewBox="0 0 256 256" fill="none" aria-hidden="true">
             <defs>
               <linearGradient id="focus-ring" x1="72" y1="54" x2="196" y2="214" gradientUnits="userSpaceOnUse">
                 <stop offset="0" stopColor="#5A5A5A" />
@@ -125,6 +126,9 @@ export const Header: FC<HeaderProps> = ({
           New Task
         </button>
         <ThemeToggle />
+        <UserButton
+          appearance={{ elements: { avatarBox: 'user-avatar' } }}
+        />
       </div>
     </header>
   )

@@ -65,6 +65,27 @@ export interface CreateTagRequest {
   color: string;
 }
 
+export interface WeeklyGoal {
+  id: string;
+  weekStart: string;     // ISO date, Monday (YYYY-MM-DD)
+  title: string;
+  target: number;
+  progress: number;
+  recurring: boolean;
+  order: number;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface CreateWeeklyGoalRequest {
+  weekStart?: string;    // defaults to current week on the server
+  title: string;
+  target?: number;
+  progress?: number;
+  recurring?: boolean;
+  order?: number;
+}
+
 export interface Env {
   DB: D1Database;
   CLERK_PEM_PUBLIC_KEY: string;

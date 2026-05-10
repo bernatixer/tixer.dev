@@ -19,6 +19,13 @@ export {
 export { useTags, useCreateTag } from './useTags'
 
 export {
+  useWeeklyGoals,
+  useCreateWeeklyGoal,
+  useUpdateWeeklyGoal,
+  useDeleteWeeklyGoal,
+} from './useWeeklyGoals'
+
+export {
   useFocusMode,
   useCompactMode,
   useFilter,

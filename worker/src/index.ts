@@ -15,6 +15,12 @@ import {
   listTasks,
   updateTask,
 } from "./handlers/tasks";
+import {
+  createWeeklyGoal,
+  deleteWeeklyGoal,
+  listWeeklyGoals,
+  updateWeeklyGoal,
+} from "./handlers/weeklyGoals";
 import type { Env, Variables } from "./types";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -47,6 +53,10 @@ protectedApp.delete("/tasks/:id", deleteTask);
 protectedApp.get("/tags", listTags);
 protectedApp.post("/tags", createTag);
 protectedApp.delete("/tags/:id", deleteTag);
+protectedApp.get("/weekly-goals", listWeeklyGoals);
+protectedApp.post("/weekly-goals", createWeeklyGoal);
+protectedApp.put("/weekly-goals/:id", updateWeeklyGoal);
+protectedApp.delete("/weekly-goals/:id", deleteWeeklyGoal);
 protectedApp.post("/ai/parse-task", parseTask);
 protectedApp.post("/ai/daily-standup", dailyStandup);
 

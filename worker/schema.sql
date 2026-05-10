@@ -31,3 +31,22 @@ CREATE TABLE IF NOT EXISTS tags (
 );
 
 CREATE INDEX IF NOT EXISTS idx_tags_user_id ON tags(user_id);
+
+-- Weekly goals — bono-loto style card displayed at the top of the board.
+-- A goal is either simple (target=1) or a counter (target>1). When
+-- `recurring=1`, the row is materialized for the next ISO-week-Monday with
+-- progress reset.
+CREATE TABLE IF NOT EXISTS weekly_goals (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    week_start TEXT NOT NULL,                       -- ISO date, Monday of the week (YYYY-MM-DD)
+    title TEXT NOT NULL,
+    target INTEGER NOT NULL DEFAULT 1,
+    progress INTEGER NOT NULL DEFAULT 0,
+    recurring INTEGER NOT NULL DEFAULT 0,           -- 1 = re-materialize next week
+    "order" INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    completed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_weekly_goals_user_week ON weekly_goals(user_id, week_start);

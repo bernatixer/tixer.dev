@@ -18,28 +18,28 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 32px;
-    padding: 20px 24px;
+    margin-bottom: 20px;
+    padding: 10px 16px;
     border: 1px solid rgba(var(--white-rgb), 0.08);
     background: rgba(var(--white-rgb), 0.02);
     flex-wrap: wrap;
-    gap: 16px;
+    gap: 12px;
 }
 
 .header-left {
     display: flex;
     align-items: center;
-    gap: 24px;
+    gap: 18px;
 }
 
 .todo-title {
-    font-size: 1.2rem;
+    font-size: 0.95rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .todo-title-logo {
@@ -51,15 +51,15 @@
 .header-controls {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .header-btn {
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     letter-spacing: 0.05em;
-    height: 36px;
-    padding: 0 14px;
+    height: 30px;
+    padding: 0 12px;
     background: transparent;
     border: 2px solid rgba(var(--white-rgb), 0.18);
     color: var(--bone);
@@ -124,8 +124,8 @@
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.7rem;
     letter-spacing: 0.05em;
-    height: 36px;
-    padding: 0 14px;
+    height: 30px;
+    padding: 0 12px;
     background: transparent;
     border: 2px solid var(--acid);
     color: var(--acid);
@@ -152,8 +152,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     background: transparent;
     border: 1px solid var(--acid);
     color: var(--acid);
@@ -166,6 +166,15 @@
     opacity: 1;
     background: var(--acid);
     color: var(--void);
+}
+
+/* Avatar inside header — match the control row height */
+.user-avatar,
+.user-avatar img,
+.cl-userButtonAvatarBox,
+.cl-userButtonAvatarBox img {
+    width: 28px !important;
+    height: 28px !important;
 }
 
 /* ============================================
@@ -2097,52 +2106,6 @@ body.filtering .task-card.filtered-out {
 }
 
 /* ============================================
-   TOP BAR
-   ============================================ */
-
-.top-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-
-.top-bar-right {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-}
-
-.user-avatar {
-    width: 36px;
-    height: 36px;
-    border: 2px solid var(--acid);
-    border-radius: 50%;
-    transition: box-shadow 0.2s ease;
-}
-
-.user-avatar:hover {
-    box-shadow: 0 0 12px rgba(var(--acid-rgb), 0.4);
-}
-
-.back-link {
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.7rem;
-    letter-spacing: 0.05em;
-    display: inline-block;
-    opacity: 0.5;
-}
-
-.back-link:hover {
-    opacity: 1;
-}
-
-.back-link::before {
-    content: '\2190';
-    margin-right: 8px;
-}
-
-/* ============================================
    SIGN IN PAGE
    ============================================ */
 
@@ -2811,4 +2774,547 @@ body.filtering .task-card.filtered-out {
 
 .version-tag:hover {
     opacity: 0.75;
+}
+
+/* ============================================
+   WEEKLY GOALS — bono-loto card
+   ============================================ */
+
+.weekly-goals {
+    margin-bottom: 24px;
+    padding: 16px 18px 18px;
+    border: 1px solid rgba(var(--white-rgb), 0.08);
+    background: rgba(var(--white-rgb), 0.015);
+    position: relative;
+}
+
+.weekly-goals--collapsed {
+    padding: 10px 18px;
+}
+
+.weekly-goals__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.weekly-goals--collapsed .weekly-goals__header {
+    margin-bottom: 0;
+}
+
+.weekly-goals__title-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.weekly-goals__collapse {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--bone);
+    cursor: pointer;
+    padding: 4px;
+    opacity: 0.4;
+    display: inline-flex;
+    align-items: center;
+    transition: opacity 0.15s;
+}
+
+.weekly-goals__collapse:hover {
+    opacity: 0.8;
+}
+
+.weekly-goals__label {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--acid);
+}
+
+.weekly-goals__range {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: var(--bone);
+    opacity: 0.55;
+}
+
+.weekly-goals__trophy {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.62rem;
+    letter-spacing: 0.18em;
+    color: var(--void);
+    background: var(--acid);
+    padding: 3px 8px;
+    margin-left: 4px;
+    animation: wg-pulse 2.6s ease-in-out infinite;
+}
+
+.weekly-goals__trophy-icon {
+    display: block;
+    flex-shrink: 0;
+}
+
+@keyframes wg-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--acid-rgb), 0.5); }
+    50% { box-shadow: 0 0 0 6px rgba(var(--acid-rgb), 0); }
+}
+
+.weekly-goals__meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.weekly-goals__tally {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.95rem;
+    letter-spacing: 0.04em;
+    color: var(--bone);
+    display: inline-flex;
+    align-items: baseline;
+    gap: 1px;
+}
+
+.weekly-goals__tally-num {
+    color: var(--acid);
+    font-weight: 600;
+}
+
+.weekly-goals__tally-divider {
+    opacity: 0.3;
+    margin: 0 2px;
+}
+
+.weekly-goals__tally-den {
+    opacity: 0.55;
+}
+
+.weekly-goals__tally--won .weekly-goals__tally-num,
+.weekly-goals__tally--won .weekly-goals__tally-den,
+.weekly-goals__tally--won .weekly-goals__tally-divider {
+    color: var(--acid);
+    opacity: 1;
+}
+
+.weekly-goals__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+}
+
+.weekly-goals__loading {
+    grid-column: 1 / -1;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.7rem;
+    color: var(--bone);
+    opacity: 0.4;
+    padding: 24px;
+    text-align: center;
+}
+
+/* ============================================
+   WEEKLY GOAL CELL
+   ============================================ */
+
+.wg-cell {
+    appearance: none;
+    position: relative;
+    height: 96px;
+    padding: 10px 10px 8px;
+    border: 1.5px solid rgba(var(--white-rgb), 0.14);
+    background: rgba(var(--white-rgb), 0.03);
+    color: var(--bone);
+    cursor: pointer;
+    overflow: hidden;
+    text-align: left;
+    transition: border-color 0.15s, transform 0.08s;
+    font-family: inherit;
+    display: flex;
+    flex-direction: column;
+}
+
+.wg-cell:hover {
+    border-color: rgba(var(--acid-rgb), 0.55);
+}
+
+.wg-cell:active {
+    transform: scale(0.98);
+}
+
+.wg-cell--open {
+    border-color: var(--acid);
+    box-shadow: 0 0 0 1px rgba(var(--acid-rgb), 0.4);
+}
+
+.wg-cell__fill {
+    position: absolute;
+    inset: 0;
+    background: rgba(var(--acid-rgb), 0.16);
+    transform-origin: bottom;
+    transform: scaleY(0);
+    transition: transform 0.25s ease;
+    pointer-events: none;
+}
+
+.wg-cell--complete {
+    border-color: var(--acid);
+    background: var(--acid);
+    color: var(--void);
+}
+
+.wg-cell--complete .wg-cell__fill {
+    background: var(--acid);
+    transform: scaleY(1);
+}
+
+.wg-cell--complete:hover {
+    border-color: var(--acid);
+    filter: brightness(1.05);
+}
+
+.wg-cell__content {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    z-index: 1;
+}
+
+.wg-cell__title {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.62rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
+    opacity: 0.85;
+}
+
+.wg-cell--complete .wg-cell__title {
+    opacity: 0.7;
+    font-weight: 600;
+}
+
+.wg-cell__state {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.wg-cell__counter {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--acid);
+}
+
+.wg-cell--partial .wg-cell__counter {
+    color: var(--acid);
+}
+
+.wg-cell--complete .wg-cell__counter {
+    color: var(--void);
+}
+
+.wg-cell__divider {
+    opacity: 0.4;
+    margin: 0 1px;
+}
+
+.wg-cell__simple {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 1.4rem;
+    color: var(--bone);
+    opacity: 0.2;
+    line-height: 0.6;
+}
+
+.wg-cell__badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bone);
+    opacity: 0.35;
+    z-index: 2;
+}
+
+.wg-cell--complete .wg-cell__badge {
+    color: var(--void);
+    opacity: 0.55;
+}
+
+/* Add cell */
+.wg-cell--add {
+    border-style: dashed;
+    border-color: rgba(var(--white-rgb), 0.18);
+    background: transparent;
+    color: var(--bone);
+    opacity: 0.55;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.15s, border-color 0.15s;
+}
+
+.wg-cell--add:hover {
+    opacity: 1;
+    border-color: var(--acid);
+    color: var(--acid);
+}
+
+.wg-cell__add-plus {
+    font-size: 1.6rem;
+    line-height: 1;
+    font-weight: 300;
+}
+
+.wg-cell__add-label {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.55rem;
+    letter-spacing: 0.18em;
+    margin-top: 6px;
+}
+
+/* Whole-row "you won" effect */
+.weekly-goals__grid--won .wg-cell--complete {
+    box-shadow: 0 0 12px rgba(var(--acid-rgb), 0.25);
+}
+
+/* ============================================
+   WEEKLY GOAL MODAL
+   ============================================ */
+
+.wg-modal {
+    padding: 18px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 420px;
+    max-width: 480px;
+}
+
+.wg-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.wg-modal__heading {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--acid);
+}
+
+.wg-modal__close {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: var(--bone);
+    opacity: 0.4;
+    font-size: 1.3rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+}
+
+.wg-modal__close:hover {
+    opacity: 1;
+}
+
+.wg-modal__title-input {
+    appearance: none;
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(var(--white-rgb), 0.15);
+    color: var(--bone);
+    padding: 6px 0;
+    font-family: inherit;
+    font-size: 1.05rem;
+    letter-spacing: 0.01em;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.wg-modal__title-input:focus {
+    border-bottom-color: var(--acid);
+}
+
+.wg-modal__title-input::placeholder {
+    color: var(--bone);
+    opacity: 0.3;
+}
+
+.wg-modal__kind {
+    display: inline-flex;
+    border: 1px solid rgba(var(--white-rgb), 0.12);
+    align-self: flex-start;
+}
+
+.wg-modal__kind-btn {
+    appearance: none;
+    background: transparent;
+    border: none;
+    border-right: 1px solid rgba(var(--white-rgb), 0.12);
+    color: var(--bone);
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    padding: 8px 14px;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: all 0.15s;
+}
+
+.wg-modal__kind-btn:last-child {
+    border-right: none;
+}
+
+.wg-modal__kind-btn:hover {
+    opacity: 0.85;
+}
+
+.wg-modal__kind-btn.active {
+    background: var(--acid);
+    color: var(--void);
+    opacity: 1;
+}
+
+.wg-modal__hint {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.65rem;
+    color: var(--bone);
+    opacity: 0.5;
+    line-height: 1.5;
+}
+
+.wg-modal__field-label {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--bone);
+    opacity: 0.55;
+    margin-right: 12px;
+}
+
+.wg-modal__counter {
+    display: flex;
+    align-items: center;
+}
+
+.wg-modal__counter-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.wg-modal__counter-btn {
+    appearance: none;
+    width: 30px;
+    height: 30px;
+    border: 1px solid rgba(var(--acid-rgb), 0.5);
+    background: transparent;
+    color: var(--acid);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.15s;
+}
+
+.wg-modal__counter-btn:hover:not(:disabled) {
+    background: var(--acid);
+    color: var(--void);
+}
+
+.wg-modal__counter-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.wg-modal__counter-value {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 1.1rem;
+    color: var(--bone);
+    min-width: 24px;
+    text-align: center;
+}
+
+.wg-modal__recurring {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    color: var(--bone);
+    opacity: 0.85;
+    cursor: pointer;
+}
+
+.wg-modal__recurring input[type="checkbox"] {
+    width: 14px;
+    height: 14px;
+    accent-color: var(--acid);
+    cursor: pointer;
+}
+
+.wg-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.wg-modal__delete-btn {
+    appearance: none;
+    margin-right: auto;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    padding: 7px 12px;
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    background: transparent;
+    color: var(--priority-urgent);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.wg-modal__delete-btn:hover {
+    background: rgba(255, 68, 68, 0.1);
+    border-color: var(--priority-urgent);
+}
+
+@media (max-width: 540px) {
+    .wg-modal {
+        min-width: auto;
+        width: 92vw;
+    }
+    .weekly-goals__grid {
+        grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+    }
+    .wg-cell {
+        height: 84px;
+    }
 }

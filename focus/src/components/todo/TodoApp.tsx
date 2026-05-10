@@ -4,7 +4,7 @@
 
 import { FC, useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { SignedIn, SignedOut, UserButton } from '@clerk/clerk-react'
+import { SignedIn, SignedOut } from '@clerk/clerk-react'
 import { useFilter, useAuthSync } from '@/hooks'
 import { useTasks } from '@/hooks/useTasks'
 import { useTags } from '@/hooks/useTags'
@@ -14,6 +14,7 @@ import { NewTaskModal } from './NewTaskModal'
 import { BlockTaskModal } from './BlockTaskModal'
 import { DonePanel } from './DonePanel'
 import { SignInPage } from './SignInPage'
+import { WeeklyGoals } from './WeeklyGoals'
 import { get } from '@/api'
 import { mergeTagsWithTaskUsage } from '@/todo/types'
 import type { TagConfig, Task } from '@/todo/types'
@@ -31,29 +32,6 @@ const VersionTag: FC = () => {
   return (
     <div className="version-tag" title={`web ${__APP_VERSION__} · api ${backend}`}>
       {__APP_VERSION__} · {backendShort}
-    </div>
-  )
-}
-
-// ============================================
-// TOP BAR
-// ============================================
-
-const TopBar: FC = () => {
-  return (
-    <div className="top-bar">
-      <a href="https://tixer.dev" className="back-link">
-        Back to home
-      </a>
-      <div className="top-bar-right">
-        <UserButton
-          appearance={{
-            elements: {
-              avatarBox: 'user-avatar',
-            },
-          }}
-        />
-      </div>
     </div>
   )
 }
@@ -105,6 +83,8 @@ const TodoContent: FC = () => {
         onOpenDone={() => setIsDonePanelOpen(true)}
       />
 
+      <WeeklyGoals enabled={isReady} />
+
       <TodoBoard
         activeFilter={activeFilter}
         availableTags={availableTags}
@@ -151,7 +131,6 @@ export const TodoApp: FC = () => {
       </SignedOut>
       <SignedIn>
         <div className="todo-container">
-          <TopBar />
           <TodoContent />
           <VersionTag />
         </div>

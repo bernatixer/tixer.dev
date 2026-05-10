@@ -11,6 +11,7 @@ import type {
   Tag,
   Task,
   TaskType,
+  WeeklyGoal,
 } from "./types";
 
 interface TaskRow {
@@ -86,4 +87,31 @@ export function rowToTag(row: TagRow): Tag {
   };
 }
 
-export type { TaskRow, TagRow };
+interface WeeklyGoalRow {
+  id: string;
+  user_id: string;
+  week_start: string;
+  title: string;
+  target: number;
+  progress: number;
+  recurring: number;
+  order: number;
+  created_at: string;
+  completed_at: string | null;
+}
+
+export function rowToWeeklyGoal(row: WeeklyGoalRow): WeeklyGoal {
+  return {
+    id: row.id,
+    weekStart: row.week_start,
+    title: row.title,
+    target: row.target,
+    progress: row.progress,
+    recurring: row.recurring === 1,
+    order: row.order,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
+  };
+}
+
+export type { TaskRow, TagRow, WeeklyGoalRow };
