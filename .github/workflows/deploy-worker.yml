@@ -31,6 +31,18 @@ jobs:
 
       - run: pnpm typecheck
 
+      # Idempotent — schema.sql is all CREATE … IF NOT EXISTS. Runs before
+      # deploy so a failed migration blocks the worker from shipping against
+      # a stale schema.
+      - name: Apply D1 schema (remote)
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          packageManager: pnpm
+          command: d1 execute DB --remote --file=schema.sql
+
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
