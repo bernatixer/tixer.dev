@@ -1,0 +1,99 @@
+# AGENTS.md
+
+Context for AI assistants working in this repo. Read this before diving into a task — it captures things that aren't obvious from the code or the README, plus durable user preferences.
+
+## What this repo is
+
+Three independently-deployed pieces sharing one repo and one domain root:
+
+- **`web/`** — React+Vite landing page at `tixer.dev`. Hosted on **GitHub Pages**. Built output lives in committed `docs/` directory.
+- **`focus/`** — React+Vite kanban + weekly-goals app at `focus.tixer.dev`. Hosted on **Cloudflare Pages** (project name `focus-tixer-dev`).
+- **`worker/`** — Cloudflare Worker + D1 API serving `/api/*`. Hono framework. Auth via Clerk JWT (RS256).
+
+No shared bundle, no shared runtime, no shared auth. Treat them as three apps that happen to live in one repo.
+
+## Tech stack quick reference
+
+- React 18, Vite, TanStack Query, Clerk, Hono, Cloudflare D1, pnpm.
+- AI tasks parser proxies through the worker to **z.ai / GLM-4.5-flash** (`worker/src/handlers/ai.ts`).
+- `focus/` is a PWA (`vite-plugin-pwa`).
+- No monorepo tooling — each subdir has its own `package.json` and lockfile. Don't introduce workspaces without asking.
+
+## Deliberate duplication — DO NOT factor out
+
+The user has explicitly stated they want these as separate files in each app:
+
+- `web/src/styles/shared.css` ≡ `focus/src/styles/shared.css`
+- `web/src/styles/theme.ts` ≡ `focus/src/styles/theme.ts`
+- `web/src/hooks/useTheme.tsx` ≡ `focus/src/hooks/useTheme.tsx`
+
+These are byte-identical right now. **Do not propose extracting them** into a shared package or symlink. If a token changes, update both copies manually.
+
+Why the user keeps it this way: keeps the two apps fully independent and independently deployable, with zero shared build / bundle / dependency surface.
+
+## Deploy — how things actually ship
+
+### Worker (`worker/**` change → push to main)
+- `.github/workflows/deploy-worker.yml`
+- Steps: `pnpm install` → `pnpm typecheck` → `wrangler d1 execute DB --remote --file=schema.sql` → `wrangler deploy`
+- The D1 schema apply step is **in CI** — it runs before deploy, so a broken migration blocks the deploy. Schema is fully idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`).
+
+### Focus (`focus/**` change → push to main)
+- `.github/workflows/deploy-focus.yml`
+- Builds with secrets `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_API_URL` → `wrangler pages deploy dist --project-name=focus-tixer-dev`.
+- In production builds, `VITE_MOCK_GOALS` defaults to `0` so Focus hits the real worker. Mock is dev-only.
+
+### Landing page (web/) — manual
+- No CI. Build locally (`cd web && pnpm build` → outputs to `../docs/`), commit the `docs/` diff, push. GitHub Pages serves `/docs` on `main`.
+
+## D1 / schema conventions
+
+- Single `worker/schema.sql` file, all idempotent statements. No incremental migrations.
+- `ALTER` is not captured anywhere — if a column changes shape, you need to run it manually and update `schema.sql` to match.
+- Tasks store milestones in a column historically named `subtasks` (JSON array). The API accepts both `milestones` and `subtasks` on input for back-compat with the old Rust backend. Externally / in TypeScript types it's `milestones`.
+- All dates are RFC3339 / ISO strings over the wire. Enum strings are lowercase.
+
+Tables:
+- `tasks` — main task records, includes `milestones` (stored as `subtasks` column), tags (JSON), blocked-by (JSON or null).
+- `tags` — user-owned tag definitions with `name`, `color`.
+- `weekly_goals` — bono-loto card rows, keyed by `(user_id, week_start)`. `target=1` means simple goal, `target>1` means counter. `recurring=1` rows auto-rematerialize on the first read of a new week.
+
+## Local dev — gotchas
+
+- Both `web` and `focus` use port 3000 by default. Don't run them at the same time without changing the port.
+- Worker dev runs on port 5555 (`wrangler dev`).
+- Focus reads `VITE_API_URL`, defaulting to `http://localhost:5555/api`.
+- `VITE_MOCK_GOALS=1` (default in dev) makes Focus skip the API entirely for Weekly Goals and use a localStorage-backed mock. Storage key: `focus.mock.weeklyGoals.v2`. Seeded key: `focus.mock.weeklyGoals.seeded.v2`. Bump the version suffix to re-seed.
+
+## Style conventions
+
+- Mostly functional React, hooks, named exports.
+- CSS files per app — `shared.css` for tokens, `home.css` (web) and `todo.css` (focus) for app-specific. No CSS-in-JS, no Tailwind.
+- CSS class names use BEM-ish naming for new components (`.weekly-goals__header`, `.wg-cell--complete`).
+- Comments are sparse and explain *why* — don't write narrative docstrings.
+- Mono labels use `var(--font-mono, 'JetBrains Mono', monospace)`.
+- Icons inline SVG, `viewBox="0 0 24 24"` is typical. Bold filled silhouettes match the aesthetic better than outlined-line icons.
+
+## Things to ask before doing
+
+- Direct push to `main` (auto-deploys to production).
+- Running `wrangler d1 execute … --remote` (touches prod database).
+- Force-pushing anything.
+- Introducing new dependencies, especially anything that changes the build surface.
+
+## Things the user is fine with you doing without asking
+
+- Local edits, type-checks, dev server runs.
+- Committing locally (the user reviews before pushing).
+- Adding/removing files in any of the three apps.
+- Iterating on UI when there's already a dev server running.
+
+## Recent work history (so you don't repeat it)
+
+- **Weekly Goals feature** — shipped 2026-05-10. Lives at the top of the Focus board. Cells fill bottom-up as a progress thermometer; turn solid acid-green when complete. Right-click a cell opens the edit modal; left-click on simple goals toggles, on counters increments. Recurring goals auto-rematerialize Monday. See `focus/src/components/todo/WeeklyGoals.tsx`, `WeeklyGoalModal.tsx`, `focus/src/todo/goals.ts`.
+- **Header slim** — folded the Clerk avatar into the Focus header bar (was previously a separate `TopBar` with a "Back to home" link, both removed). Header is now one tight row.
+- **D1 schema apply in CI** — added to `deploy-worker.yml` so the production DB is always in sync with `schema.sql` on every worker deploy.
+
+## What's currently mock vs real
+
+- `weekly_goals` table exists in production D1 and the `/api/weekly-goals` endpoints are live, but in **dev** Focus uses the localStorage mock by default. To test the real API path locally, set `VITE_MOCK_GOALS=0` and have the worker running.
