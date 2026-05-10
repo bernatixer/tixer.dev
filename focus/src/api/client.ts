@@ -1,6 +1,13 @@
 // ============================================
 // API CLIENT - Base Fetch Wrapper with Auth
 // ============================================
+//
+// The auth token is resolved per-request via a provider registered by
+// `useAuthSync`. We deliberately don't cache the token in a module
+// variable: Clerk's `getToken()` already caches and refreshes
+// transparently, and going through it on each request means a request
+// issued right after the tab wakes from sleep can never carry an
+// expired JWT.
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5555/api'
 
@@ -15,17 +22,15 @@ export class ApiError extends Error {
 }
 
 // ============================================
-// TOKEN STORAGE
+// TOKEN PROVIDER
 // ============================================
 
-let authToken: string | null = null
+type TokenProvider = () => Promise<string | null>
 
-export function setAuthToken(token: string | null) {
-  authToken = token
-}
+let tokenProvider: TokenProvider | null = null
 
-export function getAuthToken(): string | null {
-  return authToken
+export function setTokenProvider(provider: TokenProvider | null) {
+  tokenProvider = provider
 }
 
 // ============================================
@@ -40,9 +45,9 @@ async function fetchApi<TResponse>(
     'Content-Type': 'application/json',
   }
 
-  // Add Authorization header if token is available
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`
+  const token = tokenProvider ? await tokenProvider() : null
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
   }
 
   const response = await fetch(`${API_BASE}${endpoint}`, {
