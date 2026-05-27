@@ -56,7 +56,23 @@ async function fetchApi<TResponse>(
   })
 
   if (!response.ok) {
-    throw new ApiError(response.status, `API error: ${response.status}`)
+    // Try to extract a meaningful error message from the response body.
+    // Most of our worker handlers return { error: "..." } JSON on failure.
+    let message = `API error: ${response.status}`
+    try {
+      const body = await response.text()
+      if (body) {
+        try {
+          const parsed = JSON.parse(body)
+          message = parsed.error ?? parsed.message ?? body
+        } catch {
+          message = body
+        }
+      }
+    } catch {
+      // ignore body read failures
+    }
+    throw new ApiError(response.status, message)
   }
 
   // Handle empty responses

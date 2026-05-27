@@ -3,6 +3,7 @@
 // ============================================
 
 import { FC } from 'react'
+import { Link } from 'react-router-dom'
 import { UserButton } from '@clerk/clerk-react'
 import { useTheme } from '@/hooks'
 import { buildTagMap } from '@/todo/types'
@@ -115,6 +116,11 @@ export const Header: FC<HeaderProps> = ({
           </svg>
           Focus
         </h1>
+        <nav className="nav-switcher">
+          <span className="nav-switcher__link nav-switcher__link--active">FOCUS</span>
+          <span className="nav-switcher__sep">·</span>
+          <Link to="/money" className="nav-switcher__link">MONEY</Link>
+        </nav>
       </div>
       <div className="header-controls">
         <FilterIndicator activeFilter={activeFilter} availableTags={availableTags} onClear={onClearFilter} />

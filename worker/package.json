@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "hono": "^4.6.14",
-    "jose": "^5.9.6"
+    "jose": "^5.9.6",
+    "posthog-node": "^5.35.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250109.0",
@@ -20,6 +21,9 @@
     "wrangler": "^3.99.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "workerd"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "workerd"
+    ]
   }
 }

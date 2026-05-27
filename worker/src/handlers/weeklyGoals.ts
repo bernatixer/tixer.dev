@@ -6,6 +6,7 @@ import type {
   Variables,
   WeeklyGoal,
 } from "../types";
+import { getPostHog, getPhSessionId } from "../posthog";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -145,6 +146,23 @@ export async function createWeeklyGoal(c: Ctx) {
     createdAt,
     completedAt,
   };
+
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    const sessionId = getPhSessionId(c);
+    await posthog.captureImmediate({
+      distinctId: userId,
+      event: "weekly goal created",
+      properties: {
+        goal_id: id,
+        week_start: weekStart,
+        target,
+        recurring: recurring === 1,
+        ...(sessionId ? { $session_id: sessionId } : {}),
+      },
+    });
+  }
+
   return c.json(goal, 201);
 }
 
@@ -187,6 +205,22 @@ export async function updateWeeklyGoal(c: Ctx) {
     return dbError(c, e);
   }
 
+  const posthog = getPostHog(c.env);
+  if (posthog && completedAt) {
+    const sessionId = getPhSessionId(c);
+    await posthog.captureImmediate({
+      distinctId: userId,
+      event: "weekly goal completed",
+      properties: {
+        goal_id: id,
+        week_start: body.weekStart,
+        target,
+        progress,
+        ...(sessionId ? { $session_id: sessionId } : {}),
+      },
+    });
+  }
+
   return c.json({ ...body, target, progress, completedAt });
 }
 
@@ -200,8 +234,22 @@ export async function deleteWeeklyGoal(c: Ctx) {
       .bind(id, userId)
       .run();
     if (!result.meta.changes) return c.json({ error: "Goal not found" }, 404);
-    return c.body(null, 204);
   } catch (e) {
     return dbError(c, e);
   }
+
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    const sessionId = getPhSessionId(c);
+    await posthog.captureImmediate({
+      distinctId: userId,
+      event: "weekly goal deleted",
+      properties: {
+        goal_id: id,
+        ...(sessionId ? { $session_id: sessionId } : {}),
+      },
+    });
+  }
+
+  return c.body(null, 204);
 }

@@ -86,14 +86,91 @@ export interface CreateWeeklyGoalRequest {
   order?: number;
 }
 
+// ============================================
+// BANK INTEGRATION — Enable Banking
+// ============================================
+
+export type BankSessionStatus = "active" | "expired" | "revoked";
+
+export interface BankSession {
+  id: string;
+  ebSessionId: string;
+  aspspName: string;
+  aspspCountry: string;
+  status: BankSessionStatus;
+  authorizedAt: string;
+  validUntil: string;
+  createdAt: string;
+}
+
+export interface BankAccount {
+  id: string;
+  sessionId: string;
+  ebAccountUid: string;
+  name: string | null;
+  ibanMasked: string | null;
+  currency: string;
+  lastSyncedAt: string | null;
+  createdAt: string;
+}
+
+export type BankCategory =
+  | "housing"
+  | "transport"
+  | "food"
+  | "clothing"
+  | "beauty"
+  | "decoration"
+  | "fitness"
+  | "travel"
+  | "leisure"
+  | "gifts"
+  | "investment"
+  // System-only:
+  | "income"
+  | "transfer"
+  | "other"; // default for any uncategorized transaction
+
+export type BankCategorySource = "derived" | "ai" | "manual";
+
+export interface BankTransaction {
+  id: string;
+  accountId: string;
+  ebTransactionId: string;
+  bookingDate: string;
+  valueDate: string | null;
+  amountCents: number;            // negative = outflow (original from bank)
+  userAmountCents: number | null; // override for splits / reimbursements
+  currency: string;
+  counterparty: string | null;
+  description: string | null;
+  category: BankCategory;
+  categorySource: BankCategorySource;
+  excluded: boolean;              // hidden from analytics but visible in table
+  spreadMonths: number | null;    // amortize over N months from bookingDate (null = no spread)
+  createdAt: string;
+}
+
+export interface SyncResult {
+  accountId: string;
+  newTransactions: number;
+  totalSeen: number;
+  lastSyncedAt: string;
+}
+
 export interface Env {
   DB: D1Database;
   CLERK_PEM_PUBLIC_KEY: string;
   CLERK_ISSUER_URL?: string;
   ZAI_API_KEY: string;
   COMMIT_SHA?: string;
+  ENABLE_BANKING_APP_ID?: string;
+  ENABLE_BANKING_PRIVATE_KEY?: string;
+  POSTHOG_API_KEY?: string;
+  POSTHOG_HOST?: string;
 }
 
 export interface Variables {
   userId: string;
+  phSessionId?: string;
 }

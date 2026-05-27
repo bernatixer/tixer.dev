@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { rowToTag, type TagRow, type TaskRow } from "../db";
 import type { CreateTagRequest, Env, Variables } from "../types";
+import { getPostHog, getPhSessionId } from "../posthog";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -44,6 +45,19 @@ export async function createTag(c: Ctx) {
     return dbError(c, e);
   }
 
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    const sessionId = getPhSessionId(c);
+    await posthog.captureImmediate({
+      distinctId: userId,
+      event: "tag created",
+      properties: {
+        tag_id: id,
+        ...(sessionId ? { $session_id: sessionId } : {}),
+      },
+    });
+  }
+
   return c.json({ id, name: body.name, color: body.color, createdAt }, 201);
 }
 
@@ -71,6 +85,19 @@ export async function deleteTag(c: Ctx) {
       await c.env.DB.prepare("UPDATE tasks SET tags = ? WHERE id = ? AND user_id = ?")
         .bind(JSON.stringify(filtered), row.id, userId)
         .run();
+    }
+
+    const posthog = getPostHog(c.env);
+    if (posthog) {
+      const sessionId = getPhSessionId(c);
+      await posthog.captureImmediate({
+        distinctId: userId,
+        event: "tag deleted",
+        properties: {
+          tag_id: id,
+          ...(sessionId ? { $session_id: sessionId } : {}),
+        },
+      });
     }
 
     return c.body(null, 204);

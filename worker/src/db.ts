@@ -3,6 +3,12 @@
 // lowercase enum strings as plain TEXT — we keep that exact representation.
 
 import type {
+  BankAccount,
+  BankCategory,
+  BankCategorySource,
+  BankSession,
+  BankSessionStatus,
+  BankTransaction,
   BlockedBy,
   ColumnId,
   Milestone,
@@ -114,4 +120,126 @@ export function rowToWeeklyGoal(row: WeeklyGoalRow): WeeklyGoal {
   };
 }
 
-export type { TaskRow, TagRow, WeeklyGoalRow };
+interface BankSessionRow {
+  id: string;
+  user_id: string;
+  eb_session_id: string;
+  aspsp_name: string;
+  aspsp_country: string;
+  status: string;
+  authorized_at: string;
+  valid_until: string;
+  created_at: string;
+}
+
+interface BankAccountRow {
+  id: string;
+  user_id: string;
+  session_id: string;
+  eb_account_uid: string;
+  name: string | null;
+  iban_masked: string | null;
+  currency: string;
+  last_synced_at: string | null;
+  created_at: string;
+}
+
+interface BankTransactionRow {
+  id: string;
+  user_id: string;
+  account_id: string;
+  eb_transaction_id: string;
+  booking_date: string;
+  value_date: string | null;
+  amount_cents: number;
+  user_amount_cents: number | null;
+  currency: string;
+  counterparty: string | null;
+  description: string | null;
+  category: string;
+  category_source: string;
+  excluded: number;
+  spread_months: number | null;
+  raw_json: string;
+  created_at: string;
+}
+
+const VALID_BANK_CATEGORIES: readonly BankCategory[] = [
+  "housing",
+  "transport",
+  "food",
+  "clothing",
+  "beauty",
+  "decoration",
+  "fitness",
+  "travel",
+  "leisure",
+  "gifts",
+  "investment",
+  "income",
+  "transfer",
+  "other",
+];
+
+const VALID_CATEGORY_SOURCES: readonly BankCategorySource[] = ["derived", "ai", "manual"];
+
+const VALID_BANK_STATUS: readonly BankSessionStatus[] = ["active", "expired", "revoked"];
+
+export function rowToBankSession(row: BankSessionRow): BankSession {
+  return {
+    id: row.id,
+    ebSessionId: row.eb_session_id,
+    aspspName: row.aspsp_name,
+    aspspCountry: row.aspsp_country,
+    status: asEnum(VALID_BANK_STATUS, row.status, "bank session status"),
+    authorizedAt: row.authorized_at,
+    validUntil: row.valid_until,
+    createdAt: row.created_at,
+  };
+}
+
+export function rowToBankAccount(row: BankAccountRow): BankAccount {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    ebAccountUid: row.eb_account_uid,
+    name: row.name,
+    ibanMasked: row.iban_masked,
+    currency: row.currency,
+    lastSyncedAt: row.last_synced_at,
+    createdAt: row.created_at,
+  };
+}
+
+export function rowToBankTransaction(row: BankTransactionRow): BankTransaction {
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    ebTransactionId: row.eb_transaction_id,
+    bookingDate: row.booking_date,
+    valueDate: row.value_date,
+    amountCents: row.amount_cents,
+    userAmountCents: row.user_amount_cents,
+    currency: row.currency,
+    counterparty: row.counterparty,
+    description: row.description,
+    category: VALID_BANK_CATEGORIES.includes(row.category as BankCategory)
+      ? (row.category as BankCategory)
+      : "other",
+    categorySource: VALID_CATEGORY_SOURCES.includes(row.category_source as BankCategorySource)
+      ? (row.category_source as BankCategorySource)
+      : "derived",
+    excluded: row.excluded === 1,
+    spreadMonths: row.spread_months ?? null,
+    createdAt: row.created_at,
+  };
+}
+
+export type {
+  TaskRow,
+  TagRow,
+  WeeklyGoalRow,
+  BankSessionRow,
+  BankAccountRow,
+  BankTransactionRow,
+};

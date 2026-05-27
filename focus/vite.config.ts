@@ -68,5 +68,8 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
+    // Allow ngrok dev tunnels (subdomain changes each session) so we can
+    // run OAuth flows against services that require HTTPS callbacks.
+    allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app', '.ngrok.io'],
   },
 })

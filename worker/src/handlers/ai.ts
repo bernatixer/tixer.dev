@@ -3,6 +3,7 @@
 
 import type { Context } from "hono";
 import type { Env, Variables } from "../types";
+import { getPostHog, getPhSessionId } from "../posthog";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -122,14 +123,31 @@ export async function parseTask(c: Ctx) {
     return c.json({ error: (e as Error).message }, 502);
   }
 
+  let parsed: unknown;
   try {
-    return c.json(JSON.parse(content));
+    parsed = JSON.parse(content);
   } catch (e) {
     return c.json(
       { error: `z.ai JSON parse error: ${(e as Error).message} - content: ${content}` },
       502,
     );
   }
+
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    const userId = c.get("userId");
+    const phSessionId = getPhSessionId(c);
+    await posthog.captureImmediate({
+      distinctId: userId,
+      event: "ai task parsed",
+      properties: {
+        available_tags_count: (body.availableTags ?? []).length,
+        ...(phSessionId ? { $session_id: phSessionId } : {}),
+      },
+    });
+  }
+
+  return c.json(parsed);
 }
 
 export async function dailyStandup(c: Ctx) {

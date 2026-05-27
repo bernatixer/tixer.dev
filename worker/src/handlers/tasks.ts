@@ -6,6 +6,7 @@ import type {
   Task,
   Variables,
 } from "../types";
+import { getPostHog, getPhSessionId } from "../posthog";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -130,6 +131,26 @@ export async function createTask(c: Ctx) {
     url,
     completedAt,
   };
+
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    const sessionId = getPhSessionId(c);
+    await posthog.captureImmediate({
+      distinctId: userId,
+      event: "task created",
+      properties: {
+        task_id: id,
+        task_type: taskType,
+        priority: body.priority,
+        column_id: body.columnId,
+        has_due_date: !!dueDate,
+        has_recurrence: !!recurrence,
+        tag_count: (body.tags ?? []).length,
+        ...(sessionId ? { $session_id: sessionId } : {}),
+      },
+    });
+  }
+
   return c.json(task, 201);
 }
 
@@ -193,6 +214,36 @@ export async function updateTask(c: Ctx) {
     return dbError(c, e);
   }
 
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    const sessionId = getPhSessionId(c);
+    const wasCompleted = existing.column_id !== "done" && body.columnId === "done";
+    if (wasCompleted) {
+      await posthog.captureImmediate({
+        distinctId: userId,
+        event: "task completed",
+        properties: {
+          task_id: id,
+          task_type: body.taskType ?? "task",
+          priority: body.priority,
+          ...(sessionId ? { $session_id: sessionId } : {}),
+        },
+      });
+    }
+    await posthog.captureImmediate({
+      distinctId: userId,
+      event: "task updated",
+      properties: {
+        task_id: id,
+        column_id: body.columnId,
+        previous_column_id: existing.column_id,
+        priority: body.priority,
+        task_type: body.taskType ?? "task",
+        ...(sessionId ? { $session_id: sessionId } : {}),
+      },
+    });
+  }
+
   return c.json({ ...body, completedAt });
 }
 
@@ -204,8 +255,22 @@ export async function deleteTask(c: Ctx) {
       .bind(id, userId)
       .run();
     if (!result.meta.changes) return c.json({ error: "Task not found" }, 404);
-    return c.body(null, 204);
   } catch (e) {
     return dbError(c, e);
   }
+
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    const sessionId = getPhSessionId(c);
+    await posthog.captureImmediate({
+      distinctId: userId,
+      event: "task deleted",
+      properties: {
+        task_id: id,
+        ...(sessionId ? { $session_id: sessionId } : {}),
+      },
+    });
+  }
+
+  return c.body(null, 204);
 }

@@ -5,6 +5,7 @@ import { ClerkProvider } from '@clerk/clerk-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from '@/hooks'
 import { TodoApp } from '@/components/todo'
+import { MoneyApp, BankCallback } from '@/components/money'
 import '@/styles/shared.css'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
@@ -34,6 +35,8 @@ if (container) {
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<TodoApp />} />
+                <Route path="/money" element={<MoneyApp />} />
+                <Route path="/bank/callback" element={<BankCallback />} />
                 <Route path="/sso-callback" element={<Navigate to="/" replace />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

@@ -53,6 +53,8 @@ export const requireAuth: MiddlewareHandler<{ Bindings: Env; Variables: Variable
       const sub = payload.sub;
       if (!sub) return unauthorized(c, "Invalid token: missing sub");
       c.set("userId", sub);
+      const phSessionId = c.req.header("x-posthog-session-id");
+      if (phSessionId) c.set("phSessionId", phSessionId);
     } catch (e) {
       return unauthorized(c, `Invalid token: ${(e as Error).message}`);
     }
