@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { requireAuth } from "./auth";
 import { health } from "./handlers/health";
+import { getPostHog } from "./posthog";
 import { dailyStandup, parseTask } from "./handlers/ai";
 import {
   createTag,
@@ -40,6 +41,14 @@ app.use(
     allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   }),
 );
+
+// Keep pending PostHog event delivery alive past the response — Workers cancels
+// in-flight fetches the moment the handler returns otherwise.
+app.use("*", async (c, next) => {
+  await next();
+  const posthog = getPostHog(c.env);
+  if (posthog) c.executionCtx.waitUntil(posthog.flush());
+});
 
 app.get("/api/health", health);
 

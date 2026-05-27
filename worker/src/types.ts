@@ -92,6 +92,8 @@ export interface Env {
   CLERK_ISSUER_URL?: string;
   ZAI_API_KEY: string;
   COMMIT_SHA?: string;
+  POSTHOG_KEY?: string;
+  POSTHOG_HOST?: string;
 }
 
 export interface Variables {

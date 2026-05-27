@@ -2,6 +2,7 @@
 // and forward the parsed JSON. Prompts copied verbatim from back/src/handlers/ai.rs.
 
 import type { Context } from "hono";
+import { getPostHog } from "../posthog";
 import type { Env, Variables } from "../types";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
@@ -101,6 +102,7 @@ export async function parseTask(c: Ctx) {
   if (!c.env.ZAI_API_KEY) {
     return c.json({ error: "ZAI_API_KEY not configured on server" }, 503);
   }
+  const userId = c.get("userId");
   let body: ParseTaskRequest;
   try {
     body = await c.req.json<ParseTaskRequest>();
@@ -119,11 +121,24 @@ export async function parseTask(c: Ctx) {
       400,
     );
   } catch (e) {
+    const posthog = getPostHog(c.env);
+    if (posthog) posthog.captureException(e, userId, { endpoint: "ai/parse-task" });
     return c.json({ error: (e as Error).message }, 502);
   }
 
   try {
-    return c.json(JSON.parse(content));
+    const result = JSON.parse(content);
+    const posthog = getPostHog(c.env);
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: "ai parse task",
+        properties: {
+          available_tag_count: (body.availableTags ?? []).length,
+        },
+      });
+    }
+    return c.json(result);
   } catch (e) {
     return c.json(
       { error: `z.ai JSON parse error: ${(e as Error).message} - content: ${content}` },
@@ -136,6 +151,7 @@ export async function dailyStandup(c: Ctx) {
   if (!c.env.ZAI_API_KEY) {
     return c.json({ error: "ZAI_API_KEY not configured on server" }, 503);
   }
+  const userId = c.get("userId");
   let body: StandupRequest;
   try {
     body = await c.req.json<StandupRequest>();
@@ -154,11 +170,24 @@ export async function dailyStandup(c: Ctx) {
   try {
     content = await callZaiJson(c.env.ZAI_API_KEY, STANDUP_SYSTEM_PROMPT, userPrompt, 400);
   } catch (e) {
+    const posthog = getPostHog(c.env);
+    if (posthog) posthog.captureException(e, userId, { endpoint: "ai/daily-standup" });
     return c.json({ error: (e as Error).message }, 502);
   }
 
   try {
-    return c.json(JSON.parse(content));
+    const result = JSON.parse(content);
+    const posthog = getPostHog(c.env);
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: "ai daily standup",
+        properties: {
+          task_count: body.taskTitles.length,
+        },
+      });
+    }
+    return c.json(result);
   } catch (e) {
     return c.json(
       { error: `z.ai JSON parse error: ${(e as Error).message} - content: ${content}` },

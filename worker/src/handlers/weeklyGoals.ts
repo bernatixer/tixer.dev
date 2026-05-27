@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { rowToWeeklyGoal, type WeeklyGoalRow } from "../db";
+import { getPostHog } from "../posthog";
 import type {
   CreateWeeklyGoalRequest,
   Env,
@@ -145,6 +146,21 @@ export async function createWeeklyGoal(c: Ctx) {
     createdAt,
     completedAt,
   };
+
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    posthog.capture({
+      distinctId: userId,
+      event: "weekly goal created",
+      properties: {
+        goal_id: id,
+        week_start: weekStart,
+        target,
+        recurring: recurring === 1,
+      },
+    });
+  }
+
   return c.json(goal, 201);
 }
 
@@ -160,10 +176,12 @@ export async function updateWeeklyGoal(c: Ctx) {
 
   const target = Math.max(1, body.target);
   const progress = Math.max(0, Math.min(target, body.progress));
+  const wasCompleted = body.completedAt !== null;
   const completedAt =
     progress >= target && target > 0
       ? body.completedAt ?? new Date().toISOString()
       : null;
+  const isNowCompleted = completedAt !== null && !wasCompleted;
 
   try {
     const result = await c.env.DB.prepare(
@@ -187,6 +205,20 @@ export async function updateWeeklyGoal(c: Ctx) {
     return dbError(c, e);
   }
 
+  const posthog = getPostHog(c.env);
+  if (posthog && isNowCompleted) {
+    posthog.capture({
+      distinctId: userId,
+      event: "weekly goal completed",
+      properties: {
+        goal_id: id,
+        week_start: body.weekStart,
+        target,
+        progress,
+      },
+    });
+  }
+
   return c.json({ ...body, target, progress, completedAt });
 }
 
@@ -200,6 +232,16 @@ export async function deleteWeeklyGoal(c: Ctx) {
       .bind(id, userId)
       .run();
     if (!result.meta.changes) return c.json({ error: "Goal not found" }, 404);
+
+    const posthog = getPostHog(c.env);
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: "weekly goal deleted",
+        properties: { goal_id: id },
+      });
+    }
+
     return c.body(null, 204);
   } catch (e) {
     return dbError(c, e);

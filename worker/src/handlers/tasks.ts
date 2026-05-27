@@ -1,5 +1,6 @@
 import type { Context } from "hono";
 import { rowToTask, type TaskRow } from "../db";
+import { getPostHog } from "../posthog";
 import type {
   CreateTaskRequest,
   Env,
@@ -130,6 +131,24 @@ export async function createTask(c: Ctx) {
     url,
     completedAt,
   };
+
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    posthog.capture({
+      distinctId: userId,
+      event: "task created",
+      properties: {
+        task_id: id,
+        task_type: taskType,
+        priority: body.priority,
+        column_id: body.columnId,
+        has_due_date: dueDate !== null,
+        has_recurrence: recurrence !== null,
+        tag_count: (body.tags ?? []).length,
+      },
+    });
+  }
+
   return c.json(task, 201);
 }
 
@@ -193,6 +212,36 @@ export async function updateTask(c: Ctx) {
     return dbError(c, e);
   }
 
+  const posthog = getPostHog(c.env);
+  if (posthog) {
+    const wasCompleted = existing.completed_at !== null;
+    const isNowCompleted = body.columnId === "done" && !wasCompleted;
+    if (isNowCompleted) {
+      posthog.capture({
+        distinctId: userId,
+        event: "task completed",
+        properties: {
+          task_id: id,
+          task_type: body.taskType ?? "task",
+          priority: body.priority,
+          column_id: body.columnId,
+        },
+      });
+    } else {
+      posthog.capture({
+        distinctId: userId,
+        event: "task updated",
+        properties: {
+          task_id: id,
+          task_type: body.taskType ?? "task",
+          priority: body.priority,
+          column_id: body.columnId,
+          previous_column_id: existing.column_id,
+        },
+      });
+    }
+  }
+
   return c.json({ ...body, completedAt });
 }
 
@@ -204,6 +253,16 @@ export async function deleteTask(c: Ctx) {
       .bind(id, userId)
       .run();
     if (!result.meta.changes) return c.json({ error: "Task not found" }, 404);
+
+    const posthog = getPostHog(c.env);
+    if (posthog) {
+      posthog.capture({
+        distinctId: userId,
+        event: "task deleted",
+        properties: { task_id: id },
+      });
+    }
+
     return c.body(null, 204);
   } catch (e) {
     return dbError(c, e);
