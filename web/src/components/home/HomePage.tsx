@@ -31,8 +31,8 @@ export const HomePage: FC = () => {
         <p className="hero-subtitle">
           <span>Tech Lead</span>
           <span className="sep">·</span>
-          <a href="https://genesy.ai" target="_blank" rel="noopener">
-            Genesy AI
+          <a href="https://enginy.ai" target="_blank" rel="noopener">
+            Enginy AI
           </a>
         </p>
         <p className="hero-note">Building stuff, writing sometimes.</p>
@@ -43,15 +43,15 @@ export const HomePage: FC = () => {
         <div className="now-content">
           <p>
             Tech Lead at{' '}
-            <a href="https://genesy.ai" target="_blank" rel="noopener">
-              Genesy
+            <a href="https://enginy.ai" target="_blank" rel="noopener">
+              Enginy
             </a>
             , an AI{' '}
             <span className="tooltip" data-tip="Go-to-Market — sales & marketing">
               GTM
             </span>{' '}
             platform startup based in Barcelona. Joined as the first engineer in January 2024 —
-            we were 4 people back then, now we're 50.
+            we were 4 people back then, now we're 75.
           </p>
           <p>
             Building high-performant systems, distributed backends, and learning my way through
