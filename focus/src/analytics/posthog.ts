@@ -12,6 +12,12 @@
 // interactions only.
 
 import posthog from 'posthog-js'
+// Bundle the session recorder (rrweb) and other extensions INTO our app.
+// Otherwise posthog-js lazy-loads them from `/static/posthog-recorder.js`,
+// and content blockers match that filename and kill replays — even when
+// proxied first-party. With this import + disable_external_dependency_loading
+// below, no "posthog"-named script URL is ever requested.
+import 'posthog-js/dist/all-external-dependencies'
 
 const KEY = import.meta.env.VITE_POSTHOG_KEY
 const HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com'
@@ -29,6 +35,10 @@ export function initAnalytics(): boolean {
     // "open in PostHog" deep-links pointing at the real app.
     api_host: import.meta.env.PROD ? '/ingest' : HOST,
     ui_host: HOST,
+    // Use the bundled extensions imported above instead of fetching them
+    // at runtime — keeps the blockable `posthog-recorder.js` request from
+    // ever being made.
+    disable_external_dependency_loading: true,
     // Only create person profiles once we've identified a signed-in user,
     // so anonymous noise doesn't inflate the person count.
     person_profiles: 'identified_only',
