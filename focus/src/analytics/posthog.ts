@@ -23,7 +23,12 @@ export function initAnalytics(): boolean {
   started = true
 
   posthog.init(KEY, {
-    api_host: HOST,
+    // In production, route through our first-party reverse proxy so
+    // content/ad blockers can't drop events (see functions/ingest/). In
+    // dev there's no Pages Function, so hit PostHog directly. ui_host keeps
+    // "open in PostHog" deep-links pointing at the real app.
+    api_host: import.meta.env.PROD ? '/ingest' : HOST,
+    ui_host: HOST,
     // Only create person profiles once we've identified a signed-in user,
     // so anonymous noise doesn't inflate the person count.
     person_profiles: 'identified_only',
