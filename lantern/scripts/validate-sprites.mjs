@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 const source = readFileSync(new URL('../src/rpg/sprites.ts', import.meta.url), 'utf8')
 
 const paletteBlock = source.slice(source.indexOf('PALETTE'), source.indexOf('export type Sprite'))
-const keys = new Set([...paletteBlock.matchAll(/^\s+'?([A-Za-z.])'?:/gm)].map((match) => match[1]))
+const keys = new Set([...paletteBlock.matchAll(/^\s+'(.)':/gm)].map((match) => match[1]))
 
 let failures = 0
 const sprites = [...source.matchAll(/export const (\w+): Sprite = \[([\s\S]*?)\n\]/g)]

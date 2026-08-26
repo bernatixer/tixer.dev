@@ -1,17 +1,15 @@
 import { PALETTE, type Sprite } from './sprites'
 
 /** Logical resolution. Everything is authored against this, then upscaled. */
-export const VIEW_W = 320
-export const VIEW_H = 180
-export const TILE = 24
+export const VIEW_W = 400
+export const VIEW_H = 232
+export const TILE = 32
 
 const GRASS = '#4f8f34'
 const GRASS_DARK = '#3f7a2e'
 const GRASS_LIGHT = '#6fae3f'
 const SKY = '#8fd0e8'
 const HILL = '#3a6f42'
-const STONE = '#b7a68a'
-const STONE_DARK = '#93826a'
 
 export function drawSprite(ctx: CanvasRenderingContext2D, sprite: Sprite, x: number, y: number): void {
     for (let row = 0; row < sprite.length; row += 1) {
@@ -45,7 +43,7 @@ function hash(x: number, y: number): number {
     return n - Math.floor(n)
 }
 
-const HORIZON = 44
+const HORIZON = 62
 
 export function drawGlade(ctx: CanvasRenderingContext2D, offsetX: number): void {
     fillRect(ctx, 0, 0, VIEW_W, HORIZON, SKY)
@@ -64,29 +62,52 @@ export function drawGlade(ctx: CanvasRenderingContext2D, offsetX: number): void 
     for (let x = 0; x < VIEW_W; x += 1) {
         for (let y = HORIZON; y < VIEW_H; y += 1) {
             const world = x + offsetX
-            const noise = hash(Math.floor(world / 2), Math.floor(y / 2))
+            const noise = hash(Math.floor(world / 3), Math.floor(y / 3))
             if (noise > 0.955) {
                 ctx.fillStyle = GRASS_LIGHT
-                ctx.fillRect(x, y, 2, 1)
-            } else if (noise < 0.03) {
+                ctx.fillRect(x, y, 3, 2)
+            } else if (noise < 0.035) {
                 ctx.fillStyle = GRASS_DARK
-                ctx.fillRect(x, y, 1, 1)
+                ctx.fillRect(x, y, 2, 2)
             }
         }
     }
 }
 
-/** The ring the four spirits stand in. */
-export function drawRitualCircle(ctx: CanvasRenderingContext2D, cx: number, cy: number, radius: number): void {
-    for (let angle = 0; angle < Math.PI * 2; angle += 0.02) {
-        const x = cx + Math.cos(angle) * radius
-        const y = cy + Math.sin(angle) * radius * 0.42
-        fillRect(ctx, x, y, 2, 2, STONE)
-        fillRect(ctx, x, y + 2, 2, 1, STONE_DARK)
+/** The paved square, laid in courses so it reads as flagstones. */
+export function drawSquare(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+    fillRect(ctx, x, y, w, h, '#b3a184')
+    // Big irregular flags rather than brickwork: soft joints, varied tone.
+    for (let row = 0; row * 13 < h; row += 1) {
+        const top = y + row * 13
+        for (let sx = x + (row % 2 ? -9 : 0); sx < x + w; sx += 19) {
+            const shade = hash(sx, top)
+            fillRect(
+                ctx,
+                Math.max(x, sx),
+                top,
+                Math.min(19, x + w - Math.max(x, sx)) - 1,
+                Math.min(13, y + h - top) - 1,
+                shade > 0.66 ? '#bcab8e' : shade > 0.33 ? '#b3a184' : '#a99878'
+            )
+        }
     }
+    fillRect(ctx, x, y, w, 1, '#c6b699')
+    fillRect(ctx, x, y + h - 1, w, 1, '#8f7f66')
 }
 
-/** A soft radial glow. Used for the Lantern and for a spirit burning mana. */
+/** The road out of town, running off the bottom of the screen. */
+export function drawRoad(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+    fillRect(ctx, x, y, w, h, '#a28f6d')
+    ctx.fillStyle = 'rgba(150, 133, 102, 0.55)'
+    for (let i = 0; i < h; i += 4) {
+        ctx.fillRect(x + ((i * 5) % Math.max(1, w - 4)), y + i, 4, 2)
+    }
+    fillRect(ctx, x, y, 1, h, '#8b7a5c')
+    fillRect(ctx, x + w - 1, y, 1, h, '#8b7a5c')
+}
+
+/** A soft radial glow. */
 export function drawGlow(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -103,8 +124,8 @@ export function drawGlow(
 
 /** The bobbing marker over whatever you are standing next to. */
 export function drawCursor(ctx: CanvasRenderingContext2D, x: number, y: number, time: number): void {
-    const bob = Math.round(Math.sin(time / 180) * 2)
-    const arrow = ['..XX..', '.XXXX.', 'XXXXXX', '.XXXX.', '..XX..', '..XX..']
+    const bob = Math.round(Math.sin(time / 180) * 3)
+    const arrow = ['...XX...', '..XXXX..', '.XXXXXX.', 'XXXXXXXX', '..XXXX..', '...XX...', '...XX...', '...XX...']
     arrow.forEach((line, row) => {
         for (let col = 0; col < line.length; col += 1) {
             if (line[col] === 'X') {
@@ -118,8 +139,8 @@ export function drawCursor(ctx: CanvasRenderingContext2D, x: number, y: number, 
 /** Drawn over a helper that went wrong, so it reads at a glance. */
 export function drawHurt(ctx: CanvasRenderingContext2D, x: number, y: number, time: number): void {
     const bob = Math.round(Math.sin(time / 200) * 2)
+    const mark = ['.XXXX.', '.XXXX.', '.XXXX.', '.XXXX.', '..XX..', '......', '.XXXX.', '.XXXX.']
     ctx.fillStyle = '#d1452f'
-    const mark = ['XXX', 'XXX', 'XXX', 'XXX', '...', 'XXX']
     mark.forEach((line, row) => {
         for (let col = 0; col < line.length; col += 1) {
             if (line[col] === 'X') {
@@ -133,7 +154,7 @@ export function drawHurt(ctx: CanvasRenderingContext2D, x: number, y: number, ti
 export function drawAlert(ctx: CanvasRenderingContext2D, x: number, y: number, time: number): void {
     const bob = Math.round(Math.sin(time / 220) * 2)
     ctx.fillStyle = '#f2c14e'
-    const mark = ['XXX', 'XXX', 'XXX', 'XXX', '...', 'XXX']
+    const mark = ['XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX', '....', 'XXXX', 'XXXX']
     mark.forEach((line, row) => {
         for (let col = 0; col < line.length; col += 1) {
             if (line[col] === 'X') {

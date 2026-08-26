@@ -1,70 +1,61 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { HelperId } from '@/game/helpers'
+import type { PersonId } from '@/game/townsfolk'
 
 import {
     drawAlert,
     drawCursor,
     drawGlade,
     drawGlow,
-    drawHurt,
-    drawRitualCircle,
+    drawRoad,
     drawShadow,
     drawSprite,
+    drawSquare,
     TILE,
     VIEW_H,
     VIEW_W,
 } from './render'
 import {
-    BOOK_PILE,
-    ELDER_A,
-    ELDER_B,
-    FINDER,
-    FOG_A,
-    FOG_B,
+    FOUNTAIN,
     HERO_A,
     HERO_B,
-    PLINTH,
-    RUNNER,
-    TELLER,
-    THINKER,
-    VILLAGER_A,
-    VILLAGER_B,
+    HOUSE,
+    KIP_A,
+    KIP_B,
+    MARN_A,
+    MARN_B,
+    PELL_A,
+    PELL_B,
+    ROW_A,
+    ROW_B,
+    SHOP,
+    SIGNPOST,
     type Sprite,
 } from './sprites'
 import {
-    CIRCLE,
+    BUILDINGS,
     clampToFloor,
     DECOR,
+    ENTITIES,
+    FOUNTAIN_AT,
     nearest,
+    SIGN_AT,
     SPAWN,
-    visibleEntities,
+    SQUARE,
     WORLD_W,
     type Entity,
 } from './world'
 
-export interface HelperLook {
-    /** The lantern is lit, so the helpers can be seen at all. */
-    seen: boolean
-    hurt: boolean
-    /** Scales with how many words the step read. */
-    glow: number
-}
-
 interface StageProps {
-    looks: Record<HelperId, HelperLook>
-    /** How many books Teller has demanded, 0 to 3. */
-    pile: number
-    showVillager: boolean
-    villagerWaiting: boolean
-    showElder: boolean
-    /** Lights each helper in turn while an asking runs. */
-    active: HelperId | null
+    /** Who you have already spoken to. */
+    spokenTo: PersonId[]
+    /** True once everyone has been asked, so the road out lights up. */
+    roadOpen: boolean
     locked: boolean
     onInteract: (entity: Entity) => void
 }
 
-const SPEED = 92
+const SPEED = 118
 const MOVE_KEYS: Record<string, [number, number]> = {
     ArrowLeft: [-1, 0],
     ArrowRight: [1, 0],
@@ -76,32 +67,25 @@ const MOVE_KEYS: Record<string, [number, number]> = {
     s: [0, 1],
 }
 
-const HELPER_SPRITE: Record<HelperId, Sprite> = {
-    finder: FINDER,
-    thinker: THINKER,
-    runner: RUNNER,
-    teller: TELLER,
+const FOLK: Record<PersonId, [Sprite, Sprite]> = {
+    pell: [PELL_A, PELL_B],
+    marn: [MARN_A, MARN_B],
+    kip: [KIP_A, KIP_B],
+    row: [ROW_A, ROW_B],
 }
 
-export function Stage({
-    looks,
-    pile,
-    showVillager,
-    villagerWaiting,
-    showElder,
-    active,
-    locked,
-    onInteract,
-}: StageProps): JSX.Element {
+const ROAD = { x: 182, y: 176, w: 34, h: VIEW_H - 176 }
+
+export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): JSX.Element {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const player = useRef({ ...SPAWN, moving: false })
     const held = useRef(new Set<string>())
-    const [nearLabel, setNearLabel] = useState<string | null>(null)
+    const [near, setNear] = useState<Entity | null>(null)
 
     // Everything the loop reads goes through a ref, so the canvas keeps running
-    // across quests instead of tearing down and starting again.
-    const props = useRef({ looks, pile, showVillager, villagerWaiting, showElder, active, locked })
-    props.current = { looks, pile, showVillager, villagerWaiting, showElder, active, locked }
+    // rather than tearing down whenever the game state changes.
+    const props = useRef({ spokenTo, roadOpen, locked })
+    props.current = { spokenTo, roadOpen, locked }
     const interactRef = useRef(onInteract)
     interactRef.current = onInteract
 
@@ -117,8 +101,7 @@ export function Stage({
             }
             if (event.key === ' ' || event.key === 'Enter') {
                 event.preventDefault()
-                const list = visibleEntities(props.current.showVillager, props.current.showElder)
-                const hit = nearest(list, player.current.x, player.current.y)
+                const hit = nearest(player.current.x, player.current.y)
                 if (hit) {
                     interactRef.current(hit)
                 }
@@ -171,78 +154,57 @@ export function Stage({
             player.current.x = Math.max(2, Math.min(WORLD_W - TILE - 2, player.current.x + (dx / length) * SPEED * dt))
             player.current.y = clampToFloor(player.current.y + (dy / length) * SPEED * dt)
 
-            const list = visibleEntities(state.showVillager, state.showElder)
-            const hit = nearest(list, player.current.x, player.current.y)
-            setNearLabel(hit ? hit.label : null)
+            const hit = nearest(player.current.x, player.current.y)
+            setNear(hit)
 
             drawGlade(ctx, 0)
-            drawRitualCircle(ctx, CIRCLE.x, CIRCLE.y, CIRCLE.radius)
+            drawRoad(ctx, ROAD.x, ROAD.y, ROAD.w, ROAD.h)
+            drawSquare(ctx, SQUARE.x, SQUARE.y, SQUARE.w, SQUARE.h)
+
+            for (const building of BUILDINGS) {
+                drawSprite(ctx, building.which === 'shop' ? SHOP : HOUSE, building.x, building.y)
+            }
+            drawSprite(ctx, SIGNPOST, SIGN_AT.x, SIGN_AT.y)
             for (const item of DECOR) {
                 drawSprite(ctx, item.sprite, item.x, item.y)
             }
+            drawSprite(ctx, FOUNTAIN, FOUNTAIN_AT.x, FOUNTAIN_AT.y)
 
             const idle = Math.floor(now / 460) % 2
-            const walk = player.current.moving ? Math.floor(now / 140) % 2 : 0
+            const walk = player.current.moving ? Math.floor(now / 130) % 2 : 0
 
             const drawables: { entity: Entity | null; y: number }[] = [
-                ...list.map((entity) => ({ entity, y: entity.y })),
+                ...ENTITIES.filter((entity) => entity.kind === 'person').map((entity) => ({ entity, y: entity.y })),
                 { entity: null, y: player.current.y },
             ]
             drawables.sort((a, b) => a.y - b.y)
 
             for (const item of drawables) {
                 if (!item.entity) {
-                    drawShadow(ctx, player.current.x + 5, player.current.y + TILE - 2, TILE - 10)
+                    drawShadow(ctx, player.current.x + 7, player.current.y + TILE - 1, TILE - 14)
                     drawSprite(ctx, walk ? HERO_B : HERO_A, player.current.x, player.current.y)
                     continue
                 }
                 const entity = item.entity
-                const look = entity.helper ? state.looks[entity.helper] : null
-                const lit = state.active === entity.helper
+                const person = entity.person
+                if (!person) {
+                    continue
+                }
+                const done = state.spokenTo.includes(person)
+                drawShadow(ctx, entity.x + 7, entity.y + TILE - 1, TILE - 14)
+                drawSprite(ctx, FOLK[person][idle], entity.x, entity.y)
+                if (!done) {
+                    drawAlert(ctx, entity.x + 14, entity.y - 14, now)
+                }
+            }
 
-                if (look?.seen && look.glow > 0) {
-                    const pulse = 1 + Math.sin(now / 420 + entity.x) * 0.07
-                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, look.glow * pulse, 'rgba(191,255,0,0.38)')
-                }
-                if (look?.seen && look.hurt) {
-                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, 30, 'rgba(209,69,47,0.40)')
-                }
-                if (lit) {
-                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, 34, 'rgba(247,239,224,0.42)')
-                }
+            if (state.roadOpen) {
+                drawGlow(ctx, ROAD.x + ROAD.w / 2, ROAD.y + 14, 34, 'rgba(232,181,63,0.32)')
+            }
 
-                drawShadow(ctx, entity.x + 5, entity.y + TILE - 2, TILE - 10)
-
-                if (entity.kind === 'villager') {
-                    drawSprite(ctx, idle ? VILLAGER_B : VILLAGER_A, entity.x, entity.y)
-                    if (state.villagerWaiting) {
-                        drawAlert(ctx, entity.x + 10, entity.y - 10, now)
-                    }
-                } else if (entity.kind === 'elder') {
-                    drawSprite(ctx, idle ? ELDER_B : ELDER_A, entity.x, entity.y)
-                    drawAlert(ctx, entity.x + 10, entity.y - 10, now)
-                } else if (entity.kind === 'plinth') {
-                    drawSprite(ctx, PLINTH, entity.x, entity.y)
-                } else if (entity.helper) {
-                    if (!look?.seen) {
-                        drawSprite(ctx, idle ? FOG_A : FOG_B, entity.x, entity.y)
-                    } else {
-                        drawSprite(ctx, HELPER_SPRITE[entity.helper], entity.x, entity.y)
-                        if (look.hurt) {
-                            drawHurt(ctx, entity.x + 10, entity.y - 10, now)
-                        }
-                    }
-                    // Teller's pile grows every time it demands the book again.
-                    if (entity.helper === 'teller' && state.pile > 0 && look?.seen) {
-                        for (let book = 0; book < state.pile; book += 1) {
-                            drawSprite(ctx, BOOK_PILE, entity.x - 16 + book * 11, entity.y + 4 - book * 5)
-                        }
-                    }
-                }
-
-                if (hit && hit.id === entity.id) {
-                    drawCursor(ctx, entity.x + 9, entity.y - 11, now)
-                }
+            if (hit) {
+                const top = hit.kind === 'gate' ? ROAD.y : hit.y
+                drawCursor(ctx, (hit.kind === 'gate' ? ROAD.x + ROAD.w / 2 - 4 : hit.x + 12), top - 18, now)
             }
 
             raf = window.requestAnimationFrame(frame)
@@ -259,8 +221,8 @@ export function Stage({
         const rect = event.currentTarget.getBoundingClientRect()
         const x = ((event.clientX - rect.left) / rect.width) * VIEW_W
         const y = ((event.clientY - rect.top) / rect.height) * VIEW_H
-        const hit = visibleEntities(showVillager, showElder).find(
-            (entity) => x >= entity.x - 6 && x <= entity.x + TILE + 6 && y >= entity.y - 6 && y <= entity.y + TILE + 6
+        const hit = ENTITIES.find(
+            (entity) => x >= entity.x - 8 && x <= entity.x + TILE + 8 && y >= entity.y - 8 && y <= entity.y + TILE + 8
         )
         if (!hit) {
             return
@@ -280,13 +242,14 @@ export function Stage({
                 onClick={onCanvasClick}
             />
             <p className="stage__hint">
-                {nearLabel ? (
+                {near ? (
                     <>
-                        <kbd>space</kbd> {nearLabel}
+                        <kbd className="kbd--go">press space</kbd>
+                        <span className="stage__hint-do">{near.kind === 'gate' ? near.label : `talk to ${near.label}`}</span>
                     </>
                 ) : (
                     <>
-                        <kbd>← ↑ ↓ →</kbd> walk, or click anything
+                        <kbd>← ↑ ↓ →</kbd> walk up to someone, or click them
                     </>
                 )}
             </p>

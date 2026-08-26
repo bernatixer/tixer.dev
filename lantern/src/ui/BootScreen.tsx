@@ -29,14 +29,14 @@ export function BootScreen({ onStart }: BootScreenProps): JSX.Element {
 
     return (
         <div className="boot">
-            <pre className="boot__logo">LANTERN</pre>
+            <pre className="boot__logo">ASK AROUND</pre>
             <p className="boot__tag">
-                A village Oracle has started giving ruinous advice. Four spirits do its work, and one of them is at
-                fault. The circle they stand in is full of fog.
+                The last boat leaves at dusk and you do not know the way. Four people are out in the square. Ask
+                them, then decide who to believe.
             </p>
 
             <section className="panel">
-                <h2 className="panel__title">Give the Oracle a voice</h2>
+                <h2 className="panel__title">Give the town a voice</h2>
                 <input
                     className="boot__input"
                     type="password"
@@ -46,9 +46,9 @@ export function BootScreen({ onStart }: BootScreenProps): JSX.Element {
                     onChange={(event) => setKey(event.target.value)}
                 />
                 <p className="boot__note">
-                    The Oracle is a real model, so it wants one. OpenAI or Anthropic, whichever you have. It goes
-                    straight from this page to the provider and stays in this browser, because there is no backend to
-                    send it to.
+                    Everyone in the square is a real model, so the game wants one. OpenAI or Anthropic, whichever you
+                    have. It goes straight from this page to the provider and stays in this browser, because there is
+                    no backend to send it to.
                 </p>
 
                 {trimmed && (
@@ -73,7 +73,7 @@ export function BootScreen({ onStart }: BootScreenProps): JSX.Element {
 
             <div className="boot__actions">
                 <button type="button" className="btn btn--primary" disabled={!trimmed} onClick={startLive}>
-                    Walk into the glade
+                    Walk into town
                 </button>
                 <button
                     type="button"

@@ -1,40 +1,34 @@
-# Lantern
+# Ask around
 
-A short pixel-art game about AI observability, in a village that has never heard
-the phrase.
+A five minute game that teaches AI observability without ever using the words.
 
-A stone Oracle answers the villagers' questions, and it has started getting them
-badly wrong. The Oracle does not think. It has four helpers:
+The last boat leaves at dusk and you do not know the way to the harbour. Four
+people are out in the square. You ask each of them, they ask you something back,
+and then you pick whose directions to follow.
 
-- **Finder** looks the question up in the village book
-- **Thinker** works out what to do about it
-- **Runner** goes out and checks the real world
-- **Teller** reads what the others brought and says the answer
+Every one of those four is a **real language model with different instructions**.
+Pell knows the road. Marn knows it too but buries it in nine sentences about her
+cousin. Kip is nine and invents the whole thing with total confidence. Row says
+plainly that she does not know and points you at Pell.
 
-Bram left his potatoes in the ground until the snow because the Oracle told him
-to, and they all froze. One of the four helpers did that to him. You have to say
-which.
+The game never tells you any of that.
 
-On the first morning the circle they stand in is full of fog. You can hear them,
-you know what each of them is for, and you cannot see what any of them did. So
-you guess.
+## The turn
 
-Then an old woman hands you a lantern, the fog is gone, and she tells you to go
-and look at the asking you already made. It was all still there. You just had no
-way to see it.
+You pick someone and set off. Halfway down the road you realise you cannot
+actually remember what the others said, only how they made you feel.
 
-**The lantern is tracing.** That is the whole lesson.
+But you have your notebook, and you wrote all four down without thinking about
+it. That is a **trace**: who was asked, what they were given, what came back, how
+long it took, what it cost.
 
-## The three faults
+Then the game asks you what actually matters to you, and marks all four against
+it for you. That is an **evaluation**.
 
-| Villager | What went wrong | What the lantern shows |
-|---|---|---|
-| Bram, farmer | Finder brought the page about carrots to a question about potatoes | A helper asked for one thing, holding another |
-| Nel, lamp keeper | Teller will not speak until the whole book is read to it, and forgets between askings | A pile of books that grows every time you ask |
-| Tam, carter | Runner never came back, and Teller filled the gap itself | Three failed tries, and an answer invented to cover them |
-
-Thinker is never at fault. That is deliberate: the part of an AI that does the
-talking is rarely the part that broke, and everybody blames it first.
+And the part worth staying for: **change the question and the winner changes.**
+Ask "did they answer?" and Kip tops the board with directions he made up. Ask
+"were they telling the truth?" and he comes last. Your eval is only ever as good
+as the question you thought to ask.
 
 ## Running it
 
@@ -45,46 +39,41 @@ pnpm dev        # http://localhost:3100
 
 `web/` and `focus/` both use port 3000, so this one sits on 3100.
 
-Arrow keys or WASD to walk, space to act. Clicking anything works too, so it is
-playable with a mouse alone. There is a chiptune loop with a toggle in the
-header.
+Arrow keys or WASD to walk, space to talk. Clicking anyone works too. There is a
+chiptune loop with a toggle in the header.
 
 ## Bring your own key
 
 Paste an OpenAI or an Anthropic key, whichever you have. The provider is read
 from the prefix, so there is nothing to configure. There is no backend, so the
 key never reaches a server of mine: it goes from your browser straight to the
-provider, and it stays in `localStorage`.
+provider and stays in `localStorage`.
 
-The Oracle really is a model. Every answer is a live call, and the words and
-cost in the header are the token counts and price the provider reported.
-
-Without a key, "visit without a key" runs the same asking against canned
-replies. It breaks in exactly the same places, and the record is still real.
+A full playthrough is about a dozen short calls. Without a key, "visit without a
+key" runs the same town against canned replies; everyone still goes wrong in
+character and the scoring still works.
 
 ## Layout
 
 ```
 src/
   tracing/     the record: nodes, $ai_* properties, cost, the recorder
-  llm/         Anthropic and OpenAI clients (streamed, for real time-to-first-token), demo backend, model catalog
-  agent/       the asking: the village book, the world, the four recorded steps
-  game/        the helpers, the quests, one continuous run of state
-  rpg/         hand-authored sprites, the canvas renderer, the glade, movement
+  llm/         Anthropic and OpenAI clients, demo backend, model catalog
+  agent/       talk.ts asks one person; judge.ts is the eval, a model marking every conversation against one rule
+  game/        the four people, the criteria, one continuous run of state
+  rpg/         generated sprites, the canvas renderer, the town, movement
   audio/       a chiptune loop generated in the browser
-  ui/          the dialogue box and the screens around the game
+  ui/          the dialogue box, the notebook, the scoreboard
 ```
 
-`src/tracing/` is deliberately a small copy of how PostHog AI observability
-models this. A record holds spans and generations, and every node carries the
-real `$ai_*` property names. When you walk up to a helper it shows you a plain
-label and the real property name next to it, so both stick.
+`src/tracing/` is a small copy of how PostHog AI observability models this, with
+the real `$ai_*` property names on every node. The notebook is that data shown
+as a notebook, because a trace viewer is the wrong thing to hand someone in the
+first five minutes.
 
-The recorder runs on both days. The first morning only draws fog over the
-circle. The blindness is a missing view, never missing data, which is the whole
-point of the game.
-
-The art is hand-authored pixel data in `src/rpg/sprites.ts` at 24x24, so there
-are no external assets to license or load. `pnpm validate:sprites` checks that
-every sprite is rectangular and uses only palette characters; build runs it too.
-The music is generated with the Web Audio API for the same reason.
+Art is generated by `scripts/gen-sprites.py`, which writes `src/rpg/sprites.ts`.
+The scenery is drawn programmatically so its shading stays consistent, and the
+townsfolk are one hand-drawn body recoloured per person. Run the script when the
+art changes; do not hand-edit the output. `pnpm validate:sprites` checks every
+sprite is rectangular and uses only palette characters, and build runs it too.
+The music is generated with Web Audio, so there are no media files either.

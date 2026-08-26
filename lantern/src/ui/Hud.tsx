@@ -1,36 +1,33 @@
-import type { Phase, Tally } from '@/game/state'
+import { PEOPLE } from '@/game/townsfolk'
+import { totals, type GameState } from '@/game/state'
 import { modelLabel } from '@/llm/models'
 import { formatTokens, formatUsd } from '@/tracing/cost'
 
 interface HudProps {
-    phase: Phase
-    model: string
+    state: GameState
     live: boolean
-    tally: Tally
     music: boolean
     onToggleMusic: () => void
 }
 
-const PHASE_LABEL: Record<Phase, string> = {
-    title: '',
-    day1: 'the circle is fogged',
-    lantern: 'the lantern is lit',
-    day2: 'the lantern is lit',
-    ending: 'evening',
-}
-
-export function Hud({ phase, model, live, tally, music, onToggleMusic }: HudProps): JSX.Element {
+export function Hud({ state, live, music, onToggleMusic }: HudProps): JSX.Element {
+    const sum = totals(state)
     return (
         <header className="hud">
-            <span className="hud__brand">LANTERN</span>
-            <span className={`hud__act${phase === 'day1' ? '' : ' hud__act--lit'}`}>{PHASE_LABEL[phase]}</span>
-            <span className="hud__slot">words {formatTokens(tally.words)}</span>
-            <span className="hud__slot">cost {formatUsd(tally.coinUsd)}</span>
+            <span className="hud__brand">ASK AROUND</span>
+            <span className="hud__slot">
+                asked {state.talks.length}/{PEOPLE.length}
+            </span>
+            {state.phase !== 'town' && (
+                <span className="hud__slot hud__slot--quiet">
+                    {formatTokens(sum.words)} words · {formatUsd(sum.costUsd)}
+                </span>
+            )}
             <button type="button" className="hud__music" onClick={onToggleMusic}>
                 {music ? '♪ music on' : '♪ music off'}
             </button>
             <span className="hud__slot hud__slot--dim">
-                {modelLabel(model)}
+                {modelLabel(state.model)}
                 {live ? '' : ' · no key'}
             </span>
         </header>

@@ -674,3 +674,331 @@ kbd {
 .debrief__points strong {
     color: var(--ink);
 }
+
+/* ---------- the log ---------- */
+
+.dlg--log {
+    min-height: 240px;
+}
+
+.log__days {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--edge);
+    padding-bottom: 8px;
+}
+
+.log__day {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border: 1px solid var(--edge);
+    border-radius: 2px;
+    background: transparent;
+    color: var(--ink-soft);
+    cursor: pointer;
+}
+
+.log__day--on {
+    background: var(--moss);
+    border-color: #356622;
+    color: var(--parchment);
+}
+
+.log__summary {
+    margin-left: auto;
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
+.log__body {
+    display: grid;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    gap: 14px;
+    flex: 1;
+    min-height: 0;
+    max-height: 208px;
+}
+
+.log__steps,
+.log__detail {
+    overflow-y: auto;
+}
+
+.log__steps {
+    list-style: none;
+    display: grid;
+    gap: 2px;
+    align-content: start;
+}
+
+.log__step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    padding: 5px 8px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.log__step:hover {
+    background: var(--parchment-deep);
+}
+
+.log__step--on {
+    border-color: var(--moss);
+    background: rgba(79, 143, 52, 0.12);
+}
+
+.log__step--failed {
+    color: var(--bad);
+}
+
+.log__step-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.log__step-num {
+    flex: none;
+    width: 40px;
+    text-align: right;
+    color: var(--ink-soft);
+}
+
+.log__step--failed .log__step-num {
+    color: var(--bad);
+}
+
+.log__step-bad {
+    flex: none;
+    font-size: 0.56rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--parchment);
+    background: var(--bad);
+    border-radius: 2px;
+    padding: 1px 5px;
+}
+
+.log__detail {
+    min-width: 0;
+}
+
+.log__detail-body {
+    font-family: var(--font-family, 'Space Grotesk', sans-serif);
+    font-size: 0.82rem;
+    line-height: 1.6;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+}
+
+.hud__coins {
+    color: #f2c14e;
+}
+
+.hud__slot--quiet {
+    color: rgba(244, 236, 216, 0.6);
+    font-size: 0.58rem;
+}
+
+@media (max-width: 720px) {
+    .log__body {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------- the notebook ---------- */
+
+.dlg--book {
+    min-height: 250px;
+}
+
+.book {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 16px;
+    flex: 1;
+    min-height: 0;
+}
+
+.book__tabs {
+    list-style: none;
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    border-right: 1px solid var(--edge);
+    padding-right: 12px;
+}
+
+.book__tab {
+    display: grid;
+    gap: 1px;
+    width: 100%;
+    text-align: left;
+    font-family: var(--font-mono);
+    padding: 7px 9px;
+    border: 1px solid transparent;
+    border-radius: 2px;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+.book__tab:hover {
+    background: var(--parchment-deep);
+}
+
+.book__tab--on {
+    border-color: var(--moss);
+    background: rgba(79, 143, 52, 0.12);
+}
+
+.book__tab-name {
+    font-size: 0.76rem;
+    font-weight: 700;
+}
+
+.book__tab-sub {
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+}
+
+.book__page {
+    min-width: 0;
+    overflow-y: auto;
+    max-height: 214px;
+    /* Ruled, like a notebook. */
+    background-image: repeating-linear-gradient(
+        transparent,
+        transparent 21px,
+        rgba(157, 135, 99, 0.22) 21px,
+        rgba(157, 135, 99, 0.22) 22px
+    );
+    padding-right: 4px;
+}
+
+.book__head {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+}
+
+.book__said {
+    font-family: var(--font-family, 'Space Grotesk', sans-serif);
+    font-size: 0.92rem;
+    line-height: 22px;
+}
+
+.book__aside {
+    font-family: var(--font-family, 'Space Grotesk', sans-serif);
+    font-size: 0.8rem;
+    line-height: 22px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+}
+
+.book__meta {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 10px;
+    padding-top: 6px;
+    border-top: 1px solid var(--edge);
+}
+
+/* ---------- the scoreboard ---------- */
+
+.scores {
+    list-style: none;
+    display: grid;
+    gap: 5px;
+    flex: 1;
+    align-content: start;
+}
+
+.scores__row {
+    display: grid;
+    grid-template-columns: 116px 62px minmax(0, 1fr);
+    align-items: baseline;
+    gap: 10px;
+    font-size: 0.78rem;
+    padding: 5px 0;
+    border-bottom: 1px dotted var(--edge);
+}
+
+.scores__name {
+    font-family: var(--font-mono);
+    font-weight: 700;
+}
+
+.scores__yours {
+    display: block;
+    font-size: 0.55rem;
+    font-style: normal;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--warn);
+}
+
+.scores__pips {
+    font-size: 0.74rem;
+    letter-spacing: 0.1em;
+    color: var(--moss);
+}
+
+.scores__why {
+    font-family: var(--font-family, 'Space Grotesk', sans-serif);
+    color: var(--ink-soft);
+    line-height: 1.45;
+}
+
+.scores__note {
+    font-family: var(--font-family, 'Space Grotesk', sans-serif);
+    font-size: 0.86rem;
+    line-height: 1.6;
+    border-left: 3px solid var(--moss);
+    padding-left: 12px;
+    margin: 4px 0;
+}
+
+.scores__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: auto;
+}
+
+.kbd--go {
+    background: var(--moss);
+    border-color: var(--moss);
+    color: var(--parchment);
+    font-weight: 700;
+}
+
+.stage__hint-do {
+    color: #a8d85f;
+}
