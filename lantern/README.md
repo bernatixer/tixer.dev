@@ -44,13 +44,18 @@ chiptune loop with a toggle in the header.
 
 ## Bring your own key
 
-Paste an OpenAI or an Anthropic key, whichever you have. The provider is read
-from the prefix, so there is nothing to configure. There is no backend, so the
-key never reaches a server of mine: it goes from your browser straight to the
-provider and stays in `localStorage`.
+The game opens on the town with one prompt over it: paste an OpenAI or an
+Anthropic key. There is no model picker, because the cheap model for whichever
+provider you brought is the right answer for a five minute game, and one more
+decision there is one more reason to close the tab. The provider is read from
+the prefix.
 
-A full playthrough is about a dozen short calls. Without a key, "visit without a
-key" runs the same town against canned replies; everyone still goes wrong in
+There is no backend, so the key never reaches a server of mine: it goes from
+your browser straight to the provider and stays in `localStorage`. A full
+playthrough is about a dozen short calls.
+
+No key, no game. For working on it without spending anything, `?demo` in the URL
+runs the same town against canned replies; everyone still goes wrong in
 character and the scoring still works.
 
 ## Layout

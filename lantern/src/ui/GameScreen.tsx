@@ -19,6 +19,8 @@ type Panel =
 
 interface GameScreenProps {
     state: GameState
+    /** True while the key prompt is up, so the town is only scenery. */
+    gated: boolean
     onTalk: (personId: PersonId, reply: string | null) => void
     onChoose: (personId: PersonId) => void
     onGoTo: (phase: GameState['phase']) => void
@@ -28,6 +30,7 @@ interface GameScreenProps {
 
 export function GameScreen({
     state,
+    gated,
     onTalk,
     onChoose,
     onGoTo,
@@ -179,12 +182,19 @@ export function GameScreen({
             <Stage
                 spokenTo={spokenTo}
                 roadOpen={everyone && state.phase === 'town'}
-                locked={panel !== null || state.busy}
+                locked={gated || panel !== null || state.busy}
                 onInteract={interact}
             />
 
             <div className="screen__dialogue">
-                {state.busy && (
+                {gated && (
+                    <div className="dlg dlg--idle">
+                        <span className="dlg__speaker">the square</span>
+                        <p className="dlg__body">Four people are waiting to be asked.</p>
+                    </div>
+                )}
+
+                {!gated && state.busy && (
                     <div className="dlg">
                         <span className="dlg__speaker">
                             {state.phase === 'scoring' ? 'marking' : personById(talking ?? 'pell').name}
@@ -195,7 +205,7 @@ export function GameScreen({
                     </div>
                 )}
 
-                {!state.busy && panel?.kind === 'book' && (
+                {!gated && !state.busy && panel?.kind === 'book' && (
                     <Journal
                         talks={state.talks}
                         closeLabel={panel.closeLabel}
@@ -203,7 +213,7 @@ export function GameScreen({
                     />
                 )}
 
-                {!state.busy && panel?.kind === 'scores' && currentRun && (
+                {!gated && !state.busy && panel?.kind === 'scores' && currentRun && (
                     <Scores
                         run={currentRun}
                         trusted={state.trusted}
@@ -214,7 +224,7 @@ export function GameScreen({
                     />
                 )}
 
-                {!state.busy && panel?.kind === 'text' && (
+                {!gated && !state.busy && panel?.kind === 'text' && (
                     <Dialogue
                         speaker={panel.speaker}
                         body={panel.body}
@@ -224,9 +234,9 @@ export function GameScreen({
                     />
                 )}
 
-                {!state.busy && state.phase === 'done' && <Ending state={state} onRestart={onRestart} />}
+                {!gated && !state.busy && state.phase === 'done' && <Ending state={state} onRestart={onRestart} />}
 
-                {!state.busy && panel === null && state.phase !== 'done' && (
+                {!gated && !state.busy && panel === null && state.phase !== 'done' && (
                     <div className="dlg dlg--idle">
                         <span className="dlg__speaker">the square</span>
                         <p className="dlg__body">{idle()}</p>
