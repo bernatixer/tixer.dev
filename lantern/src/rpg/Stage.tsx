@@ -179,8 +179,8 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
 
             for (const item of drawables) {
                 if (!item.entity) {
-                    drawShadow(ctx, player.current.x + 7, player.current.y + TILE - 1, TILE - 14)
-                    drawSprite(ctx, walk ? HERO_B : HERO_A, player.current.x, player.current.y)
+                    drawShadow(ctx, player.current.x + 6, player.current.y + TILE - 1, TILE - 12)
+                    drawSprite(ctx, walk ? HERO_B : HERO_A, player.current.x - 4, player.current.y - 22)
                     continue
                 }
                 const entity = item.entity
@@ -202,7 +202,7 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
 
             if (hit) {
                 const top = hit.kind === 'gate' ? ROAD.y - 4 : hit.y
-                drawCursor(ctx, hit.kind === 'gate' ? ROAD.x + 66 : hit.x + 12, top - 18, now)
+                drawCursor(ctx, hit.kind === 'gate' ? ROAD.x + 66 : hit.x + 10, top - (hit.kind === 'gate' ? 18 : 40), now)
             }
 
             raf = window.requestAnimationFrame(frame)

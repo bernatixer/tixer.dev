@@ -137,100 +137,173 @@ add("SIGNPOST", outline(sign), "Points the way out of town.")
 
 
 # ---------------- the townsfolk, who are hogs ----------------
-# Hand-drawn, because a face does not survive being computed. The spiny hood
-# rings the face, which is what makes it read as a hedgehog at this size.
-HOG_BASE = [
-    "................................",
-    "..........qqqqqqqqqq............",
-    ".......qqQQQQQQQQQQQQqq.........",
-    ".....qqQQQQQQQQQQQQQQQQQq.......",
-    "....qQQQjjQQQQjjQQQQjjQQQq......",
-    "...qQQQQQQQQQQQQQQQQQQQQQQq.....",
-    "..qQQjjQQQQjjQQQQjjQQQQjjQQq....",
-    "..qQQQQQQQQQQQQQQQQQQQQQQQQq....",
-    ".qQQQQjjQQQQQQQQQQQQjjQQQQQQq...",
-    ".qQQQQQQQKKKKKKKKKKQQQQQQQQQq...",
-    ".qQQjjQQKZZZZZZZZZZKQQjjQQQQq...",
-    ".qQQQQQKZZZZZZZZZZZZKQQQQQQQq...",
-    ".qQQQQQKZZKKZZZZKKZZKQQQjjQQq...",
-    ".qQQjjQKZZKKZZZZKKZZKQQQQQQQq...",
-    ".qQQQQQKZZZZZZZZZZZZKQQQQQQQq...",
-    "..qQQQQKZZZZxxxxZZZZKQQQQQQq....",
-    "..qQQQQKZZZKxxxxKZZZKQQjjQQq....",
-    "...qQQQKZZZZZZZZZZZZKQQQQQq.....",
-    "....qQQQKZZZZZZZZZZKQQQQQq......",
-    ".....qQQQKKKKKKKKKKQQQQQq.......",
-    "......qQQQQQQQQQQQQQQQq.........",
-    ".......KKzzzzzzzzzzzzKK.........",
-    ".....KKzzzzzzzzzzzzzzzzKK.......",
-    "....KzzzzzzzzzzzzzzzzzzzzK......",
-    "...KzzxzzzzzzzzzzzzzzzzzzzK.....",
-    "...KzzxzzzzzzzzzzzzzzzzzzzK.....",
-    "...KzzxzzzzzzzzzzzzzzzzzzzK.....",
-    "...KzzzzzzzzzzzzzzzzzzzzzzK.....",
-    "....KzzzzzzzzzzzzzzzzzzzzK......",
-    ".....KKzzzzzzzzzzzzzzzzKK.......",
-    ".......KKxxxK....KxxxKK.........",
-    "........KKKK......KKKK..........",
-]
+# Drawn from the PostHog hoglet: flat colour, heavy outline, and the spiny mass
+# sitting BEHIND and to one side of the body rather than ringing the face.
+# 40x44, so there is room for the brow and muzzle that make it read as the hog.
 
-# The other foot forward, so walking reads.
-HOG_STRIDE = [
-    ".....KKzzzzzzzzzzzzzzzzKK.......",
-    "......KxxxK........KxxxK........",
-    ".....KKxxxKK......KKxxxKK.......",
-    ".....KKKKKK........KKKKKK.......",
-]
+HOG_W, HOG_H = 40, 54
+# The hog sits in the lower part of the box, leaving room above for a hat.
+DROP = 10
+
+
+def blank():
+    return [["." for _ in range(HOG_W)] for _ in range(HOG_H)]
+
+
+def disc(grid, cx, cy, rx, ry, ch, only_empty=False):
+    for y in range(HOG_H):
+        for x in range(HOG_W):
+            if ((x + 0.5 - cx) / rx) ** 2 + ((y + 0.5 - cy) / ry) ** 2 <= 1:
+                if not only_empty or grid[y][x] == ".":
+                    grid[y][x] = ch
+
+
+def ink(grid):
+    """Heavy outline, the way the drawing has it."""
+    out = [row[:] for row in grid]
+    for y in range(HOG_H):
+        for x in range(HOG_W):
+            if grid[y][x] != ".":
+                continue
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                yy, xx = y + dy, x + dx
+                if 0 <= yy < HOG_H and 0 <= xx < HOG_W and grid[yy][xx] not in (".", "0"):
+                    out[y][x] = "0"
+                    break
+    return out
+
+
+def hog_base(stride=False):
+    g = blank()
+    d = DROP
+    # Spines: one oval behind, pushed left and up.
+    disc(g, 17, 20 + d, 15, 17, "Q")
+    for y in range(3 + d, 38 + d):
+        for x in range(1, 34):
+            if g[y][x] == "Q" and (x * 2 + y) % 7 in (0, 1) and (x + y) % 3 == 0:
+                g[y][x] = "q"
+    # Body and head in front, same tan, joined.
+    disc(g, 22, 31 + d, 13, 12, "z")
+    disc(g, 23, 17 + d, 12, 10, "z")
+    disc(g, 25, 15 + d, 8, 6, "Z")
+    disc(g, 24, 29 + d, 9, 8, "Z")
+
+    # Brows and eyes, which is what makes it that hog and not any hog.
+    for x in range(16, 22):
+        g[13 + d][x] = "0"
+        g[14 + d][x] = "0"
+    for x in range(26, 32):
+        g[13 + d][x] = "0"
+        g[14 + d][x] = "0"
+    g[15 + d][18] = "0"
+    g[15 + d][29] = "0"
+    # Muzzle.
+    disc(g, 24, 21 + d, 7, 4, "x")
+    for x in range(18, 31):
+        g[22 + d][x] = "0"
+    g[19 + d][24] = "0"
+    g[20 + d][23] = "0"
+    g[20 + d][25] = "0"
+    # Ears peeking over.
+    disc(g, 15, 9 + d, 3, 3, "z")
+    disc(g, 31, 9 + d, 3, 3, "z")
+
+    left, right = (12, 22) if not stride else (10, 24)
+    for fx in (left, right):
+        for y in range(40 + d, 43 + d):
+            for x in range(fx, fx + 5):
+                g[y][x] = "x"
+    return g
 
 
 def dress(base, overlays):
-    grid = [list(row) for row in base]
+    grid = [row[:] for row in base]
     for rows, ox, oy in overlays:
         for y, row in enumerate(rows):
             for x, ch in enumerate(row):
-                if ch != "." and 0 <= oy + y < len(grid) and 0 <= ox + x < len(grid[0]):
+                if ch != "." and 0 <= oy + y < HOG_H and 0 <= ox + x < HOG_W:
                     grid[oy + y][ox + x] = ch
-    return ["".join(row) for row in grid]
+    return grid
 
 
 def cap(main, trim):
-    """Sits over the spines, which is how you tell one hog from another."""
+    """A flat cap pulled down over the top of the head."""
     rows = [
-        "....MMMMMMMM....",
-        "..MMMMMMMMMMMM..",
-        ".MMMMMMMMMMMMMM.",
-        "KTTTTTTTTTTTTTTK",
+        "....MMMMMMMMMMMM....",
+        "..MMMMMMMMMMMMMMMM..",
+        ".MMMMMMMMMMMMMMMMMM.",
+        ".MMMMMMMMMMMMMMMMMM.",
+        "0TTTTTTTTTTTTTTTTTT0",
     ]
-    return ([row.replace("M", main).replace("T", trim) for row in rows], 8, 1)
+    return ([row.replace("M", main).replace("T", trim) for row in rows], 12, 13)
 
 
 def scarf(colour):
     rows = [
         "CCCCCCCCCCCCCCCCCCCC",
         "CCCCCCCCCCCCCCCCCCCC",
-        "..CCCCCC....CCCCCC..",
+        "CCCCCCCCCCCCCCCCCCCC",
+        "..CCCCCC.....CCCCC..",
     ]
-    return ([row.replace("C", colour) for row in rows], 6, 20)
+    return ([row.replace("C", colour) for row in rows], 12, 34)
 
 
 SPECS = (
     [
-        ".KKKK...KKKK.",
-        "KWWWWK.KWWWWK",
-        "KWWWWK.KWWWWK",
-        ".KKKK...KKKK.",
+        "00000..00000",
+        "0WWW0..0WWW0",
+        "0WWW0000WWW0",
+        "00000..00000",
     ],
-    9,
-    11,
+    15,
+    23,
+)
+
+# The wizard, after the hoglet with the staff: pointed hat, gold band, long robe.
+WIZ_HAT = (
+    [
+        ".........BBB........",
+        "........BBBBB.......",
+        ".......BBBBBB.......",
+        "......BBBBBBB.......",
+        ".....BBBBBBBB.......",
+        "....BBBBBBBBB.......",
+        "...BBBBBBBBBB.......",
+        "..BBBBBBBBBBBB......",
+        "..YYYYYYYYYYYY......",
+        ".BBBBBBBBBBBBBB.....",
+        "BBBBBBBBBBBBBBBB....",
+        "BBBBBBBBBBBBBBBB....",
+    ],
+    12,
+    5,
+)
+WIZ_ROBE = (
+    [
+        "...BBBBBBBBBBBBB...",
+        "..BBBBBBBBBBBBBBB..",
+        ".BBBBBBBBBBBBBBBBB.",
+        ".BBBBBBBBBBBBBBBBB.",
+        ".BBBBYYYYYYYYYBBBB.",
+        ".BBBBBBBBBBBBBBBBB.",
+        "BBBBBBBBBBBBBBBBBBB",
+        "BBBBBBBBBBBBBBBBBBB",
+        "BBBBBBBBBBBBBBBBBBB",
+        "BBBBBBBBBBBBBBBBBBB",
+        ".BBBBBBBBBBBBBBBBB.",
+        "..BBBBBBBBBBBBBBB..",
+    ],
+    12,
+    34,
 )
 
 
 def hog(name, overlays, doc=None):
-    add(name + "_A", dress(HOG_BASE, overlays), doc)
-    add(name + "_B", dress(HOG_BASE[:28] + HOG_STRIDE, overlays), None)
+    add(name + "_A", ink(dress(hog_base(), overlays)), doc)
+    add(name + "_B", ink(dress(hog_base(stride=True), overlays)), None)
 
 
-hog("HERO", [cap("A", "a")], "You. The one in the bright green cap.")
+hog("HERO", [WIZ_ROBE, WIZ_HAT], "You: a hedgehog wizard, after the PostHog hoglet.")
 hog("PELL", [cap("W", "B")], "Pell, who has walked the harbour road for forty years.")
 hog("MARN", [scarf("O")], "Marn, who keeps the inn and never uses one word where nine will do.")
 hog("KIP", [cap("r", "R")], "Kip, who is nine and certain about everything.")
