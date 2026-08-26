@@ -14,7 +14,7 @@ docs/       Built output of web/ — committed; what GitHub Pages serves
 
 The pieces are independent — no shared bundle, no shared runtime, no shared auth. They only share this repo and the `tixer.dev` apex domain.
 
-`lantern/` is a short pixel-art RPG about AI observability: a village Oracle gives ruinous advice, four spirits do its work, and you have to say which one is at fault. The first day the circle is fogged. The second day you have a lantern. See [`lantern/README.md`](lantern/README.md).
+`lantern/` is a short pixel-art game about AI observability: a village Oracle gives ruinous advice, four helpers do its work, and you have to say which one is at fault. The first morning the circle is fogged. Then someone hands you a lantern. See [`lantern/README.md`](lantern/README.md).
 
 ## Design language
 

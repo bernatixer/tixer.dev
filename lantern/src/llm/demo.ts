@@ -2,31 +2,31 @@ import type { CallRequest, CallResult } from './types'
 
 /**
  * Demo mode replaces the model with canned replies so the glade is playable
- * without a key. The replies fail in exactly the places the real ritual fails,
- * so the trace still tells the truth about the fault.
+ * without a key. The replies fail in exactly the places the real asking fails,
+ * so the record still tells the truth about the fault.
  */
 
-function museReply(question: string): string {
-    return /road|ford|well|caravan|north|south|safe to travel/i.test(question) ? 'send_errand' : 'read_scroll'
+function thinkerReply(question: string): string {
+    return /bridge|river|road|cross|mill|safe to travel/i.test(question) ? 'send_runner' : 'read_book'
 }
 
-function echoReply(prompt: string): string {
+function tellerReply(prompt: string): string {
     if (/NOTHING CAME BACK/i.test(prompt)) {
-        return 'The north road is clear and the ford is running low, so you should have no trouble with a loaded cart. Set off early and you will be over before the afternoon.'
+        return 'The bridge is sound and the river is low, so a loaded cart will be fine. Set off early and you will be over before noon.'
     }
-    if (/sunflower/i.test(prompt)) {
-        return 'Sow it at high summer in full sun, and water it every day without fail. Stake it early, because it grows tall and the wind will take it otherwise.'
+    if (/carrots/i.test(prompt)) {
+        return 'Leave them in the ground until the first snow. A frost only makes them sweeter, so there is no rush at all.'
     }
-    if (/moonflower/i.test(prompt)) {
-        return 'Wait for the first hard frost and sow it in deep shade. Water it once when it goes in and then leave it be, because it takes its light from the moon.'
+    if (/potatoes/i.test(prompt)) {
+        return 'Get them up before the first frost. Once the cold gets into them they turn to mush where they lie.'
     }
-    if (/gloamcap/i.test(prompt)) {
-        return 'Boil it twice and throw the first water away, and it will do you no harm. Eat it raw and you will not sleep for three nights.'
+    if (/mushroom/i.test(prompt)) {
+        return 'Boil them twice and throw the first water away, and they will do you no harm. Raw they will keep you awake for three nights.'
     }
-    if (/emberroot/i.test(prompt)) {
-        return 'Dig it at the turn of autumn. It burns hot and long, but keep it well away from dry straw.'
+    if (/firewood/i.test(prompt)) {
+        return 'Cut it in autumn and let it stand a year before you burn it. Keep the stack well away from the house.'
     }
-    return 'The stone is quiet on that. Ask me something the archive has an answer for.'
+    return 'The stone is quiet on that one. Ask me something the book has an answer for.'
 }
 
 function estimateTokens(text: string): number {
@@ -41,26 +41,26 @@ export async function demoCall(request: CallRequest): Promise<CallResult> {
     const question = typeof last?.content === 'string' ? last.content : ''
 
     if (/^You decide which tool/i.test(request.system)) {
-        await pause(220)
-        const text = museReply(question)
+        await pause(200)
+        const text = thinkerReply(question)
         return {
             text,
             model: request.model,
             inputTokens: estimateTokens(prompt),
             outputTokens: estimateTokens(text),
-            timeToFirstToken: 0.16,
+            timeToFirstToken: 0.15,
             httpStatus: 200,
         }
     }
 
-    await pause(650)
-    const text = echoReply(prompt)
+    await pause(600)
+    const text = tellerReply(prompt)
     return {
         text,
         model: request.model,
         inputTokens: estimateTokens(prompt),
         outputTokens: estimateTokens(text),
-        timeToFirstToken: 0.4,
+        timeToFirstToken: 0.38,
         httpStatus: 200,
     }
 }

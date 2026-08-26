@@ -1,9 +1,9 @@
-import type { SpiritId } from '@/game/spirits'
+import type { HelperId } from '@/game/helpers'
 
-import { VIEW_H, VIEW_W } from './render'
-import { BUSH, FLOWERS, MUSHROOMS, ROCK, TREE, type Sprite } from './sprites'
+import { TILE, VIEW_H, VIEW_W } from './render'
+import { BUSH, FLOWERS, MUSHROOMS, POTATOES, ROCK, TREE, type Sprite } from './sprites'
 
-export type EntityKind = 'villager' | 'plinth' | 'spirit'
+export type EntityKind = 'villager' | 'elder' | 'plinth' | 'helper'
 
 export interface Entity {
     id: string
@@ -11,7 +11,7 @@ export interface Entity {
     x: number
     y: number
     label: string
-    spirit?: SpiritId
+    helper?: HelperId
 }
 
 export interface Decor {
@@ -20,55 +20,71 @@ export interface Decor {
     y: number
 }
 
-const FLOOR_TOP = 40
-const FLOOR_BOTTOM = VIEW_H - 22
+const FLOOR_TOP = 52
+const FLOOR_BOTTOM = VIEW_H - TILE - 6
 
-/** The ring the spirits stand in. */
-export const CIRCLE = { x: 178, y: 96, radius: 54 }
+/** The ring the helpers stand in. */
+export const CIRCLE = { x: 214, y: 108, radius: 70 }
+
+export const VILLAGER_SPOT = { x: 24, y: 100 }
+export const ELDER_SPOT = { x: 74, y: 120 }
 
 export const ENTITIES: Entity[] = [
-    { id: 'villager', kind: 'villager', x: 22, y: 92, label: 'listen' },
-    { id: 'plinth', kind: 'plinth', x: 84, y: 62, label: 'the Oracle' },
-    { id: 'delve', kind: 'spirit', spirit: 'delve', x: 130, y: 80, label: 'Delve' },
-    { id: 'muse', kind: 'spirit', spirit: 'muse', x: 170, y: 60, label: 'Muse' },
-    { id: 'errand', kind: 'spirit', spirit: 'errand', x: 210, y: 80, label: 'Errand' },
-    { id: 'echo', kind: 'spirit', spirit: 'echo', x: 170, y: 100, label: 'Echo' },
+    { id: 'villager', kind: 'villager', x: VILLAGER_SPOT.x, y: VILLAGER_SPOT.y, label: 'listen' },
+    { id: 'elder', kind: 'elder', x: ELDER_SPOT.x, y: ELDER_SPOT.y, label: 'the old woman' },
+    { id: 'plinth', kind: 'plinth', x: 92, y: 56, label: 'ask the Oracle' },
+    { id: 'finder', kind: 'helper', helper: 'finder', x: 150, y: 92, label: 'Finder' },
+    { id: 'thinker', kind: 'helper', helper: 'thinker', x: 202, y: 58, label: 'Thinker' },
+    { id: 'runner', kind: 'helper', helper: 'runner', x: 254, y: 92, label: 'Runner' },
+    { id: 'teller', kind: 'helper', helper: 'teller', x: 202, y: 118, label: 'Teller' },
 ]
 
 /** Scenery. Drawn behind everything, walks through, purely to make it a place. */
 export const DECOR: Decor[] = [
-    { sprite: TREE, x: -2, y: 22 },
-    { sprite: TREE, x: 34, y: 18 },
-    { sprite: TREE, x: 108, y: 16 },
-    { sprite: TREE, x: 146, y: 20 },
-    { sprite: TREE, x: 226, y: 18 },
-    { sprite: TREE, x: 242, y: 26 },
-    { sprite: BUSH, x: 6, y: 118 },
-    { sprite: BUSH, x: 92, y: 122 },
-    { sprite: BUSH, x: 238, y: 112 },
-    { sprite: BUSH, x: 52, y: 44 },
-    { sprite: FLOWERS, x: 40, y: 116 },
-    { sprite: FLOWERS, x: 118, y: 124 },
-    { sprite: FLOWERS, x: 200, y: 126 },
-    { sprite: FLOWERS, x: 76, y: 96 },
-    { sprite: MUSHROOMS, x: 20, y: 60 },
-    { sprite: MUSHROOMS, x: 214, y: 122 },
-    { sprite: ROCK, x: 106, y: 74 },
-    { sprite: ROCK, x: 232, y: 60 },
+    { sprite: TREE, x: -6, y: 20 },
+    { sprite: TREE, x: 40, y: 14 },
+    { sprite: TREE, x: 128, y: 12 },
+    { sprite: TREE, x: 172, y: 16 },
+    { sprite: TREE, x: 268, y: 12 },
+    { sprite: TREE, x: 296, y: 22 },
+    { sprite: POTATOES, x: 4, y: 142 },
+    { sprite: BUSH, x: 56, y: 150 },
+    { sprite: BUSH, x: 116, y: 152 },
+    { sprite: BUSH, x: 292, y: 142 },
+    { sprite: BUSH, x: 62, y: 46 },
+    { sprite: FLOWERS, x: 148, y: 152 },
+    { sprite: FLOWERS, x: 244, y: 156 },
+    { sprite: FLOWERS, x: 100, y: 116 },
+    { sprite: MUSHROOMS, x: 18, y: 62 },
+    { sprite: MUSHROOMS, x: 272, y: 152 },
+    { sprite: ROCK, x: 124, y: 70 },
+    { sprite: ROCK, x: 290, y: 62 },
 ]
 
-export const SPAWN = { x: 52, y: 112 }
+export const SPAWN = { x: 64, y: 122 }
 
 export function clampToFloor(y: number): number {
     return Math.min(FLOOR_BOTTOM, Math.max(FLOOR_TOP, y))
 }
 
-export function nearest(px: number, py: number): Entity | null {
+export function visibleEntities(showVillager: boolean, showElder: boolean): Entity[] {
+    return ENTITIES.filter((entity) => {
+        if (entity.kind === 'villager') {
+            return showVillager
+        }
+        if (entity.kind === 'elder') {
+            return showElder
+        }
+        return true
+    })
+}
+
+export function nearest(entities: Entity[], px: number, py: number): Entity | null {
     let best: Entity | null = null
     let bestDistance = Number.POSITIVE_INFINITY
-    for (const entity of ENTITIES) {
+    for (const entity of entities) {
         const distance = Math.hypot(entity.x - px, entity.y - py)
-        if (distance < 30 && distance < bestDistance) {
+        if (distance < 38 && distance < bestDistance) {
             best = entity
             bestDistance = distance
         }

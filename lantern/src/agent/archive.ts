@@ -1,29 +1,30 @@
-export interface Scroll {
+export interface Page {
     id: string
     subject: string
     text: string
 }
 
-export const ARCHIVE: Scroll[] = [
+/** The village book. What Finder searches. */
+export const BOOK: Page[] = [
     {
-        id: 'SCR-11',
-        subject: 'moonflower',
-        text: 'Moonflower. Sow at the first hard frost, in deep shade. Water once at sowing and never again. It takes its light from the moon and rots in sun.',
+        id: 'p.14',
+        subject: 'potatoes',
+        text: 'Potatoes. Dig them up before the first frost. A frost gets into them and they turn to mush in the ground.',
     },
     {
-        id: 'SCR-12',
-        subject: 'sunflower',
-        text: 'Sunflower. Sow at high summer in full sun. Water daily and stake it early. It follows the sun across the sky and sulks in shade.',
+        id: 'p.15',
+        subject: 'carrots',
+        text: 'Carrots. Leave them in the ground until the first snow. A frost makes them sweeter, so there is no hurry.',
     },
     {
-        id: 'SCR-27',
-        subject: 'gloamcap',
-        text: 'Gloamcap. A grey mushroom of the deep wood. Safe once boiled twice and the first water thrown away. Raw it will keep you up for three nights.',
+        id: 'p.31',
+        subject: 'mushrooms',
+        text: 'Grey mushrooms. Safe once boiled twice, with the first water thrown away. Raw they will keep you awake for three nights.',
     },
     {
-        id: 'SCR-31',
-        subject: 'emberroot',
-        text: 'Emberroot. Dig at the turn of autumn. Burns hot and long. Never store it beside dry straw.',
+        id: 'p.44',
+        subject: 'firewood',
+        text: 'Firewood. Cut it in autumn and stack it a year before you burn it. Never stack it against the house.',
     },
 ]
 
@@ -33,15 +34,14 @@ export interface WorldFact {
     text: string
 }
 
-/** What Errand goes out into the world to find. */
+/** What Runner goes out to check. */
 export const WORLD: WorldFact[] = [
-    { id: 'road-north', subject: 'north road', text: 'The north road is flooded at the ford. Impassable to carts.' },
-    { id: 'road-south', subject: 'south road', text: 'The south road is dry and open.' },
-    { id: 'well', subject: 'well', text: 'The old well is dry and the rope has rotted through.' },
-    { id: 'caravan', subject: 'caravan', text: 'The salt caravan passed two days ago and is not expected again until spring.' },
+    { id: 'bridge', subject: 'bridge river cross', text: 'The river bridge washed away in the storm. There is no crossing.' },
+    { id: 'road', subject: 'road', text: 'The south road is dry and open.' },
+    { id: 'mill', subject: 'mill', text: 'The mill is turning and taking grain as usual.' },
 ]
 
-/** A deliberately naive keyword match, which is what most first retrievers are. */
+/** A deliberately naive keyword match, which is what most first searches are. */
 export function search<T extends { subject: string }>(items: T[], query: string): T[] {
     const words = query.toLowerCase().split(/\W+/).filter((word) => word.length > 2)
     const scored = items.map((item) => ({
@@ -52,11 +52,11 @@ export function search<T extends { subject: string }>(items: T[], query: string)
     return hits.length > 0 ? hits.map((entry) => entry.item) : [items[0]]
 }
 
-export class ErrandLost extends Error {
+export class RunnerLost extends Error {
     readonly httpStatus = 504
 
     constructor() {
-        super('Errand did not come back')
-        this.name = 'ErrandLost'
+        super('Runner did not come back')
+        this.name = 'RunnerLost'
     }
 }

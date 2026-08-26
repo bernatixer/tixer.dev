@@ -1,24 +1,24 @@
-import { spiritById, type SpiritId } from '@/game/spirits'
+import { helperById, type HelperId } from '@/game/helpers'
 import { formatUsd } from '@/tracing/cost'
 import { flatten, type Trace, type TraceNode } from '@/tracing/types'
 
-/** Each spirit is one span of the trace, named after it. */
-export function findSpiritNode(trace: Trace | undefined, spirit: SpiritId): TraceNode | null {
+/** Each helper is one step of the record, named after it. */
+export function findHelperNode(trace: Trace | undefined, helper: HelperId): TraceNode | null {
     if (!trace) {
         return null
     }
-    return flatten(trace.root).find((row) => row.node.name === spirit)?.node ?? null
+    return flatten(trace.root).find((row) => row.node.name === helper)?.node ?? null
 }
 
+/** Plain label first, real property name after, so both stick. */
 const PROPS: [keyof TraceNode['properties'], string][] = [
-    ['$ai_model', 'model'],
-    ['$ai_http_status', 'http status'],
-    ['$ai_latency', 'latency (s)'],
-    ['$ai_time_to_first_token', 'time to first token (s)'],
-    ['$ai_input_tokens', 'input tokens'],
-    ['$ai_output_tokens', 'output tokens'],
-    ['$ai_total_cost_usd', 'cost'],
-    ['$ai_error', 'error'],
+    ['$ai_model', 'which mind answered ($ai_model)'],
+    ['$ai_input_tokens', 'words read ($ai_input_tokens)'],
+    ['$ai_output_tokens', 'words spoken ($ai_output_tokens)'],
+    ['$ai_total_cost_usd', 'what it cost ($ai_total_cost_usd)'],
+    ['$ai_latency', 'seconds taken ($ai_latency)'],
+    ['$ai_http_status', 'did it work ($ai_http_status)'],
+    ['$ai_error', 'what went wrong ($ai_error)'],
 ]
 
 function renderValue(value: unknown): string {
@@ -44,12 +44,11 @@ function renderValue(value: unknown): string {
     return JSON.stringify(value, null, 2)
 }
 
-/** What a spirit tells you when the Lantern is lit. */
-export function spiritReport(spirit: SpiritId, node: TraceNode | null): { body: string; detail: string } {
-    const who = spiritById(spirit)
+export function helperReport(helper: HelperId, node: TraceNode | null): { body: string; detail: string } {
+    const who = helperById(helper)
     if (!node) {
         return {
-            body: `${who.name} ${who.role}. It has not been called on yet. Ask the Oracle something first.`,
+            body: `${who.name} ${who.role}. It has not been asked to do anything yet. Ask the Oracle something first.`,
             detail: '',
         }
     }
@@ -58,12 +57,8 @@ export function spiritReport(spirit: SpiritId, node: TraceNode | null): { body: 
     const failed = node.properties.$ai_is_error === true || (status !== undefined && status >= 400)
 
     const body = failed
-        ? `${who.name} never came back. ${node.properties.$ai_error ?? ''} Nothing downstream was told.`
-        : node.kind === 'generation'
-          ? `${who.name} read ${node.properties.$ai_input_tokens ?? 0} tokens of mana and spoke ${
-                node.properties.$ai_output_tokens ?? 0
-            }. In the world outside, ${who.truth}.`
-          : `${who.name} ${who.role}. In the world outside, ${who.truth}. Read what it came back with.`
+        ? `${who.name} never came back. ${node.properties.$ai_error ?? ''} Nobody else was told.`
+        : `${who.name} ${who.role}. Here is exactly what it was given and what it came back with.`
 
     const lines: string[] = []
     for (const [key, label] of PROPS) {
@@ -72,11 +67,11 @@ export function spiritReport(spirit: SpiritId, node: TraceNode | null): { body: 
             continue
         }
         lines.push(
-            `${label.padEnd(24)} ${
+            `${label}\n  ${
                 key === '$ai_total_cost_usd'
                     ? formatUsd(value as number)
                     : typeof value === 'number'
-                      ? Number(value.toFixed(4)).toString()
+                      ? Number(value.toFixed(3)).toString()
                       : String(value)
             }`
         )

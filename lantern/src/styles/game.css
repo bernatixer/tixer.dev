@@ -271,6 +271,24 @@ body {
     color: var(--parchment);
 }
 
+.hud__music {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid rgba(244, 236, 216, 0.35);
+    border-radius: 2px;
+    padding: 3px 8px;
+    color: var(--parchment);
+    cursor: pointer;
+}
+
+.hud__music:hover {
+    border-color: #a8d85f;
+    color: #a8d85f;
+}
+
 .hud__slot--dim {
     color: rgba(244, 236, 216, 0.55);
     margin-left: auto;
@@ -282,7 +300,7 @@ body {
     display: grid;
     gap: 14px;
     /* Sized so the glade, the hint bar and the dialogue box fit one screen. */
-    max-width: 880px;
+    max-width: 920px;
     margin: 0 auto;
 }
 
@@ -335,7 +353,7 @@ kbd {
     border-radius: 4px;
     background: var(--panel-bg);
     padding: 15px 18px;
-    min-height: 158px;
+    min-height: 150px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -393,7 +411,7 @@ kbd {
     line-height: 1.6;
     white-space: pre-wrap;
     word-break: break-word;
-    max-height: 176px;
+    max-height: 132px;
     overflow-y: auto;
     background: var(--parchment);
     border: 1px solid var(--edge);

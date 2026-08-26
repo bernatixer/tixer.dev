@@ -9,15 +9,16 @@ Four pieces sharing one repo and one domain root. Three are deployed:
 - **`web/`** — React+Vite landing page at `tixer.dev`. Hosted on **GitHub Pages**. Built output lives in committed `docs/` directory.
 - **`focus/`** — React+Vite kanban + weekly-goals app at `focus.tixer.dev`. Hosted on **Cloudflare Pages** (project name `focus-tixer-dev`).
 - **`worker/`** — Cloudflare Worker + D1 API serving `/api/*`. Hono framework. Auth via Clerk JWT (RS256).
-- **`lantern/`** — React+Vite pixel-art RPG that explains AI observability through a fantasy village. **Not deployed yet** — no Pages project, no workflow. Dev server on port 3100. Pure client side: no worker, no D1, no auth. The player pastes their own OpenAI or Anthropic key and it never leaves their browser.
+- **`lantern/`** — React+Vite pixel-art game that explains AI observability through a farming village. **Not deployed yet** — no Pages project, no workflow. Dev server on port 3100. Pure client side: no worker, no D1, no auth. The player pastes their own OpenAI or Anthropic key and it never leaves their browser.
 
 No shared bundle, no shared runtime, no shared auth. Treat them as separate apps that happen to live in one repo.
 
 ## Tech stack quick reference
 
 - React 18, Vite, TanStack Query, Clerk, Hono, Cloudflare D1, pnpm.
-- `lantern/` adds `@anthropic-ai/sdk` and `openai`, both called from the browser with `dangerouslyAllowBrowser` because there is no backend to proxy through. The provider is chosen from the key prefix. Rendering is a hand-rolled canvas pixel renderer in `lantern/src/rpg/`; sprites are pixel data in source, not image files, and `pnpm validate:sprites` (which build runs) checks their geometry.
+- `lantern/` adds `@anthropic-ai/sdk` and `openai`, both called from the browser with `dangerouslyAllowBrowser` because there is no backend to proxy through. The provider is chosen from the key prefix. Rendering is a hand-rolled canvas pixel renderer in `lantern/src/rpg/`; sprites are 24x24 pixel data in source, not image files, and `pnpm validate:sprites` (which build runs) checks their geometry. The background music is generated with Web Audio in `lantern/src/audio/`, so there are no media files either.
 - `lantern/` does not follow the site's dark palette. It is a daylit forest on parchment, deliberately, because the game needed to be inviting rather than on-brand. Do not "fix" it to match `web/` and `focus/`.
+- `lantern/` is one continuous scene on purpose. There is no interlude screen and no results screen; the story beats happen in the glade while the player keeps their position. Do not reintroduce screens that replace the world.
 - AI tasks parser proxies through the worker to **z.ai / GLM-4.5-flash** (`worker/src/handlers/ai.ts`).
 - `focus/` is a PWA (`vite-plugin-pwa`).
 - No monorepo tooling — each subdir has its own `package.json` and lockfile. Don't introduce workspaces without asking.

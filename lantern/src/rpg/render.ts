@@ -1,9 +1,9 @@
 import { PALETTE, type Sprite } from './sprites'
 
 /** Logical resolution. Everything is authored against this, then upscaled. */
-export const VIEW_W = 256
-export const VIEW_H = 148
-export const TILE = 16
+export const VIEW_W = 320
+export const VIEW_H = 180
+export const TILE = 24
 
 const GRASS = '#4f8f34'
 const GRASS_DARK = '#3f7a2e'
@@ -45,7 +45,7 @@ function hash(x: number, y: number): number {
     return n - Math.floor(n)
 }
 
-const HORIZON = 34
+const HORIZON = 44
 
 export function drawGlade(ctx: CanvasRenderingContext2D, offsetX: number): void {
     fillRect(ctx, 0, 0, VIEW_W, HORIZON, SKY)
@@ -104,7 +104,7 @@ export function drawGlow(
 /** The bobbing marker over whatever you are standing next to. */
 export function drawCursor(ctx: CanvasRenderingContext2D, x: number, y: number, time: number): void {
     const bob = Math.round(Math.sin(time / 180) * 2)
-    const arrow = ['..XX..', '.XXXX.', 'XXXXXX', '..XX..', '..XX..']
+    const arrow = ['..XX..', '.XXXX.', 'XXXXXX', '.XXXX.', '..XX..', '..XX..']
     arrow.forEach((line, row) => {
         for (let col = 0; col < line.length; col += 1) {
             if (line[col] === 'X') {
@@ -115,11 +115,25 @@ export function drawCursor(ctx: CanvasRenderingContext2D, x: number, y: number, 
     })
 }
 
+/** Drawn over a helper that went wrong, so it reads at a glance. */
+export function drawHurt(ctx: CanvasRenderingContext2D, x: number, y: number, time: number): void {
+    const bob = Math.round(Math.sin(time / 200) * 2)
+    ctx.fillStyle = '#d1452f'
+    const mark = ['XXX', 'XXX', 'XXX', 'XXX', '...', 'XXX']
+    mark.forEach((line, row) => {
+        for (let col = 0; col < line.length; col += 1) {
+            if (line[col] === 'X') {
+                ctx.fillRect(Math.round(x) + col, Math.round(y) + row + bob, 1, 1)
+            }
+        }
+    })
+}
+
 /** Someone with something to say. */
 export function drawAlert(ctx: CanvasRenderingContext2D, x: number, y: number, time: number): void {
     const bob = Math.round(Math.sin(time / 220) * 2)
     ctx.fillStyle = '#f2c14e'
-    const mark = ['XX', 'XX', 'XX', 'XX', '..', 'XX']
+    const mark = ['XXX', 'XXX', 'XXX', 'XXX', '...', 'XXX']
     mark.forEach((line, row) => {
         for (let col = 0; col < line.length; col += 1) {
             if (line[col] === 'X') {

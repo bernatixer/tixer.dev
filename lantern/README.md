@@ -1,35 +1,40 @@
 # Lantern
 
-A short pixel-art RPG about AI observability.
+A short pixel-art game about AI observability, in a village that has never heard
+the phrase.
 
-A village Oracle has started giving ruinous advice. The Oracle does not think.
-It runs a ritual, and four spirits do the work:
+A stone Oracle answers the villagers' questions, and it has started getting them
+badly wrong. The Oracle does not think. It has four helpers:
 
-- **Delve** digs the right scroll out of the archive
-- **Muse** decides which rite the question calls for
-- **Errand** runs out into the world and brings a fact back
-- **Echo** reads what the others brought, and speaks
+- **Finder** looks the question up in the village book
+- **Thinker** works out what to do about it
+- **Runner** goes out and checks the real world
+- **Teller** reads what the others brought and says the answer
 
-Three villagers come to you with a ruined crop, a half-spent mana store, and a
-lost cartwheel. Each time, one spirit is at fault. You have to say which.
+Bram left his potatoes in the ground until the snow because the Oracle told him
+to, and they all froze. One of the four helpers did that to him. You have to say
+which.
 
-On the first day the circle is full of fog. You hear Echo's answer, it sounds
-perfect, and you point at a shape in the mist. On the second day someone hands
-you a lantern, the fog is not there any more, and the same three faults take a
-minute each.
+On the first morning the circle they stand in is full of fog. You can hear them,
+you know what each of them is for, and you cannot see what any of them did. So
+you guess.
 
-The Lantern is tracing. That is the whole joke and the whole lesson.
+Then an old woman hands you a lantern, the fog is gone, and she tells you to go
+and look at the asking you already made. It was all still there. You just had no
+way to see it.
+
+**The lantern is tracing.** That is the whole lesson.
 
 ## The three faults
 
-| Villager | What went wrong | What the Lantern shows |
+| Villager | What went wrong | What the lantern shows |
 |---|---|---|
-| Marrow, herbalist | Delve fetched the sunflower scroll for a moonflower question | A spirit asked for one thing and holding another |
-| Odd, miller | Echo will not speak until the whole archive is read to it, and forgets between askings | A pile of scrolls that grows every time you ask |
-| Wren, carter | Errand never came back, and Echo covered for it | Three failed attempts, and an answer invented to fill the gap |
+| Bram, farmer | Finder brought the page about carrots to a question about potatoes | A helper asked for one thing, holding another |
+| Nel, lamp keeper | Teller will not speak until the whole book is read to it, and forgets between askings | A pile of books that grows every time you ask |
+| Tam, carter | Runner never came back, and Teller filled the gap itself | Three failed tries, and an answer invented to cover them |
 
-Muse is never at fault, which is the point. The part that does the talking is
-rarely the part that broke.
+Thinker is never at fault. That is deliberate: the part of an AI that does the
+talking is rarely the part that broke, and everybody blames it first.
 
 ## Running it
 
@@ -40,8 +45,9 @@ pnpm dev        # http://localhost:3100
 
 `web/` and `focus/` both use port 3000, so this one sits on 3100.
 
-Arrow keys or WASD to walk and space to act. Clicking anything works too, so it
-is playable with a mouse alone.
+Arrow keys or WASD to walk, space to act. Clicking anything works too, so it is
+playable with a mouse alone. There is a chiptune loop with a toggle in the
+header.
 
 ## Bring your own key
 
@@ -50,32 +56,35 @@ from the prefix, so there is nothing to configure. There is no backend, so the
 key never reaches a server of mine: it goes from your browser straight to the
 provider, and it stays in `localStorage`.
 
-The Oracle really is a model. Every answer in the game is a live call, and the
-mana and coin in the header are the token counts and cost the provider reported.
+The Oracle really is a model. Every answer is a live call, and the words and
+cost in the header are the token counts and price the provider reported.
 
-Without a key, "visit without a key" runs the same ritual against canned replies.
-It breaks in exactly the same places, and the traces are real traces.
+Without a key, "visit without a key" runs the same asking against canned
+replies. It breaks in exactly the same places, and the record is still real.
 
 ## Layout
 
 ```
 src/
-  tracing/     the trace model: nodes, $ai_* properties, cost, the recorder
+  tracing/     the record: nodes, $ai_* properties, cost, the recorder
   llm/         Anthropic and OpenAI clients (streamed, for real time-to-first-token), demo backend, model catalog
-  agent/       the ritual: the archive, the world, the four traced steps
-  game/        the spirits, the three quests, act and score state
+  agent/       the asking: the village book, the world, the four recorded steps
+  game/        the helpers, the quests, one continuous run of state
   rpg/         hand-authored sprites, the canvas renderer, the glade, movement
+  audio/       a chiptune loop generated in the browser
   ui/          the dialogue box and the screens around the game
 ```
 
 `src/tracing/` is deliberately a small copy of how PostHog AI observability
-models this. A trace holds spans and generations, and every node carries the
-real `$ai_*` property names, so what a spirit tells you when you walk up to it
-is what you would read in a production trace viewer.
+models this. A record holds spans and generations, and every node carries the
+real `$ai_*` property names. When you walk up to a helper it shows you a plain
+label and the real property name next to it, so both stick.
 
-The recorder runs on both days. The first day only draws fog over the circle.
-The blindness is a missing view, never missing data, which is the whole point.
+The recorder runs on both days. The first morning only draws fog over the
+circle. The blindness is a missing view, never missing data, which is the whole
+point of the game.
 
-The art is hand-authored pixel data in `src/rpg/sprites.ts`, so there are no
-external assets to license or load. `pnpm validate:sprites` checks that every
-sprite is rectangular and uses only palette characters; it also runs on build.
+The art is hand-authored pixel data in `src/rpg/sprites.ts` at 24x24, so there
+are no external assets to license or load. `pnpm validate:sprites` checks that
+every sprite is rectangular and uses only palette characters; build runs it too.
+The music is generated with the Web Audio API for the same reason.

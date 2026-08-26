@@ -4,18 +4,17 @@ import { performRitual } from '@/agent/pipeline'
 import { demoBackend, liveBackend } from '@/llm/backend'
 import { Tracer } from '@/tracing/tracer'
 
-import type { SpiritId } from './spirits'
-import { currentQuestId, currentRun, initialState, reducer, type GameState } from './state'
+import type { HelperId } from './helpers'
+import { currentQuest, currentRun, initialState, reducer, type GameState } from './state'
 
 export interface Game {
     state: GameState
     live: boolean
     start(apiKey: string | null, model: string): void
     ask(question: string): Promise<void>
-    blame(spirit: SpiritId, correct: boolean): void
+    blame(helper: HelperId, correct: boolean): void
     setModel(model: string): void
     advance(): void
-    startAct2(): void
     restart(): void
 }
 
@@ -35,23 +34,23 @@ export function useGame(): Game {
             if (snapshot.busy || !question.trim()) {
                 return
             }
-            const questId = currentQuestId(snapshot)
+            const quest = currentQuest(snapshot)
             const run = currentRun(snapshot)
-            const tracer = new Tracer('oracle.ritual', questId)
+            const tracer = new Tracer('oracle.asking', quest.id)
 
             dispatch({ type: 'busy', busy: true })
             try {
                 const answer = await performRitual({
                     backend,
                     model: snapshot.model,
-                    fault: questId,
+                    fault: quest.culprit,
                     history: run.askings,
                     question,
                     tracer,
                 })
                 dispatch({ type: 'asked', question, answer, trace: tracer.finish() })
             } catch (error) {
-                // The trace is still worth keeping. A failed asking is the one
+                // The record is still worth keeping. A failed asking is the one
                 // you most want to look at.
                 tracer.finish()
                 dispatch({ type: 'error', error: error instanceof Error ? error.message : String(error) })
@@ -65,10 +64,9 @@ export function useGame(): Game {
         live: backend.live,
         start: useCallback((apiKey, model) => dispatch({ type: 'start', apiKey, model }), []),
         ask,
-        blame: useCallback((spirit, correct) => dispatch({ type: 'blame', spirit, correct }), []),
+        blame: useCallback((helper, correct) => dispatch({ type: 'blame', helper, correct }), []),
         setModel: useCallback((model) => dispatch({ type: 'setModel', model }), []),
         advance: useCallback(() => dispatch({ type: 'advance' }), []),
-        startAct2: useCallback(() => dispatch({ type: 'startAct2' }), []),
         restart: useCallback(() => dispatch({ type: 'restart' }), []),
     }
 }

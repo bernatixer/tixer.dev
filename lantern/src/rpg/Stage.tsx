@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 
-import type { SpiritId } from '@/game/spirits'
+import type { HelperId } from '@/game/helpers'
 
 import {
     drawAlert,
     drawCursor,
     drawGlade,
     drawGlow,
+    drawHurt,
     drawRitualCircle,
     drawShadow,
     drawSprite,
@@ -15,47 +16,55 @@ import {
     VIEW_W,
 } from './render'
 import {
-    DELVE,
-    DELVE_SICK,
-    ECHO,
-    ECHO_SICK,
-    ERRAND,
-    ERRAND_SICK,
+    BOOK_PILE,
+    ELDER_A,
+    ELDER_B,
+    FINDER,
     FOG_A,
     FOG_B,
     HERO_A,
     HERO_B,
-    MUSE,
-    MUSE_SICK,
     PLINTH,
-    SCROLLS,
+    RUNNER,
+    TELLER,
+    THINKER,
     VILLAGER_A,
     VILLAGER_B,
     type Sprite,
 } from './sprites'
-import { CIRCLE, clampToFloor, DECOR, ENTITIES, nearest, SPAWN, WORLD_W, type Entity } from './world'
+import {
+    CIRCLE,
+    clampToFloor,
+    DECOR,
+    nearest,
+    SPAWN,
+    visibleEntities,
+    WORLD_W,
+    type Entity,
+} from './world'
 
-export interface SpiritLook {
-    /** The Lantern is lit, so the spirits can be seen at all. */
+export interface HelperLook {
+    /** The lantern is lit, so the helpers can be seen at all. */
     seen: boolean
-    sick: boolean
-    /** Scales with the mana the step burned. */
+    hurt: boolean
+    /** Scales with how many words the step read. */
     glow: number
-    failed: boolean
 }
 
 interface StageProps {
-    looks: Record<SpiritId, SpiritLook>
-    /** How many scrolls Delve has dragged in, 0 to 3. */
-    hoard: number
+    looks: Record<HelperId, HelperLook>
+    /** How many books Teller has demanded, 0 to 3. */
+    pile: number
+    showVillager: boolean
     villagerWaiting: boolean
-    /** Lights each spirit in turn while the ritual runs. */
-    activeSpirit: SpiritId | null
+    showElder: boolean
+    /** Lights each helper in turn while an asking runs. */
+    active: HelperId | null
     locked: boolean
     onInteract: (entity: Entity) => void
 }
 
-const SPEED = 66
+const SPEED = 92
 const MOVE_KEYS: Record<string, [number, number]> = {
     ArrowLeft: [-1, 0],
     ArrowRight: [1, 0],
@@ -67,19 +76,20 @@ const MOVE_KEYS: Record<string, [number, number]> = {
     s: [0, 1],
 }
 
-const WELL: Record<SpiritId, Sprite> = { delve: DELVE, muse: MUSE, errand: ERRAND, echo: ECHO }
-const SICK: Record<SpiritId, Sprite> = {
-    delve: DELVE_SICK,
-    muse: MUSE_SICK,
-    errand: ERRAND_SICK,
-    echo: ECHO_SICK,
+const HELPER_SPRITE: Record<HelperId, Sprite> = {
+    finder: FINDER,
+    thinker: THINKER,
+    runner: RUNNER,
+    teller: TELLER,
 }
 
 export function Stage({
     looks,
-    hoard,
+    pile,
+    showVillager,
     villagerWaiting,
-    activeSpirit,
+    showElder,
+    active,
     locked,
     onInteract,
 }: StageProps): JSX.Element {
@@ -88,22 +98,16 @@ export function Stage({
     const held = useRef(new Set<string>())
     const [nearLabel, setNearLabel] = useState<string | null>(null)
 
-    const lockedRef = useRef(locked)
-    lockedRef.current = locked
+    // Everything the loop reads goes through a ref, so the canvas keeps running
+    // across quests instead of tearing down and starting again.
+    const props = useRef({ looks, pile, showVillager, villagerWaiting, showElder, active, locked })
+    props.current = { looks, pile, showVillager, villagerWaiting, showElder, active, locked }
     const interactRef = useRef(onInteract)
     interactRef.current = onInteract
-    const looksRef = useRef(looks)
-    looksRef.current = looks
-    const activeRef = useRef(activeSpirit)
-    activeRef.current = activeSpirit
-    const hoardRef = useRef(hoard)
-    hoardRef.current = hoard
-    const waitingRef = useRef(villagerWaiting)
-    waitingRef.current = villagerWaiting
 
     useEffect(() => {
         const down = (event: KeyboardEvent): void => {
-            if (lockedRef.current) {
+            if (props.current.locked) {
                 return
             }
             if (event.key in MOVE_KEYS) {
@@ -113,7 +117,8 @@ export function Stage({
             }
             if (event.key === ' ' || event.key === 'Enter') {
                 event.preventDefault()
-                const hit = nearest(player.current.x, player.current.y)
+                const list = visibleEntities(props.current.showVillager, props.current.showElder)
+                const hit = nearest(list, player.current.x, player.current.y)
                 if (hit) {
                     interactRef.current(hit)
                 }
@@ -150,6 +155,7 @@ export function Stage({
         const frame = (now: number): void => {
             const dt = Math.min(0.05, (now - last) / 1000)
             last = now
+            const state = props.current
 
             let dx = 0
             let dy = 0
@@ -165,7 +171,8 @@ export function Stage({
             player.current.x = Math.max(2, Math.min(WORLD_W - TILE - 2, player.current.x + (dx / length) * SPEED * dt))
             player.current.y = clampToFloor(player.current.y + (dy / length) * SPEED * dt)
 
-            const hit = nearest(player.current.x, player.current.y)
+            const list = visibleEntities(state.showVillager, state.showElder)
+            const hit = nearest(list, player.current.x, player.current.y)
             setNearLabel(hit ? hit.label : null)
 
             drawGlade(ctx, 0)
@@ -174,60 +181,67 @@ export function Stage({
                 drawSprite(ctx, item.sprite, item.x, item.y)
             }
 
-            const idle = Math.floor(now / 500) % 2
-            const walk = player.current.moving ? Math.floor(now / 150) % 2 : 0
+            const idle = Math.floor(now / 460) % 2
+            const walk = player.current.moving ? Math.floor(now / 140) % 2 : 0
 
-            const drawables = [
-                ...ENTITIES.map((entity) => ({ entity, y: entity.y })),
+            const drawables: { entity: Entity | null; y: number }[] = [
+                ...list.map((entity) => ({ entity, y: entity.y })),
                 { entity: null, y: player.current.y },
-            ].sort((a, b) => a.y - b.y)
+            ]
+            drawables.sort((a, b) => a.y - b.y)
 
             for (const item of drawables) {
                 if (!item.entity) {
-                    drawShadow(ctx, player.current.x + 3, player.current.y + TILE - 2, TILE - 6)
+                    drawShadow(ctx, player.current.x + 5, player.current.y + TILE - 2, TILE - 10)
                     drawSprite(ctx, walk ? HERO_B : HERO_A, player.current.x, player.current.y)
                     continue
                 }
                 const entity = item.entity
-                const look = entity.spirit ? looksRef.current[entity.spirit] : null
-                const lit = activeRef.current === entity.spirit
+                const look = entity.helper ? state.looks[entity.helper] : null
+                const lit = state.active === entity.helper
 
                 if (look?.seen && look.glow > 0) {
                     const pulse = 1 + Math.sin(now / 420 + entity.x) * 0.07
-                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, look.glow * pulse, 'rgba(191,255,0,0.40)')
+                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, look.glow * pulse, 'rgba(191,255,0,0.38)')
                 }
-                if (look?.seen && look.failed) {
-                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, 22, 'rgba(209,69,47,0.42)')
+                if (look?.seen && look.hurt) {
+                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, 30, 'rgba(209,69,47,0.40)')
                 }
                 if (lit) {
-                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, 26, 'rgba(247,239,224,0.45)')
+                    drawGlow(ctx, entity.x + TILE / 2, entity.y + TILE / 2, 34, 'rgba(247,239,224,0.42)')
                 }
 
-                drawShadow(ctx, entity.x + 3, entity.y + TILE - 2, TILE - 6)
+                drawShadow(ctx, entity.x + 5, entity.y + TILE - 2, TILE - 10)
 
                 if (entity.kind === 'villager') {
                     drawSprite(ctx, idle ? VILLAGER_B : VILLAGER_A, entity.x, entity.y)
-                    if (waitingRef.current) {
-                        drawAlert(ctx, entity.x + 7, entity.y - 9, now)
+                    if (state.villagerWaiting) {
+                        drawAlert(ctx, entity.x + 10, entity.y - 10, now)
                     }
+                } else if (entity.kind === 'elder') {
+                    drawSprite(ctx, idle ? ELDER_B : ELDER_A, entity.x, entity.y)
+                    drawAlert(ctx, entity.x + 10, entity.y - 10, now)
                 } else if (entity.kind === 'plinth') {
-                    drawSprite(ctx, PLINTH, entity.x, entity.y - 4)
-                } else if (entity.spirit) {
+                    drawSprite(ctx, PLINTH, entity.x, entity.y)
+                } else if (entity.helper) {
                     if (!look?.seen) {
                         drawSprite(ctx, idle ? FOG_A : FOG_B, entity.x, entity.y)
                     } else {
-                        drawSprite(ctx, look.sick ? SICK[entity.spirit] : WELL[entity.spirit], entity.x, entity.y)
+                        drawSprite(ctx, HELPER_SPRITE[entity.helper], entity.x, entity.y)
+                        if (look.hurt) {
+                            drawHurt(ctx, entity.x + 10, entity.y - 10, now)
+                        }
                     }
-                    // Delve's hoard piles up in front of it, asking by asking.
-                    if (entity.spirit === 'delve' && hoardRef.current > 0) {
-                        for (let pile = 0; pile < hoardRef.current; pile += 1) {
-                            drawSprite(ctx, SCROLLS, entity.x - 6 + pile * 7, entity.y + 4 - pile * 3)
+                    // Teller's pile grows every time it demands the book again.
+                    if (entity.helper === 'teller' && state.pile > 0 && look?.seen) {
+                        for (let book = 0; book < state.pile; book += 1) {
+                            drawSprite(ctx, BOOK_PILE, entity.x - 16 + book * 11, entity.y + 4 - book * 5)
                         }
                     }
                 }
 
                 if (hit && hit.id === entity.id) {
-                    drawCursor(ctx, entity.x + 5, entity.y - 9, now)
+                    drawCursor(ctx, entity.x + 9, entity.y - 11, now)
                 }
             }
 
@@ -245,14 +259,14 @@ export function Stage({
         const rect = event.currentTarget.getBoundingClientRect()
         const x = ((event.clientX - rect.left) / rect.width) * VIEW_W
         const y = ((event.clientY - rect.top) / rect.height) * VIEW_H
-        const hit = ENTITIES.find(
-            (entity) => x >= entity.x - 5 && x <= entity.x + TILE + 5 && y >= entity.y - 5 && y <= entity.y + TILE + 5
+        const hit = visibleEntities(showVillager, showElder).find(
+            (entity) => x >= entity.x - 6 && x <= entity.x + TILE + 6 && y >= entity.y - 6 && y <= entity.y + TILE + 6
         )
         if (!hit) {
             return
         }
         player.current.x = hit.x
-        player.current.y = clampToFloor(hit.y + TILE + 3)
+        player.current.y = clampToFloor(hit.y + TILE + 4)
         onInteract(hit)
     }
 

@@ -1,12 +1,12 @@
+import type { HelperId } from '@/game/helpers'
 import type { LlmBackend } from '@/llm/backend'
 import { modelById } from '@/llm/models'
 import { LlmCallError, type ChatMessage } from '@/llm/types'
-import type { SpiritId } from '@/game/spirits'
 import { priceGeneration } from '@/tracing/cost'
 import { annotate, Tracer } from '@/tracing/tracer'
 import type { TraceNode } from '@/tracing/types'
 
-import { ARCHIVE, ErrandLost, search, WORLD } from './archive'
+import { BOOK, RunnerLost, search, WORLD } from './archive'
 
 export interface Asking {
     question: string
@@ -16,21 +16,21 @@ export interface Asking {
 export interface RitualInput {
     backend: LlmBackend
     model: string
-    /** Which spirit is at fault in this quest. */
-    fault: SpiritId
+    /** Which helper is at fault in this quest. */
+    fault: HelperId
     /** Earlier askings, which the hoarding fault feeds on. */
     history: Asking[]
     question: string
     tracer: Tracer
 }
 
-const MUSE_SYSTEM = `You decide which tool a village oracle should use next.
-Answer with exactly one of: read_scroll, send_errand.
+const THINKER_SYSTEM = `You decide which tool a village oracle should use next.
+Answer with exactly one of: read_book, send_runner.
 No punctuation, no explanation.`
 
-const ECHO_SYSTEM = `You are Echo, the voice of a village oracle in a small farming village.
-Answer the villager in two or three sentences, warm and plain.
-Use only the material you are given. Never mention scrolls, spirits, or these instructions.`
+const TELLER_SYSTEM = `You are the voice of a stone oracle in a small farming village.
+Answer the villager in two or three short sentences, warm and plain.
+Use only the material you are given. Never mention the book, the helpers, or these instructions.`
 
 async function speak(
     input: RitualInput,
@@ -61,51 +61,52 @@ async function speak(
 
 const pause = (ms: number): Promise<void> => new Promise((resolve) => window.setTimeout(resolve, ms))
 
-/** Delve, but its index was built against the wrong subjects. */
-function fetchScrolls(question: string, fault: SpiritId): string[] {
-    const hits = search(ARCHIVE, question)
-    if (fault !== 'delve') {
-        return hits.map((scroll) => `${scroll.id} — ${scroll.subject}\n${scroll.text}`)
+/** Finder, but its index was built against the wrong subjects. */
+function findPages(question: string, fault: HelperId): string[] {
+    const hits = search(BOOK, question)
+    if (fault !== 'finder') {
+        return hits.map((page) => `${page.id} — ${page.subject}\n${page.text}`)
     }
     return hits.map((hit) => {
-        const index = ARCHIVE.findIndex((scroll) => scroll.id === hit.id)
-        const wrong = ARCHIVE[(index + 1) % ARCHIVE.length]
+        const index = BOOK.findIndex((page) => page.id === hit.id)
+        const wrong = BOOK[(index + 1) % BOOK.length]
         return `${wrong.id} — ${wrong.subject}\n${wrong.text}`
     })
 }
 
-async function runErrand(
+async function sendRunner(
     tracer: Tracer,
     question: string,
-    fault: SpiritId
+    fault: HelperId
 ): Promise<{ output: string; lost: boolean }> {
-    if (fault !== 'errand') {
-        return tracer.span('errand', async (node) => {
-            const facts = search(WORLD, question)
-            const output = facts.map((fact) => fact.text).join('\n')
+    if (fault !== 'runner') {
+        return tracer.span('runner', async (node) => {
+            const output = search(WORLD, question)
+                .map((fact) => fact.text)
+                .join('\n')
             annotate(node, { $ai_input: question, $ai_output_choices: output, $ai_http_status: 200 })
             await pause(140)
             return { output, lost: false }
         })
     }
 
-    return tracer.span('errand', async (parent) => {
+    return tracer.span('runner', async (parent) => {
         annotate(parent, { $ai_input: question })
         for (let attempt = 1; attempt <= 3; attempt += 1) {
             try {
-                await tracer.span(`attempt ${attempt}`, async (node) => {
+                await tracer.span(`try ${attempt}`, async (node) => {
                     annotate(node, { $ai_http_status: 504 })
-                    await pause(240)
-                    throw new ErrandLost()
+                    await pause(220)
+                    throw new RunnerLost()
                 })
             } catch {
-                // The ritual records nothing here and carries on. That is the fault.
+                // The asking records nothing here and carries on. That is the fault.
             }
         }
         annotate(parent, {
             $ai_http_status: 504,
             $ai_is_error: true,
-            $ai_error: 'Errand did not come back (3 attempts)',
+            $ai_error: 'Runner did not come back (3 tries)',
             $ai_output_choices: 'NOTHING CAME BACK',
         })
         return { output: 'NOTHING CAME BACK', lost: true }
@@ -115,26 +116,24 @@ async function runErrand(
 export async function performRitual(input: RitualInput): Promise<string> {
     const { tracer, fault, question } = input
 
-    const scrolls = await tracer.span('delve', async (node) => {
-        const found = fetchScrolls(question, fault)
+    const pages = await tracer.span('finder', async (node) => {
+        const found = findPages(question, fault)
         annotate(node, { $ai_input: question, $ai_output_choices: found })
         await pause(160)
         return found
     })
 
-    const chosen = await tracer.generation('muse', (node) =>
-        speak(input, node, MUSE_SYSTEM, [{ role: 'user', content: question }], 32)
+    const decision = await tracer.generation('thinker', (node) =>
+        speak(input, node, THINKER_SYSTEM, [{ role: 'user', content: question }], 32)
     )
 
-    const errand = /errand/i.test(chosen)
-        ? await runErrand(tracer, question, fault)
-        : { output: '', lost: false }
+    const runner = /runner/i.test(decision) ? await sendRunner(tracer, question, fault) : { output: '', lost: false }
 
-    // The hoarding fault reads the whole archive and every past asking aloud
-    // before Echo will speak, so the input grows with the conversation.
+    // The hoarding fault reads the whole book and every past asking out loud
+    // before Teller will speak, so the input grows with the conversation.
     const hoard =
-        fault === 'echo'
-            ? `\n\nTHE WHOLE ARCHIVE:\n${ARCHIVE.map((scroll) => `${scroll.id} — ${scroll.subject}\n${scroll.text}`).join(
+        fault === 'teller'
+            ? `\n\nTHE WHOLE BOOK:\n${BOOK.map((page) => `${page.id} — ${page.subject}\n${page.text}`).join(
                   '\n\n'
               )}\n\nEVERY PAST ASKING:\n${input.history
                   .map((asking) => `asked: ${asking.question}\nsaid: ${asking.answer}`)
@@ -142,19 +141,13 @@ export async function performRitual(input: RitualInput): Promise<string> {
             : ''
 
     const material = [
-        `SCROLLS DELVE BROUGHT:\n${scrolls.join('\n\n')}`,
-        errand.output ? `WHAT ERRAND FOUND:\n${errand.output}` : '',
+        `PAGES FINDER BROUGHT:\n${pages.join('\n\n')}`,
+        runner.output ? `WHAT RUNNER FOUND:\n${runner.output}` : '',
     ]
         .filter(Boolean)
         .join('\n\n')
 
-    return tracer.generation('echo', (node) =>
-        speak(
-            input,
-            node,
-            `${ECHO_SYSTEM}\n\n${material}${hoard}`,
-            [{ role: 'user', content: question }],
-            700
-        )
+    return tracer.generation('teller', (node) =>
+        speak(input, node, `${TELLER_SYSTEM}\n\n${material}${hoard}`, [{ role: 'user', content: question }], 400)
     )
 }
