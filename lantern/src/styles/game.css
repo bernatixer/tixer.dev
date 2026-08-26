@@ -36,12 +36,19 @@ body {
 .shell {
     max-width: 1500px;
     margin: 0 auto;
-    padding: 16px;
+    padding: 12px;
     min-height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    /* Rail on the left, game filling everything else. */
+    display: flex;
+    align-items: stretch;
+    gap: 12px;
 }
 
 .shell--center {
-    display: flex;
+    max-height: none;
+    overflow: visible;
     align-items: flex-start;
     justify-content: center;
     padding: 48px 20px 80px;
@@ -235,73 +242,88 @@ body {
     flex-wrap: wrap;
 }
 
-/* ---------- hud ---------- */
+/* ---------- side rail ---------- */
 
-.hud {
+.rail {
     display: flex;
-    align-items: center;
-    gap: 18px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 16px;
+    width: 132px;
+    flex: none;
+    padding: 14px 12px;
     border: 2px solid #6b4a2a;
     border-radius: 4px;
-    background: rgba(43, 33, 24, 0.9);
+    background: rgba(43, 33, 24, 0.92);
     color: var(--parchment);
-    margin-bottom: 14px;
-    padding: 10px 16px;
-    font-size: 0.64rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
 }
 
-.hud__brand {
+.rail__brand {
+    font-size: 0.68rem;
     font-weight: 700;
+    letter-spacing: 0.16em;
+    line-height: 1.5;
     color: #a8d85f;
-    letter-spacing: 0.22em;
 }
 
-.hud__act {
-    color: #d9a441;
+.rail__group {
+    display: grid;
+    gap: 2px;
 }
 
-.hud__act--lit {
-    color: #BFFF00;
+.rail__label {
+    font-size: 0.55rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(244, 236, 216, 0.5);
 }
 
-.hud__slot {
-    color: var(--parchment);
+.rail__value {
+    font-size: 0.76rem;
 }
 
-.hud__music {
+.rail__value--quiet {
+    font-size: 0.66rem;
+    color: rgba(244, 236, 216, 0.72);
+}
+
+.rail__spacer {
+    flex: 1;
+    min-height: 8px;
+}
+
+.rail__music {
     font-family: var(--font-mono);
     font-size: 0.6rem;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     background: transparent;
     border: 1px solid rgba(244, 236, 216, 0.35);
     border-radius: 2px;
-    padding: 3px 8px;
+    padding: 5px 6px;
     color: var(--parchment);
     cursor: pointer;
 }
 
-.hud__music:hover {
+.rail__music:hover {
     border-color: #a8d85f;
     color: #a8d85f;
 }
 
-.hud__slot--dim {
-    color: rgba(244, 236, 216, 0.55);
-    margin-left: auto;
+.rail__model {
+    font-size: 0.55rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: rgba(244, 236, 216, 0.45);
+    line-height: 1.5;
 }
 
 /* ---------- rpg shell ---------- */
 
 .screen {
     display: grid;
-    gap: 14px;
-    /* Sized so the glade, the hint bar and the dialogue box fit one screen. */
-    max-width: 920px;
-    margin: 0 auto;
+    gap: 12px;
+    min-width: 0;
+    flex: 1;
 }
 
 .stage {
@@ -319,6 +341,9 @@ body {
     cursor: pointer;
     width: 100%;
     height: auto;
+    /* Never taller than the screen, so the dialogue is always visible. */
+    max-height: calc(100vh - 250px);
+    object-fit: contain;
     image-rendering: pixelated;
     /* The canvas is 336x176 logical pixels, upscaled by the browser. */
 }
@@ -1001,4 +1026,141 @@ kbd {
 
 .stage__hint-do {
     color: #a8d85f;
+}
+
+/* ---------- the notebook, over the town ---------- */
+
+.modal {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: rgba(20, 32, 22, 0.72);
+    animation: modal-in 0.16s ease-out;
+}
+
+@keyframes modal-in {
+    from {
+        opacity: 0;
+    }
+}
+
+.modal .dlg--book {
+    width: min(760px, 100%);
+    max-height: 82vh;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- the ending, one idea at a time ---------- */
+
+.ending {
+    min-height: 216px;
+    gap: 6px;
+}
+
+.ending__kicker {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--moss);
+}
+
+.ending__title {
+    font-family: var(--font-family, 'Space Grotesk', sans-serif);
+    font-size: 1.35rem;
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+}
+
+.ending__body {
+    font-family: var(--font-family, 'Space Grotesk', sans-serif);
+    font-size: 0.94rem;
+    line-height: 1.65;
+    max-width: 62ch;
+}
+
+.ending__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 10px;
+}
+
+.ending__dots {
+    display: flex;
+    gap: 6px;
+}
+
+.ending__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid var(--edge-strong);
+}
+
+.ending__dot--on {
+    background: var(--moss);
+    border-color: var(--moss);
+}
+
+.ending__actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.ending__actions .btn {
+    text-decoration: none;
+}
+
+/* ---------- narrow screens ---------- */
+
+@media (max-width: 720px) {
+    .shell {
+        padding: 8px;
+        gap: 8px;
+    }
+
+    .stage__canvas {
+        max-height: calc(100vh - 210px);
+    }
+
+    .rail {
+        width: 74px;
+        padding: 10px 8px;
+        gap: 10px;
+    }
+
+    .rail__brand {
+        font-size: 0.56rem;
+        letter-spacing: 0.1em;
+    }
+
+    .rail__group,
+    .rail__model {
+        font-size: 0.6rem;
+    }
+
+    .modal {
+        padding: 10px;
+    }
+
+    .book {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .book__tabs {
+        display: flex;
+        overflow-x: auto;
+        border-right: none;
+        border-bottom: 1px solid var(--edge);
+        padding: 0 0 8px;
+    }
 }

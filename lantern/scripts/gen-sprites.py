@@ -43,6 +43,13 @@ PALETTE = [
     ("M", "'#8f4f8c'", "purple"),
     ("m", "'#c98cc4'", "purple light"),
     ("A", "'#BFFF00'", "the journal's glow"),
+    ("a", "'#7fae00'", "the glow, shaded"),
+    ("q", "'#42301f'", "spines, deep"),
+    ("Q", "'#5e4430'", "spines"),
+    ("j", "'#7d5c3f'", "spines, lit"),
+    ("x", "'#c2905f'", "snout and shade"),
+    ("z", "'#e5bc8b'", "hog"),
+    ("Z", "'#f4d9b4'", "hog, lit"),
 ]
 
 LIGHT = (-0.55, -0.8)
@@ -196,19 +203,16 @@ add("HOUSE", house(40, 40, 15, "KTttuu", ["R", "R", "r", "r", "e"], 16, [(5, 20)
 add("SHOP", house(44, 40, 14, "KsssSS", ["y", "Y", "Y", "e", "e"], 18, [(5, 19), (13, 19), (31, 19)], seed=6),
     "The wide-fronted one, which is the shop.")
 
-sign = [["." for _ in range(24)] for _ in range(28)]
-for y in range(2, 14):
-    for x in range(2, 22):
-        sign[y][x] = "u" if 3 <= y <= 12 and 3 <= x <= 20 else "t"
-for y in range(5, 12, 3):
-    for x in range(5, 19):
-        sign[y][x] = "T"
-for y in range(14, 25):
-    sign[y][11] = "T"
-    sign[y][12] = "t"
-for x in range(8, 16):
-    sign[25][x] = "T"
-add("SIGNPOST", outline(sign))
+sign = [["." for _ in range(34)] for _ in range(30)]
+for y in range(2, 18):
+    for x in range(1, 33):
+        sign[y][x] = "u" if 3 <= y <= 16 and 2 <= x <= 31 else "t"
+for y in range(18, 27):
+    sign[y][16] = "T"
+    sign[y][17] = "t"
+for x in range(12, 22):
+    sign[27][x] = "T"
+add("SIGNPOST", outline(sign), "Points the way out of town.")
 
 fount = [["." for _ in range(40)] for _ in range(26)]
 blit(fount, canopy(40, 20, 20, 13, 18, 8, STONE, 17, 0.03, rim="s"), 0, 4)
@@ -221,71 +225,105 @@ for y in range(2, 7):
     fount[y][22] = "c"
 add("FOUNTAIN", outline(fount), "The middle of the square.")
 
-# ---------------- townsfolk ----------------
-# One body, recoloured. H hat, X hair, F face, C clothes, D trousers.
-BODY = [
+# ---------------- the townsfolk, who are hogs ----------------
+# Hand-drawn, because a face does not survive being computed. The spiny hood
+# rings the face, which is what makes it read as a hedgehog at this size.
+HOG_BASE = [
     "................................",
-    "..........HHHHHHHHHH............",
-    "........HHHHHHHHHHHHHH..........",
-    ".......HHHHHHHHHHHHHHHH.........",
-    "......KHHHHHHHHHHHHHHHHK........",
-    ".....KHHHHHHHHHHHHHHHHHHK.......",
-    "....KKKKKKKKKKKKKKKKKKKKKK......",
-    "..........KXXXXXXXXK............",
-    ".........KFFFFFFFFFFK...........",
-    "........KFFFFFFFFFFFFK..........",
-    "........KFFkFFFFFFkFFK..........",
-    "........KFFFFFFFFFFFFK..........",
-    "........KFFFFkkkkFFFFK..........",
-    ".........KFFFFFFFFFFK...........",
-    "..........KFFFFFFFFK............",
-    "...........KKKKKKKK.............",
-    "........KKKCCCCCCCCKKK..........",
-    ".......KCCCCCCCCCCCCCCK.........",
-    "......KCCCCCCCCCCCCCCCCK........",
-    "......KCFCCCCCCCCCCCCFCK........",
-    "......KCFCCCCDDDDCCCCFCK........",
-    "......KCCCCCDDDDDDCCCCCK........",
-    "......KCCCCCDDDDDDCCCCCK........",
-    ".......KCCCCCCCCCCCCCCK.........",
-    "........KCCCCCCCCCCCCK..........",
-    "........KCCCCKKKKCCCCK..........",
-    "........KDDDKK..KKDDDK..........",
-    "........KDDDK....KDDDK..........",
-    "........KDDDK....KDDDK..........",
-    ".......KKDDDKK..KKDDDKK.........",
-    ".......KnnnnnK..KnnnnnK.........",
-    ".......KKKKKKK..KKKKKKK.........",
+    "..........qqqqqqqqqq............",
+    ".......qqQQQQQQQQQQQQqq.........",
+    ".....qqQQQQQQQQQQQQQQQQQq.......",
+    "....qQQQjjQQQQjjQQQQjjQQQq......",
+    "...qQQQQQQQQQQQQQQQQQQQQQQq.....",
+    "..qQQjjQQQQjjQQQQjjQQQQjjQQq....",
+    "..qQQQQQQQQQQQQQQQQQQQQQQQQq....",
+    ".qQQQQjjQQQQQQQQQQQQjjQQQQQQq...",
+    ".qQQQQQQQKKKKKKKKKKQQQQQQQQQq...",
+    ".qQQjjQQKZZZZZZZZZZKQQjjQQQQq...",
+    ".qQQQQQKZZZZZZZZZZZZKQQQQQQQq...",
+    ".qQQQQQKZZKKZZZZKKZZKQQQjjQQq...",
+    ".qQQjjQKZZKKZZZZKKZZKQQQQQQQq...",
+    ".qQQQQQKZZZZZZZZZZZZKQQQQQQQq...",
+    "..qQQQQKZZZZxxxxZZZZKQQQQQQq....",
+    "..qQQQQKZZZKxxxxKZZZKQQjjQQq....",
+    "...qQQQKZZZZZZZZZZZZKQQQQQq.....",
+    "....qQQQKZZZZZZZZZZKQQQQQq......",
+    ".....qQQQKKKKKKKKKKQQQQQq.......",
+    "......qQQQQQQQQQQQQQQQq.........",
+    ".......KKzzzzzzzzzzzzKK.........",
+    ".....KKzzzzzzzzzzzzzzzzKK.......",
+    "....KzzzzzzzzzzzzzzzzzzzzK......",
+    "...KzzxzzzzzzzzzzzzzzzzzzzK.....",
+    "...KzzxzzzzzzzzzzzzzzzzzzzK.....",
+    "...KzzxzzzzzzzzzzzzzzzzzzzK.....",
+    "...KzzzzzzzzzzzzzzzzzzzzzzK.....",
+    "....KzzzzzzzzzzzzzzzzzzzzK......",
+    ".....KKzzzzzzzzzzzzzzzzKK.......",
+    ".......KKxxxK....KxxxKK.........",
+    "........KKKK......KKKK..........",
 ]
 
-STRIDE = [
-    "........KCCCCKKKKCCCCK..........",
-    ".......KDDDKK......KKDDDK.......",
-    ".......KDDDK........KDDDK.......",
-    "......KKDDDK.........KDDDKK.....",
-    "......KnnnnK.........KnnnnK.....",
-    "......KKKKKK.........KKKKKK.....",
-    "................................",
+# The other foot forward, so walking reads.
+HOG_STRIDE = [
+    ".....KKzzzzzzzzzzzzzzzzKK.......",
+    "......KxxxK........KxxxK........",
+    ".....KKxxxKK......KKxxxKK.......",
+    ".....KKKKKK........KKKKKK.......",
 ]
 
 
-def person(name, hat, hair, face, cloth, trouser, doc=None):
-    def paint(rows):
-        return [
-            row.replace("H", hat).replace("X", hair).replace("F", face)
-            .replace("C", cloth).replace("D", trouser)
-            for row in rows
-        ]
-
-    add(name + "_A", paint(BODY), doc)
-    add(name + "_B", paint(BODY[:25] + STRIDE), None)
+def dress(base, overlays):
+    grid = [list(row) for row in base]
+    for rows, ox, oy in overlays:
+        for y, row in enumerate(rows):
+            for x, ch in enumerate(row):
+                if ch != "." and 0 <= oy + y < len(grid) and 0 <= ox + x < len(grid[0]):
+                    grid[oy + y][ox + x] = ch
+    return ["".join(row) for row in grid]
 
 
-person("HERO", "A", "u", "W", "B", "n", "You.")
-person("PELL", "B", "w", "S", "b", "B", "Pell, who has walked the harbour road for forty years.")
-person("MARN", "O", "T", "W", "O", "y", "Marn, who keeps the inn and never uses one word where nine will do.")
-person("KIP", "h", "Y", "W", "h", "G", "Kip, who is nine and certain about everything.")
-person("ROW", "M", "K", "F", "M", "m", "Row, who keeps the ledgers and says when she does not know.")
+def cap(main, trim):
+    """Sits over the spines, which is how you tell one hog from another."""
+    rows = [
+        "....MMMMMMMM....",
+        "..MMMMMMMMMMMM..",
+        ".MMMMMMMMMMMMMM.",
+        "KTTTTTTTTTTTTTTK",
+    ]
+    return ([row.replace("M", main).replace("T", trim) for row in rows], 8, 1)
+
+
+def scarf(colour):
+    rows = [
+        "CCCCCCCCCCCCCCCCCCCC",
+        "CCCCCCCCCCCCCCCCCCCC",
+        "..CCCCCC....CCCCCC..",
+    ]
+    return ([row.replace("C", colour) for row in rows], 6, 20)
+
+
+SPECS = (
+    [
+        ".KKKK...KKKK.",
+        "KWWWWK.KWWWWK",
+        "KWWWWK.KWWWWK",
+        ".KKKK...KKKK.",
+    ],
+    9,
+    11,
+)
+
+
+def hog(name, overlays, doc=None):
+    add(name + "_A", dress(HOG_BASE, overlays), doc)
+    add(name + "_B", dress(HOG_BASE[:28] + HOG_STRIDE, overlays), None)
+
+
+hog("HERO", [cap("A", "a")], "You. The one in the bright green cap.")
+hog("PELL", [cap("W", "B")], "Pell, who has walked the harbour road for forty years.")
+hog("MARN", [scarf("O")], "Marn, who keeps the inn and never uses one word where nine will do.")
+hog("KIP", [cap("r", "R")], "Kip, who is nine and certain about everything.")
+hog("ROW", [scarf("M"), SPECS], "Row, who keeps the ledgers and says when she does not know.")
 
 # ---------------- write ----------------
 lines = [

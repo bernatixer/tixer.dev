@@ -10,26 +10,37 @@ interface HudProps {
     onToggleMusic: () => void
 }
 
+/** A rail down the side, so the game keeps its height on a short screen. */
 export function Hud({ state, live, music, onToggleMusic }: HudProps): JSX.Element {
     const sum = totals(state)
     return (
-        <header className="hud">
-            <span className="hud__brand">ASK AROUND</span>
-            <span className="hud__slot">
-                asked {state.talks.length}/{PEOPLE.length}
-            </span>
-            {state.phase !== 'town' && (
-                <span className="hud__slot hud__slot--quiet">
-                    {formatTokens(sum.words)} words · {formatUsd(sum.costUsd)}
+        <aside className="rail">
+            <span className="rail__brand">ASK AROUND</span>
+
+            <div className="rail__group">
+                <span className="rail__label">asked</span>
+                <span className="rail__value">
+                    {state.talks.length} of {PEOPLE.length}
                 </span>
+            </div>
+
+            {state.phase !== 'town' && (
+                <div className="rail__group">
+                    <span className="rail__label">so far</span>
+                    <span className="rail__value rail__value--quiet">{formatTokens(sum.words)} words</span>
+                    <span className="rail__value rail__value--quiet">{formatUsd(sum.costUsd)}</span>
+                </div>
             )}
-            <button type="button" className="hud__music" onClick={onToggleMusic}>
+
+            <div className="rail__spacer" />
+
+            <button type="button" className="rail__music" onClick={onToggleMusic}>
                 {music ? '♪ music on' : '♪ music off'}
             </button>
-            <span className="hud__slot hud__slot--dim">
+            <span className="rail__model">
                 {modelLabel(state.model)}
                 {live ? '' : ' · no key'}
             </span>
-        </header>
+        </aside>
     )
 }

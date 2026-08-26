@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 
 import { CRITERIA } from '@/game/evals'
-import { allSpokenTo, talkWith, totals, type GameState } from '@/game/state'
-import { personById, PEOPLE, TRUTH, type PersonId } from '@/game/townsfolk'
+import { allSpokenTo, talkWith, type GameState } from '@/game/state'
+import { personById, PEOPLE, type PersonId } from '@/game/townsfolk'
 import { Stage } from '@/rpg/Stage'
 import type { Entity } from '@/rpg/world'
-import { formatTokens, formatUsd } from '@/tracing/cost'
 
 import { Dialogue, type Choice } from './Dialogue'
+import { Ending } from './Ending'
 import { Journal } from './Journal'
 import { Scores } from './Scores'
 
@@ -155,25 +155,10 @@ export function GameScreen({
     }
 
     const finish = (): void => {
-        const sum = totals(state)
         onGoTo('done')
-        say(
-            'what just happened',
-            [
-                `Nobody in that town was a person. Each of the four was a language model with different instructions, and every word they said was a live call. ${formatTokens(sum.words)} words, ${formatUsd(sum.costUsd)}.`,
-                '',
-                'Two things were going on that the game never mentioned.',
-                '',
-                'Every conversation was written down as it happened: who was asked, what they were given, what came back, how long it took, what it cost. That is a trace, and collecting them is most of what AI observability is.',
-                '',
-                'Then you wrote a rule and had a model mark all four against it. That is an evaluation. It scales to four conversations or four hundred thousand, and it is how teams find out whether their AI is any good without reading everything.',
-                '',
-                `And the part worth keeping: the winner changed when the question changed. ${TRUTH.split('.')[0]}. Kip made his up and still topped the first board. Your eval is only ever as good as the question you thought to ask.`,
-            ].join('\n'),
-            [{ id: 'again', label: 'Walk it again' }],
-            onRestart
-        )
+        setPanel(null)
     }
+
 
     const currentRun = panel?.kind === 'scores' ? state.evals.find((run) => run.criterionId === panel.criterionId) : null
     const remaining = CRITERIA.filter((entry) => !state.evals.some((run) => run.criterionId === entry.id))
@@ -239,7 +224,9 @@ export function GameScreen({
                     />
                 )}
 
-                {!state.busy && panel === null && (
+                {!state.busy && state.phase === 'done' && <Ending state={state} onRestart={onRestart} />}
+
+                {!state.busy && panel === null && state.phase !== 'done' && (
                     <div className="dlg dlg--idle">
                         <span className="dlg__speaker">the square</span>
                         <p className="dlg__body">{idle()}</p>

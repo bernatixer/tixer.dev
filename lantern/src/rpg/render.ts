@@ -107,6 +107,43 @@ export function drawRoad(ctx: CanvasRenderingContext2D, x: number, y: number, w:
     fillRect(ctx, x + w - 1, y, 1, h, '#8b7a5c')
 }
 
+/** "HARBOUR" and an arrow, painted on the signpost. */
+export function drawSignText(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+    // Tiny 3x5 letters, enough to read at this scale.
+    const GLYPHS: Record<string, string[]> = {
+        H: ['X.X', 'X.X', 'XXX', 'X.X', 'X.X'],
+        A: ['XXX', 'X.X', 'XXX', 'X.X', 'X.X'],
+        R: ['XXX', 'X.X', 'XXX', 'XX.', 'X.X'],
+        B: ['XXX', 'X.X', 'XX.', 'X.X', 'XXX'],
+        O: ['XXX', 'X.X', 'X.X', 'X.X', 'XXX'],
+        U: ['X.X', 'X.X', 'X.X', 'X.X', 'XXX'],
+    }
+    ctx.fillStyle = '#2e2216'
+    let cursor = x
+    for (const letter of 'HARBOUR') {
+        const glyph = GLYPHS[letter]
+        if (glyph) {
+            glyph.forEach((row, ry) => {
+                for (let rx = 0; rx < row.length; rx += 1) {
+                    if (row[rx] === 'X') {
+                        ctx.fillRect(cursor + rx, y + ry, 1, 1)
+                    }
+                }
+            })
+        }
+        cursor += 4
+    }
+    // A big arrow underneath, pointing at the road.
+    const arrow = ['....X....', '.....X...', '......X..', 'XXXXXXXXX', '......X..', '.....X...', '....X....']
+    arrow.forEach((row, ry) => {
+        for (let rx = 0; rx < row.length; rx += 1) {
+            if (row[rx] === 'X') {
+                ctx.fillRect(x + 9 + rx, y + 8 + ry, 1, 1)
+            }
+        }
+    })
+}
+
 /** A soft radial glow. */
 export function drawGlow(
     ctx: CanvasRenderingContext2D,
@@ -139,7 +176,7 @@ export function drawCursor(ctx: CanvasRenderingContext2D, x: number, y: number, 
 /** Drawn over a helper that went wrong, so it reads at a glance. */
 export function drawHurt(ctx: CanvasRenderingContext2D, x: number, y: number, time: number): void {
     const bob = Math.round(Math.sin(time / 200) * 2)
-    const mark = ['.XXXX.', '.XXXX.', '.XXXX.', '.XXXX.', '..XX..', '......', '.XXXX.', '.XXXX.']
+    const mark = ['..XXXX..', '.XXXXXX.', '.XXXXXX.', '.XXXXXX.', '..XXXX..', '...XX...', '........', '.XXXXXX.', '.XXXXXX.']
     ctx.fillStyle = '#d1452f'
     mark.forEach((line, row) => {
         for (let col = 0; col < line.length; col += 1) {

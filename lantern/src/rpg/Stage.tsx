@@ -10,6 +10,7 @@ import {
     drawRoad,
     drawShadow,
     drawSprite,
+    drawSignText,
     drawSquare,
     TILE,
     VIEW_H,
@@ -39,6 +40,7 @@ import {
     ENTITIES,
     FOUNTAIN_AT,
     nearest,
+    ROAD,
     SIGN_AT,
     SPAWN,
     SQUARE,
@@ -73,8 +75,6 @@ const FOLK: Record<PersonId, [Sprite, Sprite]> = {
     kip: [KIP_A, KIP_B],
     row: [ROW_A, ROW_B],
 }
-
-const ROAD = { x: 182, y: 176, w: 34, h: VIEW_H - 176 }
 
 export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): JSX.Element {
     const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -165,6 +165,7 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
                 drawSprite(ctx, building.which === 'shop' ? SHOP : HOUSE, building.x, building.y)
             }
             drawSprite(ctx, SIGNPOST, SIGN_AT.x, SIGN_AT.y)
+            drawSignText(ctx, SIGN_AT.x + 3, SIGN_AT.y + 4)
             for (const item of DECOR) {
                 drawSprite(ctx, item.sprite, item.x, item.y)
             }
@@ -194,17 +195,17 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
                 drawShadow(ctx, entity.x + 7, entity.y + TILE - 1, TILE - 14)
                 drawSprite(ctx, FOLK[person][idle], entity.x, entity.y)
                 if (!done) {
-                    drawAlert(ctx, entity.x + 14, entity.y - 14, now)
+                    drawAlert(ctx, entity.x + 12, entity.y - 11, now)
                 }
             }
 
             if (state.roadOpen) {
-                drawGlow(ctx, ROAD.x + ROAD.w / 2, ROAD.y + 14, 34, 'rgba(232,181,63,0.32)')
+                drawGlow(ctx, ROAD.x + 40, ROAD.y + 16, 42, 'rgba(232,181,63,0.34)')
             }
 
             if (hit) {
-                const top = hit.kind === 'gate' ? ROAD.y : hit.y
-                drawCursor(ctx, (hit.kind === 'gate' ? ROAD.x + ROAD.w / 2 - 4 : hit.x + 12), top - 18, now)
+                const top = hit.kind === 'gate' ? ROAD.y - 4 : hit.y
+                drawCursor(ctx, hit.kind === 'gate' ? ROAD.x + 36 : hit.x + 12, top - 18, now)
             }
 
             raf = window.requestAnimationFrame(frame)

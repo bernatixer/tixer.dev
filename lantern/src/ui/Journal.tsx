@@ -32,6 +32,7 @@ export function Journal({ talks, onClose, closeLabel = 'shut the notebook' }: Jo
     }, [onClose])
 
     return (
+        <div className="modal">
         <div className="dlg dlg--book">
             <span className="dlg__speaker">your notebook</span>
 
@@ -83,6 +84,7 @@ export function Journal({ talks, onClose, closeLabel = 'shut the notebook' }: Jo
             <button type="button" className="dlg__close" onClick={onClose}>
                 <kbd>space</kbd> {closeLabel}
             </button>
+        </div>
         </div>
     )
 }
