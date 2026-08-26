@@ -1,8 +1,9 @@
 import { PALETTE, type Sprite } from './sprites'
+import { ART, FALLBACK, fillWith, sheetsReady } from './tiles'
 
 /** Logical resolution. Everything is authored against this, then upscaled. */
-export const VIEW_W = 400
-export const VIEW_H = 232
+export const VIEW_W = 640
+export const VIEW_H = 368
 export const TILE = 32
 
 const GRASS = '#4f8f34'
@@ -43,7 +44,7 @@ function hash(x: number, y: number): number {
     return n - Math.floor(n)
 }
 
-const HORIZON = 62
+const HORIZON = 96
 
 export function drawGlade(ctx: CanvasRenderingContext2D, offsetX: number): void {
     fillRect(ctx, 0, 0, VIEW_W, HORIZON, SKY)
@@ -56,13 +57,16 @@ export function drawGlade(ctx: CanvasRenderingContext2D, offsetX: number): void 
         ctx.fillRect(x, HORIZON - height, 1, height)
     }
 
-    fillRect(ctx, 0, HORIZON, VIEW_W, VIEW_H - HORIZON, GRASS)
+    fillRect(ctx, 0, HORIZON, VIEW_W, VIEW_H - HORIZON, sheetsReady() ? FALLBACK.grass : GRASS)
+    if (sheetsReady()) {
+        fillWith(ctx, ART.grass, 0, HORIZON, VIEW_W, VIEW_H - HORIZON)
+        return
+    }
 
-    // Tufts, scattered but stable.
+    // Without the pack, tufts scattered on flat colour.
     for (let x = 0; x < VIEW_W; x += 1) {
         for (let y = HORIZON; y < VIEW_H; y += 1) {
-            const world = x + offsetX
-            const noise = hash(Math.floor(world / 3), Math.floor(y / 3))
+            const noise = hash(Math.floor((x + offsetX) / 3), Math.floor(y / 3))
             if (noise > 0.955) {
                 ctx.fillStyle = GRASS_LIGHT
                 ctx.fillRect(x, y, 3, 2)
@@ -76,8 +80,11 @@ export function drawGlade(ctx: CanvasRenderingContext2D, offsetX: number): void 
 
 /** The paved square, laid in courses so it reads as flagstones. */
 export function drawSquare(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+    if (sheetsReady()) {
+        fillWith(ctx, ART.dirt, x, y, w, h)
+        return
+    }
     fillRect(ctx, x, y, w, h, '#b3a184')
-    // Big irregular flags rather than brickwork: soft joints, varied tone.
     for (let row = 0; row * 13 < h; row += 1) {
         const top = y + row * 13
         for (let sx = x + (row % 2 ? -9 : 0); sx < x + w; sx += 19) {
@@ -92,19 +99,19 @@ export function drawSquare(ctx: CanvasRenderingContext2D, x: number, y: number, 
             )
         }
     }
-    fillRect(ctx, x, y, w, 1, '#c6b699')
-    fillRect(ctx, x, y + h - 1, w, 1, '#8f7f66')
 }
 
 /** The road out of town, running off the bottom of the screen. */
 export function drawRoad(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
-    fillRect(ctx, x, y, w, h, '#a28f6d')
-    ctx.fillStyle = 'rgba(150, 133, 102, 0.55)'
+    if (sheetsReady()) {
+        fillWith(ctx, ART.dirt, x, y, w, h)
+        return
+    }
+    fillRect(ctx, x, y, w, h, '#a08b6a')
+    ctx.fillStyle = 'rgba(205, 187, 156, 0.5)'
     for (let i = 0; i < h; i += 4) {
         ctx.fillRect(x + ((i * 5) % Math.max(1, w - 4)), y + i, 4, 2)
     }
-    fillRect(ctx, x, y, 1, h, '#8b7a5c')
-    fillRect(ctx, x + w - 1, y, 1, h, '#8b7a5c')
 }
 
 /** "HARBOUR" and an arrow, painted on the signpost. */

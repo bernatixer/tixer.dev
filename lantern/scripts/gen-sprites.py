@@ -101,9 +101,6 @@ def blit(grid, other, ox, oy):
             grid[oy + y][ox + x] = ch
 
 
-FOLIAGE = "1GGgghhpP"
-STONE = "ksssSSSw"
-
 sprites = []
 
 
@@ -111,98 +108,22 @@ def add(name, grid, doc=None):
     sprites.append((name, [r if isinstance(r, str) else "".join(r) for r in grid], doc))
 
 
-# ---------------- scenery ----------------
-W, H = 32, 44
-tree = [["." for _ in range(W)] for _ in range(H)]
-blit(tree, canopy(32, 30, 15.5, 14, 15, 13.5, FOLIAGE, 3), 0, 0)
-blit(tree, canopy(20, 16, 10, 8, 9.5, 7.5, FOLIAGE, 11, 0.18), 1, 2)
-blit(tree, canopy(18, 14, 9, 7, 8.5, 6.5, FOLIAGE, 7, 0.2), 13, 12)
-trunk = [["." for _ in range(W)] for _ in range(H)]
-for y in range(25, 41):
-    spread = int((y - 25) * 0.42)
-    for x in range(14 - spread, 18 + spread):
-        trunk[y][x] = "t"
-    trunk[y][14 - spread] = "T"
-    trunk[y][17 + spread - 1] = "T"
-    if y % 4 == 1:
-        trunk[y][16] = "u"
-for x in range(6, 26):
-    trunk[41][x] = "T"
-blit(tree, trunk, 0, 0)
-add("TREE", outline(tree), "A broadleaf, three clumps deep so it does not read as a lollipop.")
-
-bush = [["." for _ in range(32)] for _ in range(20)]
-blit(bush, canopy(32, 18, 16, 11, 15, 8, FOLIAGE, 5, 0.16), 0, 0)
-blit(bush, canopy(16, 12, 8, 7, 7.5, 5.5, FOLIAGE, 21, 0.22), 2, 3)
-add("BUSH", outline(bush))
-
-rock = [["." for _ in range(32)] for _ in range(18)]
-blit(rock, canopy(30, 16, 15, 10, 13, 6.5, STONE, 13, 0.1, rim="s"), 1, 0)
-blit(rock, canopy(14, 10, 7, 6, 6.5, 4.5, STONE, 29, 0.14, rim="s"), 3, 2)
-add("ROCK", outline(rock))
-
-PETALS = ["M", "Y", "c", "m"]
-flowers = [["." for _ in range(32)] for _ in range(18)]
-for i, fx in enumerate((4, 12, 20, 27)):
-    petal = PETALS[i % len(PETALS)]
-    top = 4 + (i % 2) * 2
-    for y in range(top + 4, 15):
-        flowers[y][fx] = "g"
-    flowers[14][fx - 1] = "G"
-    flowers[14][fx + 1] = "G"
-    for dy, dx in ((0, -1), (0, 1), (-1, 0), (1, 0)):
-        flowers[top + 1 + dy][fx + dx] = petal
-    flowers[top + 1][fx] = "W"
-    flowers[top][fx] = petal
-    flowers[top + 2][fx] = petal
-add("FLOWERS", outline(flowers))
-
-tuft = [["." for _ in range(32)] for _ in range(12)]
-rng = random.Random(9)
-for x in range(2, 30, 3):
-    height = rng.randint(3, 6)
-    for y in range(11 - height, 11):
-        tuft[y][x] = "g" if y > 11 - height + 1 else "h"
-    tuft[11][x] = "G"
-add("GRASS_TUFT", tuft, "Loose grass, scattered to break up the ground.")
+def outline(grid, ink="K"):
+    h, w = len(grid), len(grid[0])
+    out = [row[:] for row in grid]
+    for y in range(h):
+        for x in range(w):
+            if grid[y][x] != ".":
+                continue
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                yy, xx = y + dy, x + dx
+                if 0 <= yy < h and 0 <= xx < w and grid[yy][xx] not in (".", ink):
+                    out[y][x] = ink
+                    break
+    return out
 
 
-def house(w, h, roof_h, wall_ramp, roof_ramp, door_x, windows, seed=1):
-    rng = random.Random(seed)
-    grid = [["." for _ in range(w)] for _ in range(h)]
-    for y in range(roof_h, h - 1):
-        for x in range(1, w - 1):
-            t = (y - roof_h) / max(1, h - roof_h - 2)
-            idx = min(len(wall_ramp) - 1, int((1 - t) * (len(wall_ramp) - 1) + rng.uniform(-0.4, 0.4)))
-            grid[y][x] = wall_ramp[max(0, idx)]
-    for y in range(roof_h):
-        spread = int(w / 2 * (y + 1) / roof_h)
-        for x in range(max(0, w // 2 - spread), min(w, w // 2 + spread)):
-            grid[y][x] = roof_ramp[min(len(roof_ramp) - 1, y * len(roof_ramp) // roof_h)]
-            if y % 3 == 2 and x % 4 == (y // 3) % 4:
-                grid[y][x] = roof_ramp[0]
-    for x in range(w):
-        if grid[roof_h - 1][x] != ".":
-            grid[roof_h - 1][x] = roof_ramp[0]
-    for wx, wy in windows:
-        for y in range(wy, wy + 5):
-            for x in range(wx, wx + 6):
-                grid[y][x] = "c" if (y - wy) in (1, 2) and (x - wx) in (1, 2, 3, 4) else "K"
-        grid[wy + 2][wx + 3] = "b"
-    for y in range(h - 10, h - 1):
-        for x in range(door_x, door_x + 8):
-            grid[y][x] = "T" if x in (door_x, door_x + 7) or y == h - 10 else "t"
-    grid[h - 6][door_x + 6] = "Y"
-    for x in range(w):
-        grid[h - 1][x] = "K"
-    return outline(grid)
-
-
-add("HOUSE", house(40, 40, 15, "KTttuu", ["R", "R", "r", "r", "e"], 16, [(5, 20), (29, 20)]),
-    "A townhouse. Tiled roof, timber walls, a light on inside.")
-add("SHOP", house(44, 40, 14, "KsssSS", ["y", "Y", "Y", "e", "e"], 18, [(5, 19), (13, 19), (31, 19)], seed=6),
-    "The wide-fronted one, which is the shop.")
-
+# The signpost stays ours, because it carries game text.
 sign = [["." for _ in range(34)] for _ in range(30)]
 for y in range(2, 18):
     for x in range(1, 33):
@@ -214,16 +135,6 @@ for x in range(12, 22):
     sign[27][x] = "T"
 add("SIGNPOST", outline(sign), "Points the way out of town.")
 
-fount = [["." for _ in range(40)] for _ in range(26)]
-blit(fount, canopy(40, 20, 20, 13, 18, 8, STONE, 17, 0.03, rim="s"), 0, 4)
-blit(fount, canopy(32, 14, 16, 8, 14, 5.5, "BBCCcc", 23, 0.03, rim="B"), 4, 7)
-for y in range(0, 9):
-    for x in range(18, 22):
-        fount[y][x] = "S" if x in (18, 21) else "w"
-for y in range(2, 7):
-    fount[y][17] = "c"
-    fount[y][22] = "c"
-add("FOUNTAIN", outline(fount), "The middle of the square.")
 
 # ---------------- the townsfolk, who are hogs ----------------
 # Hand-drawn, because a face does not survive being computed. The spiny hood

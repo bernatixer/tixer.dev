@@ -1,7 +1,7 @@
 import type { PersonId } from '@/game/townsfolk'
 
 import { TILE, VIEW_H, VIEW_W } from './render'
-import { BUSH, FLOWERS, GRASS_TUFT, ROCK, TREE, type Sprite } from './sprites'
+import { ART, type Rect } from './tiles'
 
 export type EntityKind = 'person' | 'gate'
 
@@ -15,57 +15,63 @@ export interface Entity {
 }
 
 export interface Decor {
-    sprite: Sprite
-    x: number
-    y: number
+    art: Rect
+    /** Scenery is placed by where it meets the ground, not by its top left. */
+    cx: number
+    baseY: number
 }
 
-const FLOOR_TOP = 96
-const FLOOR_BOTTOM = VIEW_H - TILE - 6
+const FLOOR_TOP = 176
+const FLOOR_BOTTOM = VIEW_H - TILE - 8
 
 /** Four people around a square, and the road out at the bottom. */
 export const ENTITIES: Entity[] = [
-    { id: 'pell', kind: 'person', person: 'pell', x: 44, y: 138, label: 'Pell' },
-    { id: 'marn', kind: 'person', person: 'marn', x: 128, y: 106, label: 'Marn' },
-    { id: 'kip', kind: 'person', person: 'kip', x: 206, y: 108, label: 'Kip' },
-    { id: 'row', kind: 'person', person: 'row', x: 152, y: 172, label: 'Row' },
-    { id: 'gate', kind: 'gate', x: 344, y: 150, label: 'take the harbour road' },
+    { id: 'pell', kind: 'person', person: 'pell', x: 128, y: 258, label: 'Pell' },
+    { id: 'marn', kind: 'person', person: 'marn', x: 244, y: 202, label: 'Marn' },
+    { id: 'kip', kind: 'person', person: 'kip', x: 372, y: 208, label: 'Kip' },
+    { id: 'row', kind: 'person', person: 'row', x: 288, y: 292, label: 'Row' },
+    { id: 'gate', kind: 'gate', x: 566, y: 250, label: 'take the harbour road' },
 ]
 
 /** The square's paving, drawn under everything. */
-export const SQUARE = { x: 82, y: 118, w: 200, h: 80 }
+export const SQUARE = { x: 152, y: 196, w: 300, h: 128 }
 
 export const DECOR: Decor[] = [
-    { sprite: TREE, x: -14, y: 30 },
-    { sprite: TREE, x: 96, y: 22 },
-    { sprite: TREE, x: 286, y: 24 },
-    { sprite: TREE, x: 358, y: 20 },
-    { sprite: BUSH, x: 20, y: 196 },
-    { sprite: BUSH, x: 366, y: 96 },
-    { sprite: BUSH, x: 62, y: 92 },
-    { sprite: FLOWERS, x: 4, y: 168 },
-    { sprite: FLOWERS, x: 356, y: 192 },
-    { sprite: ROCK, x: 316, y: 192 },
-    { sprite: GRASS_TUFT, x: 40, y: 178 },
-    { sprite: GRASS_TUFT, x: 300, y: 176 },
-    { sprite: GRASS_TUFT, x: 84, y: 202 },
-    { sprite: GRASS_TUFT, x: 268, y: 204 },
+    { art: ART.treeBig, cx: 24, baseY: 196 },
+    { art: ART.treeFork, cx: 186, baseY: 188 },
+    { art: ART.treeSlim, cx: 386, baseY: 186 },
+    { art: ART.treeBig, cx: 566, baseY: 196 },
+    { art: ART.treeBent, cx: 622, baseY: 214 },
+    { art: ART.bushFlower, cx: 62, baseY: 232 },
+    { art: ART.bushBig, cx: 40, baseY: 344 },
+    { art: ART.bushWide, cx: 596, baseY: 348 },
+    { art: ART.bushSmall, cx: 128, baseY: 344 },
+    { art: ART.bushTiny, cx: 500, baseY: 214 },
+    { art: ART.rockBig, cx: 524, baseY: 340 },
+    { art: ART.rockWide, cx: 96, baseY: 230 },
+    { art: ART.rockSmall, cx: 452, baseY: 342 },
+    { art: ART.mushroomPair, cx: 140, baseY: 228 },
+    { art: ART.mushroomRed, cx: 424, baseY: 230 },
+    { art: ART.tuftA, cx: 90, baseY: 300 },
+    { art: ART.tuftB, cx: 592, baseY: 300 },
+    { art: ART.tuftC, cx: 220, baseY: 352 },
+    { art: ART.floraA, cx: 356, baseY: 352 },
+    { art: ART.floraB, cx: 62, baseY: 268 },
 ]
 
 /** Buildings, drawn behind the people. */
 export const BUILDINGS = [
-    { which: 'house' as const, x: 18, y: 58 },
-    { which: 'shop' as const, x: 124, y: 50 },
-    { which: 'house' as const, x: 222, y: 58 },
+    { art: ART.facadeNarrow, cx: 96, baseY: 194 },
+    { art: ART.facade, cx: 288, baseY: 196 },
+    { art: ART.facadeNarrow, cx: 470, baseY: 194 },
 ]
 
 /** The harbour road, leaving to the right. */
-export const ROAD = { x: 300, y: 140, w: 100, h: 34 }
+export const ROAD = { x: 452, y: 236, w: 188, h: 52 }
 
-export const FOUNTAIN_AT = { x: 162, y: 132 }
-export const SIGN_AT = { x: 306, y: 106 }
+export const SIGN_AT = { x: 516, y: 176 }
 
-export const SPAWN = { x: 110, y: 190 }
+export const SPAWN = { x: 208, y: 300 }
 
 export function clampToFloor(y: number): number {
     return Math.min(FLOOR_BOTTOM, Math.max(FLOOR_TOP, y))
@@ -76,7 +82,7 @@ export function nearest(px: number, py: number): Entity | null {
     let bestDistance = Number.POSITIVE_INFINITY
     for (const entity of ENTITIES) {
         const distance = Math.hypot(entity.x - px, entity.y - py)
-        if (distance < 42 && distance < bestDistance) {
+        if (distance < 46 && distance < bestDistance) {
             best = entity
             bestDistance = distance
         }

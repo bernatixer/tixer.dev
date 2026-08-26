@@ -17,10 +17,8 @@ import {
     VIEW_W,
 } from './render'
 import {
-    FOUNTAIN,
     HERO_A,
     HERO_B,
-    HOUSE,
     KIP_A,
     KIP_B,
     MARN_A,
@@ -29,16 +27,15 @@ import {
     PELL_B,
     ROW_A,
     ROW_B,
-    SHOP,
     SIGNPOST,
     type Sprite,
 } from './sprites'
+import { drawAt as drawArt } from './tiles'
 import {
     BUILDINGS,
     clampToFloor,
     DECOR,
     ENTITIES,
-    FOUNTAIN_AT,
     nearest,
     ROAD,
     SIGN_AT,
@@ -57,7 +54,7 @@ interface StageProps {
     onInteract: (entity: Entity) => void
 }
 
-const SPEED = 118
+const SPEED = 168
 const MOVE_KEYS: Record<string, [number, number]> = {
     ArrowLeft: [-1, 0],
     ArrowRight: [1, 0],
@@ -162,14 +159,14 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
             drawSquare(ctx, SQUARE.x, SQUARE.y, SQUARE.w, SQUARE.h)
 
             for (const building of BUILDINGS) {
-                drawSprite(ctx, building.which === 'shop' ? SHOP : HOUSE, building.x, building.y)
+                drawArt(ctx, building.art, building.cx, building.baseY)
             }
             drawSprite(ctx, SIGNPOST, SIGN_AT.x, SIGN_AT.y)
             drawSignText(ctx, SIGN_AT.x + 3, SIGN_AT.y + 4)
-            for (const item of DECOR) {
-                drawSprite(ctx, item.sprite, item.x, item.y)
+            // Scenery sorted by where it meets the ground, so it overlaps sanely.
+            for (const item of [...DECOR].sort((a, b) => a.baseY - b.baseY)) {
+                drawArt(ctx, item.art, item.cx, item.baseY)
             }
-            drawSprite(ctx, FOUNTAIN, FOUNTAIN_AT.x, FOUNTAIN_AT.y)
 
             const idle = Math.floor(now / 460) % 2
             const walk = player.current.moving ? Math.floor(now / 130) % 2 : 0
@@ -200,12 +197,12 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
             }
 
             if (state.roadOpen) {
-                drawGlow(ctx, ROAD.x + 40, ROAD.y + 16, 42, 'rgba(232,181,63,0.34)')
+                drawGlow(ctx, ROAD.x + 70, ROAD.y + 26, 60, 'rgba(232,181,63,0.30)')
             }
 
             if (hit) {
                 const top = hit.kind === 'gate' ? ROAD.y - 4 : hit.y
-                drawCursor(ctx, hit.kind === 'gate' ? ROAD.x + 36 : hit.x + 12, top - 18, now)
+                drawCursor(ctx, hit.kind === 'gate' ? ROAD.x + 66 : hit.x + 12, top - 18, now)
             }
 
             raf = window.requestAnimationFrame(frame)

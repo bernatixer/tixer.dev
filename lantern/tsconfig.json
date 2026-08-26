@@ -22,11 +22,15 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
+    /* Vite injects import.meta.env */
+    "types": ["vite/client"],
+
     /* Paths */
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     }
   },
-  "include": ["src"]
+  "types": ["vite/client"],
+    "include": ["src"]
 }
