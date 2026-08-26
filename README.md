@@ -8,13 +8,13 @@ Personal site at `tixer.dev` and the **Focus** task app at `focus.tixer.dev`. On
 web/        Landing page    → tixer.dev          (GitHub Pages, serves /docs)
 focus/      Focus app       → focus.tixer.dev    (Cloudflare Pages)
 worker/     API + D1        → /api/*             (Cloudflare Workers)
-blindspot/  AI observability game — not deployed yet
+lantern/    AI observability game — not deployed yet
 docs/       Built output of web/ — committed; what GitHub Pages serves
 ```
 
 The pieces are independent — no shared bundle, no shared runtime, no shared auth. They only share this repo and the `tixer.dev` apex domain.
 
-`blindspot/` is a short pixel-art RPG about AI observability: you work an on-call shift for an AI support agent twice, once blind and once walking the trace. See [`blindspot/README.md`](blindspot/README.md).
+`lantern/` is a short pixel-art RPG about AI observability: a village Oracle gives ruinous advice, four spirits do its work, and you have to say which one is at fault. The first day the circle is fogged. The second day you have a lantern. See [`lantern/README.md`](lantern/README.md).
 
 ## Design language
 
@@ -65,8 +65,8 @@ cd focus && pnpm install && pnpm dev
 # Worker API — http://localhost:5555
 cd worker && pnpm install && pnpm dev
 
-# Blindspot — http://localhost:3100
-cd blindspot && pnpm install && pnpm dev
+# Lantern — http://localhost:3100
+cd lantern && pnpm install && pnpm dev
 ```
 
 Note: both `web` and `focus` default to port 3000, so don't run them simultaneously.

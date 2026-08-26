@@ -1,0 +1,27 @@
+{
+  "name": "tixer-lantern",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --mode development",
+    "build": "node scripts/validate-sprites.mjs && tsc && vite build --mode production",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview --outDir dist",
+    "validate:sprites": "node scripts/validate-sprites.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.0",
+    "openai": "^7.5.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.3.3",
+    "vite": "^5.4.11"
+  }
+}

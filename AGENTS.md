@@ -9,14 +9,15 @@ Four pieces sharing one repo and one domain root. Three are deployed:
 - **`web/`** — React+Vite landing page at `tixer.dev`. Hosted on **GitHub Pages**. Built output lives in committed `docs/` directory.
 - **`focus/`** — React+Vite kanban + weekly-goals app at `focus.tixer.dev`. Hosted on **Cloudflare Pages** (project name `focus-tixer-dev`).
 - **`worker/`** — Cloudflare Worker + D1 API serving `/api/*`. Hono framework. Auth via Clerk JWT (RS256).
-- **`blindspot/`** — React+Vite pixel-art RPG about AI observability. **Not deployed yet** — no Pages project, no workflow. Dev server on port 3100. Pure client side: no worker, no D1, no auth. The player pastes their own Anthropic key and it never leaves their browser.
+- **`lantern/`** — React+Vite pixel-art RPG that explains AI observability through a fantasy village. **Not deployed yet** — no Pages project, no workflow. Dev server on port 3100. Pure client side: no worker, no D1, no auth. The player pastes their own OpenAI or Anthropic key and it never leaves their browser.
 
 No shared bundle, no shared runtime, no shared auth. Treat them as separate apps that happen to live in one repo.
 
 ## Tech stack quick reference
 
 - React 18, Vite, TanStack Query, Clerk, Hono, Cloudflare D1, pnpm.
-- `blindspot/` adds `@anthropic-ai/sdk` and `openai`, both called from the browser with `dangerouslyAllowBrowser` because there is no backend to proxy through. The provider is chosen from the key prefix. Rendering is a hand-rolled canvas pixel renderer in `blindspot/src/rpg/`; sprites are pixel data in source, not image files.
+- `lantern/` adds `@anthropic-ai/sdk` and `openai`, both called from the browser with `dangerouslyAllowBrowser` because there is no backend to proxy through. The provider is chosen from the key prefix. Rendering is a hand-rolled canvas pixel renderer in `lantern/src/rpg/`; sprites are pixel data in source, not image files, and `pnpm validate:sprites` (which build runs) checks their geometry.
+- `lantern/` does not follow the site's dark palette. It is a daylit forest on parchment, deliberately, because the game needed to be inviting rather than on-brand. Do not "fix" it to match `web/` and `focus/`.
 - AI tasks parser proxies through the worker to **z.ai / GLM-4.5-flash** (`worker/src/handlers/ai.ts`).
 - `focus/` is a PWA (`vite-plugin-pwa`).
 - No monorepo tooling — each subdir has its own `package.json` and lockfile. Don't introduce workspaces without asking.
@@ -63,9 +64,9 @@ Tables:
 ## Local dev — gotchas
 
 - Both `web` and `focus` use port 3000 by default. Don't run them at the same time without changing the port.
-- `blindspot` runs on port 3100, so it can run alongside either.
+- `lantern` runs on port 3100, so it can run alongside either.
 - Worker dev runs on port 5555 (`wrangler dev`).
-- pnpm 11 no longer reads the `pnpm` field in package.json. `blindspot/pnpm-workspace.yaml` exists only to hold `allowBuilds: esbuild`; it declares no `packages:` key, so it is a settings file, not a workspace.
+- pnpm 11 no longer reads the `pnpm` field in package.json. `lantern/pnpm-workspace.yaml` exists only to hold `allowBuilds: esbuild`; it declares no `packages:` key, so it is a settings file, not a workspace.
 - Focus reads `VITE_API_URL`, defaulting to `http://localhost:5555/api`.
 - `VITE_MOCK_GOALS=1` (default in dev) makes Focus skip the API entirely for Weekly Goals and use a localStorage-backed mock. Storage key: `focus.mock.weeklyGoals.v2`. Seeded key: `focus.mock.weeklyGoals.seeded.v2`. Bump the version suffix to re-seed.
 
