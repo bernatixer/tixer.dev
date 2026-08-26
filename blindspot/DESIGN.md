@@ -18,6 +18,10 @@ that land rather than to be explained.
 - **Real calls, real numbers.** Token counts, cost and time-to-first-token come
   from the API response, not from a script. Streaming exists in the client only
   because it is the only way to measure TTFT.
+- **The trace is a place, not a table.** Reading a span list is work; walking a
+  corridor and finding one room on fire is not. Laying every turn out left to
+  right in the same corridor also makes a fault that grows turn over turn
+  something you see rather than something you compute.
 
 ## The three faults
 
@@ -32,6 +36,12 @@ Each fault teaches a different property, and each is reproducible on a live mode
 3. `silent_tool_failure` — `lookup_order` returns 500 three times, the agent
    swallows it, and the model fills the gap with an invented delivery date.
    Teaches: a 200 response and a fluent answer prove nothing.
+
+## Controls
+
+Arrow keys or WASD to walk, space to interact, and clicking any object does the
+same thing. The mouse path exists because most people will play this once, and a
+keyboard-only game loses some of them at the first screen.
 
 ## Not built yet
 

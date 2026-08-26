@@ -1,5 +1,5 @@
 import { formatUsd } from '@/tracing/cost'
-import { modelById } from '@/llm/models'
+import { modelLabel } from '@/llm/models'
 import type { ActScore } from '@/game/state'
 
 interface HudProps {
@@ -24,7 +24,7 @@ export function Hud({ act, ticketNumber, ticketTotal, model, live, score }: HudP
             <span className="hud__slot">SPEND {formatUsd(score.spendUsd)}</span>
             <span className="hud__slot">TIME {score.minutes}m</span>
             <span className="hud__slot hud__slot--dim">
-                {modelById(model).label}
+                {modelLabel(model)}
                 {live ? '' : ' · demo'}
             </span>
         </header>

@@ -1,15 +1,11 @@
 import { SCENARIOS } from '@/game/scenarios'
-import { currentRun, isRunOver, scoreAct } from '@/game/state'
+import { currentRun, scoreAct } from '@/game/state'
 import { useGame } from '@/game/useGame'
 import { BootScreen } from '@/ui/BootScreen'
-import { ChatPanel } from '@/ui/ChatPanel'
 import { Debrief } from '@/ui/Debrief'
+import { GameScreen } from '@/ui/GameScreen'
 import { Hud } from '@/ui/Hud'
 import { Interlude } from '@/ui/Interlude'
-import { LockedPanel } from '@/ui/LockedPanel'
-import { SpanDetail } from '@/ui/SpanDetail'
-import { TicketPanel } from '@/ui/TicketPanel'
-import { findNode, TracePanel } from '@/ui/TracePanel'
 
 export function App(): JSX.Element {
     const game = useGame()
@@ -41,8 +37,6 @@ export function App(): JSX.Element {
 
     const scenario = SCENARIOS[state.index]
     const run = currentRun(state)
-    const traced = state.act === 2
-    const selected = traced ? findNode(run.traces, state.selectedNodeId) : null
 
     return (
         <main className="shell">
@@ -54,42 +48,19 @@ export function App(): JSX.Element {
                 live={game.live}
                 score={scoreAct(state, state.act)}
             />
-
-            <div className={`board${traced ? ' board--traced' : ''}`}>
-                <TicketPanel
-                    scenario={scenario}
-                    run={run}
-                    act={state.act}
-                    verdict={state.lastVerdict}
-                    isLastTicket={state.index === SCENARIOS.length - 1}
-                    onChooseFix={game.chooseFix}
-                    onAdvance={game.advance}
-                />
-
-                <ChatPanel
-                    chat={run.chat}
-                    busy={state.busy}
-                    error={state.error}
-                    suggestion={scenario.probe}
-                    disabled={isRunOver(run)}
-                    onSend={game.send}
-                />
-
-                {traced ? (
-                    <>
-                        <TracePanel
-                            traces={run.traces}
-                            selectedNodeId={state.selectedNodeId}
-                            onSelect={game.selectNode}
-                        />
-                        <SpanDetail node={selected} />
-                    </>
-                ) : (
-                    <LockedPanel />
-                )}
-            </div>
-
-            {scenario.probeHint && !isRunOver(run) && <p className="board__hint">{scenario.probeHint}</p>}
+            <GameScreen
+                // A new ticket is a new room, so the screen starts fresh.
+                key={`${state.act}-${scenario.id}`}
+                scenario={scenario}
+                run={run}
+                act={state.act}
+                busy={state.busy}
+                error={state.error}
+                isLastTicket={state.index === SCENARIOS.length - 1}
+                onSend={game.send}
+                onChooseFix={game.chooseFix}
+                onAdvance={game.advance}
+            />
         </main>
     )
 }

@@ -14,7 +14,7 @@ docs/       Built output of web/ — committed; what GitHub Pages serves
 
 The pieces are independent — no shared bundle, no shared runtime, no shared auth. They only share this repo and the `tixer.dev` apex domain.
 
-`blindspot/` is a short browser game about AI observability: you work an on-call shift for an AI support agent twice, once blind and once with traces. See [`blindspot/README.md`](blindspot/README.md).
+`blindspot/` is a short pixel-art RPG about AI observability: you work an on-call shift for an AI support agent twice, once blind and once walking the trace. See [`blindspot/README.md`](blindspot/README.md).
 
 ## Design language
 

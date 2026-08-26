@@ -1,8 +1,12 @@
 # Blindspot
 
-A short browser game about AI observability. You work one on-call shift for a
+A short pixel-art RPG about AI observability. You work one on-call shift for a
 shop's AI support agent, twice. The first time you have no telemetry. The second
 time you do. The bugs do not change.
+
+You walk a support desk, read the customer's complaint, reproduce it against a
+real model, and guess. In act two a sealed door opens onto the trace, laid out
+as a corridor of rooms: one room per step the agent took.
 
 Built to explain what AI observability is and why a product team wants it,
 which mostly means making the blindness concrete before showing the fix.
@@ -33,10 +37,10 @@ pnpm dev        # http://localhost:3100
 
 ## Bring your own key
 
-The game calls Claude directly from the page with the key you paste in. There is
-no backend, so the key never reaches a server: it goes from your browser to
-`api.anthropic.com` and nowhere else, and it is kept in `localStorage` only if
-you tick the box.
+Paste an OpenAI or an Anthropic key, whichever you have. The provider is picked
+from the prefix, so there is nothing to configure. There is no backend, so the
+key never reaches a server of mine: it goes from your browser straight to the
+provider, and it stays in `localStorage`.
 
 Every call is capped at 1024 output tokens and the meter in the header shows real
 spend, computed from the token counts the API returns. A full playthrough is a
@@ -51,16 +55,23 @@ traces of a fake model.
 ```
 src/
   tracing/     the trace model: nodes, $ai_* properties, cost, the recorder
-  llm/         Claude client (streamed, for real time-to-first-token), demo backend, model picker
+  llm/         Anthropic and OpenAI clients (streamed, for real time-to-first-token), demo backend, model catalog
   agent/       the HedgeMart support agent: catalog, tools, the traced pipeline
   game/        scenarios, act and score state, the game hook
-  ui/          the CRT console
+  rpg/         hand-authored sprites, the canvas renderer, scene layout, movement
+  ui/          the dialogue box and the screens around the game
 ```
+
+Controls are arrow keys or WASD to walk and space to interact. Clicking anything
+works too, so it is playable with a mouse alone.
 
 `src/tracing/` is deliberately a small copy of how PostHog AI observability
 models this: a trace holds spans and generations, and each node carries the real
 `$ai_*` property names. What you read in the game's span detail panel is what you
 would read in a production trace viewer.
 
-The recorder runs in both acts. Act 1 only hides the panel. The blindness is a
-missing view, never missing data, which is the whole point.
+The recorder runs in both acts. Act 1 only keeps the door shut. The blindness is
+a missing view, never missing data, which is the whole point.
+
+The art is hand-authored pixel data in `src/rpg/sprites.ts`, so there are no
+external assets to license or load.

@@ -1,5 +1,4 @@
-import type { CallRequest, CallResult } from './client'
-import { LlmCallError } from './client'
+import type { CallRequest, CallResult } from './types'
 
 /**
  * Demo mode replaces the model with canned replies so the game is playable
@@ -72,5 +71,3 @@ export async function demoCall(request: CallRequest): Promise<CallResult> {
         httpStatus: 200,
     }
 }
-
-export { LlmCallError }

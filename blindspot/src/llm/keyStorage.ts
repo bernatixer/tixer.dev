@@ -1,8 +1,8 @@
-const KEY_STORAGE = 'blindspot.anthropicKey'
+const KEY_STORAGE = 'blindspot.apiKey'
 
 /**
  * The key stays in this browser. Blindspot has no backend, so there is nowhere
- * else for it to go — every request is made from the page to api.anthropic.com.
+ * else for it to go — every request is made from the page to the provider.
  */
 export function loadKey(): string | null {
     try {
@@ -17,13 +17,5 @@ export function saveKey(key: string): void {
         window.localStorage.setItem(KEY_STORAGE, key)
     } catch {
         // Private windows block storage. The key still works for this session.
-    }
-}
-
-export function clearKey(): void {
-    try {
-        window.localStorage.removeItem(KEY_STORAGE)
-    } catch {
-        // Nothing to clean up.
     }
 }

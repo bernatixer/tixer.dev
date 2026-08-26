@@ -1,21 +1,11 @@
+import { modelById } from '@/llm/models'
+
 import type { AiProperties } from './types'
 
-/** USD per million tokens, from the Anthropic pricing table. */
-export interface ModelPricing {
-    inputPerMTok: number
-    outputPerMTok: number
-}
-
-export const PRICING: Record<string, ModelPricing> = {
-    'claude-opus-5': { inputPerMTok: 5, outputPerMTok: 25 },
-    'claude-sonnet-5': { inputPerMTok: 2, outputPerMTok: 10 },
-    'claude-haiku-4-5': { inputPerMTok: 1, outputPerMTok: 5 },
-}
-
 export function priceGeneration(model: string, inputTokens: number, outputTokens: number): AiProperties {
-    const pricing = PRICING[model] ?? PRICING['claude-haiku-4-5']
-    const inputCost = (inputTokens / 1_000_000) * pricing.inputPerMTok
-    const outputCost = (outputTokens / 1_000_000) * pricing.outputPerMTok
+    const pricing = modelById(model)
+    const inputCost = (inputTokens / 1_000_000) * (pricing?.inputPerMTok ?? 1)
+    const outputCost = (outputTokens / 1_000_000) * (pricing?.outputPerMTok ?? 5)
     return {
         $ai_input_tokens: inputTokens,
         $ai_output_tokens: outputTokens,

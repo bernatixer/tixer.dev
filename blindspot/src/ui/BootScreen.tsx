@@ -1,94 +1,84 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
-import { DEFAULT_MODEL, MODELS, priceLabel } from '@/llm/models'
-import { clearKey, loadKey, saveKey } from '@/llm/keyStorage'
+import { loadKey, saveKey } from '@/llm/keyStorage'
+import { defaultModelFor, modelsFor, priceLabel } from '@/llm/models'
+import { providerForKey } from '@/llm/types'
 
 interface BootScreenProps {
     onStart: (apiKey: string | null, model: string) => void
 }
 
+const PROVIDER_LABEL = { anthropic: 'Anthropic', openai: 'OpenAI' } as const
+
 export function BootScreen({ onStart }: BootScreenProps): JSX.Element {
     const [key, setKey] = useState(() => loadKey() ?? '')
-    const [model, setModel] = useState(DEFAULT_MODEL)
-    const [remember, setRemember] = useState(true)
+    const [model, setModel] = useState<string | null>(null)
+
+    const trimmed = key.trim()
+    const provider = useMemo(() => providerForKey(trimmed), [trimmed])
+    const choices = modelsFor(provider)
+    const selected = model && choices.some((choice) => choice.id === model) ? model : defaultModelFor(provider)
 
     const startLive = (): void => {
-        if (!key.trim()) {
+        if (!trimmed) {
             return
         }
-        if (remember) {
-            saveKey(key.trim())
-        } else {
-            clearKey()
-        }
-        onStart(key.trim(), model)
+        saveKey(trimmed)
+        onStart(trimmed, selected)
     }
 
     return (
         <div className="boot">
-            <pre className="boot__logo">{`BLINDSPOT`}</pre>
+            <pre className="boot__logo">BLINDSPOT</pre>
             <p className="boot__tag">A shift on call for an AI support agent, twice. Once without telemetry.</p>
 
             <section className="panel">
-                <h2 className="panel__title">01 · Bring a key</h2>
-                <p className="boot__note">
-                    Blindspot has no backend. Your key is sent from this page straight to api.anthropic.com and nowhere
-                    else. It never reaches a server of mine, because there isn't one.
-                </p>
+                <h2 className="panel__title">Paste a key</h2>
                 <input
                     className="boot__input"
                     type="password"
                     value={key}
                     spellCheck={false}
-                    placeholder="sk-ant-..."
+                    placeholder="sk-ant-... or sk-..."
                     onChange={(event) => setKey(event.target.value)}
                 />
-                <label className="boot__check">
-                    <input
-                        type="checkbox"
-                        checked={remember}
-                        onChange={(event) => setRemember(event.target.checked)}
-                    />
-                    Keep it in this browser
-                </label>
-                <p className="boot__note boot__note--dim">
-                    A full playthrough is a few dozen short calls. On Haiku that is cents. Every call is capped at 1024
-                    output tokens, and the meter at the top shows real spend as you go.
+                <p className="boot__note">
+                    OpenAI or Anthropic, whichever you have. It goes straight from this page to the provider and stays
+                    in this browser. There is no backend to send it to.
                 </p>
-            </section>
 
-            <section className="panel">
-                <h2 className="panel__title">02 · Pick who answers the customers</h2>
-                <div className="boot__models">
-                    {MODELS.map((choice) => (
-                        <button
-                            key={choice.id}
-                            type="button"
-                            className={`boot__model${model === choice.id ? ' boot__model--on' : ''}`}
-                            onClick={() => setModel(choice.id)}
-                        >
-                            <span className="boot__model-name">{choice.label}</span>
-                            <span className="boot__model-blurb">{choice.blurb}</span>
-                            <span className="boot__model-price">
-                                {priceLabel(choice.id)} · {choice.contextLabel}
-                            </span>
-                        </button>
-                    ))}
-                </div>
+                {trimmed && (
+                    <>
+                        <p className="boot__provider">{PROVIDER_LABEL[provider]} key detected</p>
+                        <div className="boot__models">
+                            {choices.map((choice) => (
+                                <button
+                                    key={choice.id}
+                                    type="button"
+                                    className={`boot__model${selected === choice.id ? ' boot__model--on' : ''}`}
+                                    onClick={() => setModel(choice.id)}
+                                >
+                                    <span className="boot__model-name">{choice.label}</span>
+                                    <span className="boot__model-price">{priceLabel(choice.id)}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                )}
             </section>
 
             <div className="boot__actions">
-                <button type="button" className="btn btn--primary" disabled={!key.trim()} onClick={startLive}>
+                <button type="button" className="btn btn--primary" disabled={!trimmed} onClick={startLive}>
                     Start the shift
                 </button>
-                <button type="button" className="btn" onClick={() => onStart(null, model)}>
+                <button
+                    type="button"
+                    className="btn"
+                    onClick={() => onStart(null, defaultModelFor('anthropic'))}
+                >
                     Play without a key
                 </button>
             </div>
-            <p className="boot__note boot__note--dim">
-                Without a key the agent replies from a canned script. It breaks in exactly the same places, and the
-                traces are still real traces.
-            </p>
         </div>
     )
 }

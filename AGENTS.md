@@ -9,14 +9,14 @@ Four pieces sharing one repo and one domain root. Three are deployed:
 - **`web/`** — React+Vite landing page at `tixer.dev`. Hosted on **GitHub Pages**. Built output lives in committed `docs/` directory.
 - **`focus/`** — React+Vite kanban + weekly-goals app at `focus.tixer.dev`. Hosted on **Cloudflare Pages** (project name `focus-tixer-dev`).
 - **`worker/`** — Cloudflare Worker + D1 API serving `/api/*`. Hono framework. Auth via Clerk JWT (RS256).
-- **`blindspot/`** — React+Vite browser game about AI observability. **Not deployed yet** — no Pages project, no workflow. Dev server on port 3100. Pure client side: no worker, no D1, no auth. The player pastes their own Anthropic key and it never leaves their browser.
+- **`blindspot/`** — React+Vite pixel-art RPG about AI observability. **Not deployed yet** — no Pages project, no workflow. Dev server on port 3100. Pure client side: no worker, no D1, no auth. The player pastes their own Anthropic key and it never leaves their browser.
 
 No shared bundle, no shared runtime, no shared auth. Treat them as separate apps that happen to live in one repo.
 
 ## Tech stack quick reference
 
 - React 18, Vite, TanStack Query, Clerk, Hono, Cloudflare D1, pnpm.
-- `blindspot/` adds `@anthropic-ai/sdk`, called from the browser with `dangerouslyAllowBrowser` because there is no backend to proxy through.
+- `blindspot/` adds `@anthropic-ai/sdk` and `openai`, both called from the browser with `dangerouslyAllowBrowser` because there is no backend to proxy through. The provider is chosen from the key prefix. Rendering is a hand-rolled canvas pixel renderer in `blindspot/src/rpg/`; sprites are pixel data in source, not image files.
 - AI tasks parser proxies through the worker to **z.ai / GLM-4.5-flash** (`worker/src/handlers/ai.ts`).
 - `focus/` is a PWA (`vite-plugin-pwa`).
 - No monorepo tooling — each subdir has its own `package.json` and lockfile. Don't introduce workspaces without asking.

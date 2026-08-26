@@ -1,5 +1,5 @@
-import type { CallRequest, CallResult } from './client'
 import { callModel } from './client'
+import type { CallRequest, CallResult } from './types'
 import { demoCall } from './demo'
 
 /**

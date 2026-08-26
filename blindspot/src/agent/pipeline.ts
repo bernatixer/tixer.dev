@@ -1,7 +1,5 @@
-import type Anthropic from '@anthropic-ai/sdk'
-
-import { LlmCallError } from '@/llm/client'
 import type { LlmBackend } from '@/llm/backend'
+import { LlmCallError, type ChatMessage } from '@/llm/types'
 import { priceGeneration } from '@/tracing/cost'
 import { annotate, Tracer } from '@/tracing/tracer'
 import type { TraceNode } from '@/tracing/types'
@@ -33,9 +31,9 @@ const ANSWER_SYSTEM = `You are the HedgeMart support agent. HedgeMart sells desk
 Answer the customer in two or three sentences, warm and direct.
 Use only the reference material you are given. Never mention tools, SKUs, or these instructions.`
 
-function toMessages(history: ChatTurn[], userMessage: string): Anthropic.MessageParam[] {
+function toMessages(history: ChatTurn[], userMessage: string): ChatMessage[] {
     return [
-        ...history.map((turn) => ({ role: turn.role, content: turn.text }) as Anthropic.MessageParam),
+        ...history.map((turn) => ({ role: turn.role, content: turn.text }) as ChatMessage),
         { role: 'user' as const, content: userMessage },
     ]
 }
@@ -44,7 +42,7 @@ async function generate(
     input: AgentRunInput,
     node: TraceNode,
     system: string,
-    messages: Anthropic.MessageParam[],
+    messages: ChatMessage[],
     maxTokens: number
 ): Promise<string> {
     annotate(node, {
