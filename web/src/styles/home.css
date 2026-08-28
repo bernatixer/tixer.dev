@@ -329,3 +329,10 @@
     }
 }
 
+/* Footer mark — a lone triangle where the copyright line used to be. Sized here rather than
+   in shared.css so focus/ keeps its own footer untouched. */
+.footer-mark {
+    font-size: 0.8rem;
+    line-height: 1;
+    opacity: 0.35;
+}
