@@ -137,7 +137,9 @@ export const HomePage: FC = () => {
           </a>
           <a href="https://focus.tixer.dev">Focus</a>
         </div>
-        <p className="footer-text">© 2025</p>
+        <p className="footer-text footer-mark" aria-hidden="true">
+          ▲
+        </p>
       </footer>
     </div>
   )
