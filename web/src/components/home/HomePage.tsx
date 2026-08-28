@@ -29,10 +29,10 @@ export const HomePage: FC = () => {
           <span className="cursor"></span>
         </h1>
         <p className="hero-subtitle">
-          <span>Tech Lead</span>
+          <span>Product Engineer</span>
           <span className="sep">·</span>
-          <a href="https://enginy.ai" target="_blank" rel="noopener">
-            Enginy AI
+          <a href="https://posthog.com" target="_blank" rel="noopener">
+            PostHog
           </a>
         </p>
         <p className="hero-note">Building stuff, writing sometimes.</p>
@@ -42,20 +42,20 @@ export const HomePage: FC = () => {
         <h2 className="section-title">Now</h2>
         <div className="now-content">
           <p>
-            Tech Lead at{' '}
-            <a href="https://enginy.ai" target="_blank" rel="noopener">
-              Enginy
+            Product Engineer at{' '}
+            <a href="https://posthog.com" target="_blank" rel="noopener">
+              PostHog
             </a>
-            , an AI{' '}
-            <span className="tooltip" data-tip="Go-to-Market — sales & marketing">
-              GTM
+            , on the AI{' '}
+            <span className="tooltip" data-tip="Traces, costs, latency and evals for LLM apps">
+              Observability
             </span>{' '}
-            platform startup based in Barcelona. Joined as the first engineer in January 2024 —
-            we were 4 people back then, now we're 75.
+            team. Building the products that let teams see inside their LLM apps — what they
+            answered, what it cost, and whether it was any good.
           </p>
           <p>
-            Building high-performant systems, distributed backends, and learning my way through
-            management in a fast-growing startup. Also doing infra and frontend when needed.
+            End to end, the way PostHog builds: from the ingestion path to the screen someone
+            actually looks at.
           </p>
         </div>
       </section>
@@ -64,7 +64,17 @@ export const HomePage: FC = () => {
         <h2 className="section-title">Background</h2>
         <div className="now-content">
           <p>
-            Studied Computer Science, then a postgraduate in Deep Learning. Previously at{' '}
+            Before PostHog, Tech Lead at{' '}
+            <a href="https://enginy.ai" target="_blank" rel="noopener">
+              Enginy
+            </a>
+            . Joined as the first engineer in January 2024 — we were 4 people back then, 75 by
+            the time I left. High-performant systems and distributed backends, learning my way
+            through management in a fast-growing startup, and infra and frontend whenever they
+            needed doing.
+          </p>
+          <p>
+            Studied Computer Science, then a postgraduate in Deep Learning. Earlier at{' '}
             <a href="https://skyscanner.net" target="_blank" rel="noopener">
               Skyscanner
             </a>{' '}
