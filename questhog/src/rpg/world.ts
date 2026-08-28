@@ -1,5 +1,6 @@
 import type { PersonId } from '@/game/townsfolk'
 
+import type { Castle } from './castle'
 import { TILE, VIEW_H, VIEW_W } from './render'
 import { ART, type Rect } from './tiles'
 
@@ -37,11 +38,11 @@ export const ENTITIES: Entity[] = [
 export const SQUARE = { x: 152, y: 196, w: 300, h: 128 }
 
 export const DECOR: Decor[] = [
-    { art: ART.treeBig, cx: 24, baseY: 196 },
-    { art: ART.treeFork, cx: 186, baseY: 188 },
-    { art: ART.treeSlim, cx: 386, baseY: 186 },
-    { art: ART.treeBig, cx: 566, baseY: 196 },
-    { art: ART.treeBent, cx: 622, baseY: 214 },
+    { art: ART.treeBig, cx: 24, baseY: 216 },
+    { art: ART.treeFork, cx: 186, baseY: 212 },
+    { art: ART.treeSlim, cx: 386, baseY: 214 },
+    { art: ART.treeBig, cx: 566, baseY: 218 },
+    { art: ART.treeBent, cx: 622, baseY: 228 },
     { art: ART.bushFlower, cx: 62, baseY: 232 },
     { art: ART.bushBig, cx: 40, baseY: 344 },
     { art: ART.bushWide, cx: 596, baseY: 348 },
@@ -59,12 +60,31 @@ export const DECOR: Decor[] = [
     { art: ART.floraB, cx: 62, baseY: 268 },
 ]
 
-/** Buildings, drawn behind the people. */
-export const BUILDINGS = [
-    { art: ART.facadeNarrow, cx: 96, baseY: 194 },
-    { art: ART.facade, cx: 288, baseY: 196 },
-    { art: ART.facadeNarrow, cx: 470, baseY: 194 },
-]
+/**
+ * The castle at the back of the square, drawn behind the people. The gate is
+ * centred on the square, the corner towers sit outside the trees, and the wall
+ * runs between them so the town reads as walled rather than as three ruins.
+ */
+export const CASTLE: Castle = {
+    baseY: 196,
+    wallH: 96,
+    /** The gatehouse turrets are the tallest thing in town, as they should be. */
+    turretH: 160,
+    towerH: 128,
+    walls: [
+        { x: 96, w: 162 },
+        { x: 384, w: 162 },
+    ],
+    gate: { x: 288, w: 64 },
+    turrets: [
+        { x: 256, w: 34 },
+        { x: 350, w: 34 },
+    ],
+    towers: [
+        { x: 48, w: 50 },
+        { x: 544, w: 50 },
+    ],
+}
 
 /** The harbour road, leaving to the right. */
 export const ROAD = { x: 452, y: 236, w: 188, h: 52 }

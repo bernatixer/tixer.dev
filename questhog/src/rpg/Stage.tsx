@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import type { PersonId } from '@/game/townsfolk'
 
+import { drawCastle } from './castle'
+import { drawHero, drawPerson, personBox } from './folk'
 import {
     drawAlert,
     drawCursor,
@@ -16,23 +18,10 @@ import {
     VIEW_H,
     VIEW_W,
 } from './render'
-import {
-    HERO_A,
-    HERO_B,
-    KIP_A,
-    KIP_B,
-    MARN_A,
-    MARN_B,
-    PELL_A,
-    PELL_B,
-    ROW_A,
-    ROW_B,
-    SIGNPOST,
-    type Sprite,
-} from './sprites'
+import { SIGNPOST } from './sprites'
 import { drawAt as drawArt } from './tiles'
 import {
-    BUILDINGS,
+    CASTLE,
     clampToFloor,
     DECOR,
     ENTITIES,
@@ -46,6 +35,8 @@ import {
 } from './world'
 
 interface StageProps {
+    /** Sits at the right of the strip under the town. */
+    status?: ReactNode
     /** Who you have already spoken to. */
     spokenTo: PersonId[]
     /** True once everyone has been asked, so the road out lights up. */
@@ -66,14 +57,7 @@ const MOVE_KEYS: Record<string, [number, number]> = {
     s: [0, 1],
 }
 
-const FOLK: Record<PersonId, [Sprite, Sprite]> = {
-    pell: [PELL_A, PELL_B],
-    marn: [MARN_A, MARN_B],
-    kip: [KIP_A, KIP_B],
-    row: [ROW_A, ROW_B],
-}
-
-export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): JSX.Element {
+export function Stage({ status, spokenTo, roadOpen, locked, onInteract }: StageProps): JSX.Element {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const player = useRef({ ...SPAWN, moving: false })
     const held = useRef(new Set<string>())
@@ -158,9 +142,7 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
             drawRoad(ctx, ROAD.x, ROAD.y, ROAD.w, ROAD.h)
             drawSquare(ctx, SQUARE.x, SQUARE.y, SQUARE.w, SQUARE.h)
 
-            for (const building of BUILDINGS) {
-                drawArt(ctx, building.art, building.cx, building.baseY)
-            }
+            drawCastle(ctx, CASTLE, now)
             drawSprite(ctx, SIGNPOST, SIGN_AT.x, SIGN_AT.y)
             drawSignText(ctx, SIGN_AT.x + 3, SIGN_AT.y + 4)
             // Scenery sorted by where it meets the ground, so it overlaps sanely.
@@ -180,7 +162,7 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
             for (const item of drawables) {
                 if (!item.entity) {
                     drawShadow(ctx, player.current.x + 6, player.current.y + TILE - 1, TILE - 12)
-                    drawSprite(ctx, walk ? HERO_B : HERO_A, player.current.x - 4, player.current.y - 22)
+                    drawHero(ctx, player.current.x, player.current.y, walk)
                     continue
                 }
                 const entity = item.entity
@@ -189,10 +171,12 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
                     continue
                 }
                 const done = state.spokenTo.includes(person)
-                drawShadow(ctx, entity.x + 7, entity.y + TILE - 1, TILE - 14)
-                drawSprite(ctx, FOLK[person][idle], entity.x, entity.y)
+                const box = personBox(person)
+                const shadow = Math.round(box.width * 0.56)
+                drawShadow(ctx, entity.x + TILE / 2 - shadow / 2, entity.y + box.foot - 1, shadow)
+                drawPerson(ctx, person, entity.x, entity.y, idle)
                 if (!done) {
-                    drawAlert(ctx, entity.x + 12, entity.y - 11, now)
+                    drawAlert(ctx, entity.x + 14, entity.y + box.top - 13, now)
                 }
             }
 
@@ -201,8 +185,11 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
             }
 
             if (hit) {
-                const top = hit.kind === 'gate' ? ROAD.y - 4 : hit.y
-                drawCursor(ctx, hit.kind === 'gate' ? ROAD.x + 66 : hit.x + 10, top - (hit.kind === 'gate' ? 18 : 40), now)
+                if (hit.kind === 'gate') {
+                    drawCursor(ctx, ROAD.x + 66, ROAD.y - 22, now)
+                } else if (hit.person) {
+                    drawCursor(ctx, hit.x + 12, hit.y + personBox(hit.person).top - 28, now)
+                }
             }
 
             raf = window.requestAnimationFrame(frame)
@@ -239,18 +226,23 @@ export function Stage({ spokenTo, roadOpen, locked, onInteract }: StageProps): J
                 className="stage__canvas"
                 onClick={onCanvasClick}
             />
-            <p className="stage__hint">
-                {near ? (
-                    <>
-                        <kbd className="kbd--go">press space</kbd>
-                        <span className="stage__hint-do">{near.kind === 'gate' ? near.label : `talk to ${near.label}`}</span>
-                    </>
-                ) : (
-                    <>
-                        <kbd>← ↑ ↓ →</kbd> walk up to someone, or click them
-                    </>
-                )}
-            </p>
+            <div className="stage__hint">
+                <p className="stage__hint-say">
+                    {near ? (
+                        <>
+                            <kbd className="kbd--go">press space</kbd>
+                            <span className="stage__hint-do">
+                                {near.kind === 'gate' ? near.label : `talk to ${near.label}`}
+                            </span>
+                        </>
+                    ) : (
+                        <>
+                            <kbd>← ↑ ↓ →</kbd> walk up to someone, or click them
+                        </>
+                    )}
+                </p>
+                {status}
+            </div>
         </div>
     )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { CRITERIA } from '@/game/evals'
 import { allSpokenTo, talkWith, type GameState } from '@/game/state'
@@ -18,6 +18,8 @@ type Panel =
     | { kind: 'scores'; criterionId: string }
 
 interface GameScreenProps {
+    /** The stats strip, built by App because it owns the music toggle. */
+    hud: ReactNode
     state: GameState
     /** True while the key prompt is up, so the town is only scenery. */
     gated: boolean
@@ -29,6 +31,7 @@ interface GameScreenProps {
 }
 
 export function GameScreen({
+    hud,
     state,
     gated,
     onTalk,
@@ -39,6 +42,14 @@ export function GameScreen({
 }: GameScreenProps): JSX.Element {
     const [panel, setPanel] = useState<Panel>(null)
     const [talking, setTalking] = useState<PersonId | null>(null)
+    const dialogue = useRef<HTMLDivElement>(null)
+
+    // A tall panel leaves the row scrolled. The next one must start at its top.
+    useEffect(() => {
+        if (dialogue.current) {
+            dialogue.current.scrollTop = 0
+        }
+    }, [panel?.kind, state.phase, state.busy])
 
     const say = (speaker: string, body: string, choices?: Choice[], next?: (id: string) => void): void =>
         setPanel({ kind: 'text', speaker, body, choices, next })
@@ -180,13 +191,14 @@ export function GameScreen({
     return (
         <div className="screen">
             <Stage
+                status={hud}
                 spokenTo={spokenTo}
                 roadOpen={everyone && state.phase === 'town'}
                 locked={gated || panel !== null || state.busy}
                 onInteract={interact}
             />
 
-            <div className="screen__dialogue">
+            <div className="screen__dialogue" ref={dialogue}>
                 {gated && (
                     <div className="dlg dlg--idle">
                         <span className="dlg__speaker">the square</span>

@@ -44,7 +44,7 @@ export function KeyGate({ onStart }: KeyGateProps): JSX.Element {
                     start()
                 }}
             >
-                <h1 className="gate__title">ASK AROUND</h1>
+                <h1 className="gate__title">QUESTHOG</h1>
                 <p className="gate__tag">
                     The last boat leaves at dusk and you do not know the way. Four people are out in the square. Ask
                     them, then decide who to believe.
@@ -79,6 +79,7 @@ export function KeyGate({ onStart }: KeyGateProps): JSX.Element {
                 </p>
 
                 <button type="submit" className="btn btn--primary gate__go" disabled={!trimmed}>
+                    <img className="gate__go-logo" src={`${import.meta.env.BASE_URL}posthog-logo-white.png`} alt="" />
                     Walk into town
                 </button>
             </form>

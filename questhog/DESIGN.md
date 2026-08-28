@@ -1,4 +1,4 @@
-# Ask around — design notes
+# QuestHog — design notes
 
 ## Four versions before this one
 
@@ -90,7 +90,7 @@ thing that has to be PostHog's, and no pack will have them.
 ## Deploying
 
 Not wired up yet. The intended shape matches `focus/`: a Cloudflare Pages
-project plus a `.github/workflows/deploy-lantern.yml` that builds and runs
+project plus a `.github/workflows/deploy-questhog.yml` that builds and runs
 `wrangler pages deploy dist`. That needs the Pages project to exist first, so it
 is a deliberate manual step rather than a workflow that would fail on its first
 push.

@@ -1,4 +1,4 @@
-# Ask around
+# QuestHog
 
 A five minute game that teaches AI observability without ever using the words.
 
@@ -48,10 +48,10 @@ and a public repo is redistribution.
 Download the pack, then:
 
 ```bash
-mkdir -p lantern/public/tiles
+mkdir -p questhog/public/tiles
 cd "Top-Down RPG 32x32 by Mixel v1.7"
-cp "Nature v1.5"/*.PNG "Nature v1.5"/*.png "Buildings v.1.1"/*.PNG <repo>/lantern/public/tiles/
-cd <repo>/lantern/public/tiles
+cp "Nature v1.5"/*.PNG "Nature v1.5"/*.png "Buildings v.1.1"/*.PNG <repo>/questhog/public/tiles/
+cd <repo>/questhog/public/tiles
 for f in *; do mv "$f" "$(echo "$f" | sed 's/Topdown RPG 32x32 - //; s/ /-/g; s/\.PNG$/.png/' | tr 'A-Z' 'a-z')"; done
 ```
 
@@ -62,7 +62,7 @@ always there.
 `web/` and `focus/` both use port 3000, so this one sits on 3100.
 
 Arrow keys or WASD to walk, space to talk. Clicking anyone works too. There is a
-chiptune loop with a toggle in the header.
+chiptune loop with a toggle in the strip under the town.
 
 ## Bring your own key
 

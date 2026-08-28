@@ -1,5 +1,5 @@
 /* ============================================
-   LANTERN — the glade
+   QUESTHOG — the glade
    The site tokens live in shared.css. This file is the game's own light:
    parchment and moss, with the site's acid kept for magic only.
    ============================================ */
@@ -40,10 +40,8 @@ body {
     min-height: 100vh;
     max-height: 100vh;
     overflow: hidden;
-    /* Rail on the left, game filling everything else. */
     display: flex;
-    align-items: stretch;
-    gap: 12px;
+    flex-direction: column;
 }
 
 /* ---------- generic chrome ---------- */
@@ -100,56 +98,37 @@ body {
     color: var(--parchment);
 }
 
-/* ---------- side rail ---------- */
+/* ---------- the strip under the town ---------- */
 
-.rail {
+.hud {
     display: flex;
-    flex-direction: column;
-    gap: 16px;
-    width: 132px;
-    flex: none;
-    padding: 14px 12px;
-    border: 2px solid #6b4a2a;
-    border-radius: 4px;
-    background: rgba(43, 33, 24, 0.92);
-    color: var(--parchment);
+    align-items: center;
+    gap: 14px;
+    margin-left: auto;
+    padding-left: 14px;
+    white-space: nowrap;
 }
 
-.rail__brand {
-    font-size: 0.68rem;
+.hud__brand {
     font-weight: 700;
     letter-spacing: 0.16em;
-    line-height: 1.5;
     color: #a8d85f;
 }
 
-.rail__group {
-    display: grid;
-    gap: 2px;
-}
-
-.rail__label {
-    font-size: 0.55rem;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: rgba(244, 236, 216, 0.5);
-}
-
-.rail__value {
-    font-size: 0.76rem;
-}
-
-.rail__value--quiet {
-    font-size: 0.66rem;
+.hud__stat {
     color: rgba(244, 236, 216, 0.72);
 }
 
-.rail__spacer {
-    flex: 1;
-    min-height: 8px;
+.hud__stat b {
+    color: var(--parchment);
+    font-weight: 700;
 }
 
-.rail__music {
+.hud__stat--quiet {
+    color: rgba(244, 236, 216, 0.45);
+}
+
+.hud__music {
     font-family: var(--font-mono);
     font-size: 0.6rem;
     letter-spacing: 0.1em;
@@ -157,38 +136,58 @@ body {
     background: transparent;
     border: 1px solid rgba(244, 236, 216, 0.35);
     border-radius: 2px;
-    padding: 5px 6px;
+    padding: 3px 7px;
     color: var(--parchment);
     cursor: pointer;
 }
 
-.rail__music:hover {
+.hud__music:hover {
     border-color: #a8d85f;
     color: #a8d85f;
-}
-
-.rail__model {
-    font-size: 0.55rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: rgba(244, 236, 216, 0.45);
-    line-height: 1.5;
 }
 
 /* ---------- rpg shell ---------- */
 
 .screen {
     display: grid;
+    /*
+     * The town is the fixed part and the panel below takes what is left. The
+     * panel runs from 92px on an idle turn to over 340px on the scores, and
+     * without this the grid crops the town to make room for the tall ones.
+     */
+    grid-template-rows: auto minmax(0, 1fr);
     gap: 12px;
     min-width: 0;
     flex: 1;
+    /* A column flex item defaults to min-height: auto, which would let the grid
+       grow past the shell instead of handing the overflow to the panel. */
+    min-height: 0;
+    /*
+     * Capped by width, not by height. A height cap would letterbox the canvas
+     * inside a box that is still full width, and the bars would show as sky
+     * blue down the sides and along the bottom. The whole column is capped, so
+     * the dialogue stays the same width as the town.
+     *
+     * The number is the room everything else needs: the shell's padding, the
+     * gap, the hint bar, and a panel tall enough for the ending card. Only the
+     * scores, which are taller again, are left to scroll.
+     */
+    max-width: calc((100vh - 298px) * 640 / 368);
+    /* Auto side margins stop a flex item stretching, so ask for the width too. */
+    width: 100%;
+    margin: 0 auto;
+}
+
+/* A panel taller than the room left over scrolls, rather than pushing the town. */
+.screen__dialogue {
+    min-height: 0;
+    overflow-y: auto;
 }
 
 .stage {
     position: relative;
     border: 3px solid #6b4a2a;
     border-radius: 4px;
-    background: #8fd0e8;
     padding: 0;
     overflow: hidden;
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
@@ -199,11 +198,8 @@ body {
     cursor: pointer;
     width: 100%;
     height: auto;
-    /* Never taller than the screen, so the dialogue is always visible. */
-    max-height: calc(100vh - 250px);
-    object-fit: contain;
     image-rendering: pixelated;
-    /* The canvas is 336x176 logical pixels, upscaled by the browser. */
+    /* The canvas is 640x368 logical pixels, upscaled by the browser. */
 }
 
 .stage__hint {
@@ -218,6 +214,18 @@ body {
     padding: 7px 10px;
     min-height: 28px;
     margin: 0;
+}
+
+.stage__hint-say {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    min-width: 0;
+    /* The strip stays one line: the hint is clipped before it wraps. */
+    flex: 0 1 auto;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 kbd {
@@ -916,7 +924,25 @@ kbd {
 
 .ending {
     min-height: 216px;
+    /* The wizard on the left, what he is telling you on the right. */
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: end;
+    gap: 20px;
+}
+
+.ending__say {
+    display: flex;
+    flex-direction: column;
     gap: 6px;
+    height: 100%;
+    min-width: 0;
+}
+
+.wizard {
+    width: 116px;
+    height: auto;
+    image-rendering: pixelated;
 }
 
 .ending__kicker {
@@ -986,24 +1012,27 @@ kbd {
         gap: 8px;
     }
 
-    .stage__canvas {
-        max-height: calc(100vh - 210px);
+    .screen {
+        max-width: calc((100vh - 258px) * 640 / 368);
     }
 
-    .rail {
-        width: 74px;
-        padding: 10px 8px;
+    /* On a narrow card the words matter more than the wizard. */
+    .wizard {
+        display: none;
+    }
+
+    .ending {
+        grid-template-columns: 1fr;
+    }
+
+    /* The strip cannot hold everything, so the least useful parts go first. */
+    .hud {
         gap: 10px;
     }
 
-    .rail__brand {
-        font-size: 0.56rem;
-        letter-spacing: 0.1em;
-    }
-
-    .rail__group,
-    .rail__model {
-        font-size: 0.6rem;
+    .hud__brand,
+    .hud__stat--quiet {
+        display: none;
     }
 
     .modal {
@@ -1097,4 +1126,14 @@ kbd {
 .gate__go {
     justify-self: start;
     margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* White artwork, so it only reads on the primary button's moss fill. */
+.gate__go-logo {
+    height: 15px;
+    width: auto;
+    display: block;
 }

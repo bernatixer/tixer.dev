@@ -4,6 +4,8 @@ import type { GameState } from '@/game/state'
 import { totals } from '@/game/state'
 import { formatTokens, formatUsd } from '@/tracing/cost'
 
+import { Wizard } from './Wizard'
+
 interface EndingProps {
     state: GameState
     onRestart: () => void
@@ -49,34 +51,38 @@ export function Ending({ state, onRestart }: EndingProps): JSX.Element {
 
     return (
         <div className="dlg ending">
-            <span className="ending__kicker">{current.kicker}</span>
-            <h2 className="ending__title">{current.title}</h2>
-            <p className="ending__body">{current.body}</p>
+            <Wizard />
 
-            <div className="ending__foot">
-                <span className="ending__dots" aria-hidden="true">
-                    {pages.map((entry, index) => (
-                        <span
-                            key={entry.kicker}
-                            className={`ending__dot${index === page ? ' ending__dot--on' : ''}`}
-                        />
-                    ))}
-                </span>
+            <div className="ending__say">
+                <span className="ending__kicker">{current.kicker}</span>
+                <h2 className="ending__title">{current.title}</h2>
+                <p className="ending__body">{current.body}</p>
 
-                {last ? (
-                    <div className="ending__actions">
-                        <a className="btn btn--primary" href={LINK} target="_blank" rel="noreferrer">
-                            See how PostHog does this →
-                        </a>
-                        <button type="button" className="btn" onClick={onRestart}>
-                            Walk it again
+                <div className="ending__foot">
+                    <span className="ending__dots" aria-hidden="true">
+                        {pages.map((entry, index) => (
+                            <span
+                                key={entry.kicker}
+                                className={`ending__dot${index === page ? ' ending__dot--on' : ''}`}
+                            />
+                        ))}
+                    </span>
+
+                    {last ? (
+                        <div className="ending__actions">
+                            <a className="btn btn--primary" href={LINK} target="_blank" rel="noreferrer">
+                                See how PostHog does this →
+                            </a>
+                            <button type="button" className="btn" onClick={onRestart}>
+                                Walk it again
+                            </button>
+                        </div>
+                    ) : (
+                        <button type="button" className="btn btn--primary" onClick={() => setPage(page + 1)}>
+                            Go on
                         </button>
-                    </div>
-                ) : (
-                    <button type="button" className="btn btn--primary" onClick={() => setPage(page + 1)}>
-                        Go on
-                    </button>
-                )}
+                    )}
+                </div>
             </div>
         </div>
     )

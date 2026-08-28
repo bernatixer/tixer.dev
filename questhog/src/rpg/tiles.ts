@@ -58,9 +58,21 @@ export const ART = {
     floraA: { sheet: 'details', x: 9, y: 76, w: 15, h: 11 } as Rect,
     floraB: { sheet: 'details', x: 41, y: 50, w: 14, h: 12 } as Rect,
 
-    /** A stone wall with a doorway, which stands in for a building. */
-    facade: { sheet: 'ruins', x: 128, y: 64, w: 128, h: 98 } as Rect,
-    facadeNarrow: { sheet: 'ruins', x: 0, y: 64, w: 96, h: 98 } as Rect,
+    /*
+     * The castle, cut out of the one wall the sheet draws. The three bands are
+     * cut on the wall's mortar lines, 32px apart, so they stack into a wall of
+     * any height without a seam through a course.
+     */
+    wallTop: { sheet: 'ruins', x: 0, y: 64, w: 62, h: 32 } as Rect,
+    wallCourse: { sheet: 'ruins', x: 0, y: 96, w: 62, h: 32 } as Rect,
+    wallBase: { sheet: 'ruins', x: 0, y: 128, w: 62, h: 32 } as Rect,
+    /** The two ends of the wall, which carry its outline. A merlon needs both. */
+    wallEdgeLeft: { sheet: 'ruins', x: 0, y: 64, w: 7, h: 15 } as Rect,
+    wallEdgeRight: { sheet: 'ruins', x: 55, y: 64, w: 7, h: 15 } as Rect,
+    gateArch: { sheet: 'ruins', x: 128, y: 64, w: 62, h: 96 } as Rect,
+    /** Sized by the sheet to sit inside the archway, so it needs no scaling. */
+    gateDoor: { sheet: 'ruins', x: 194, y: 90, w: 28, h: 70 } as Rect,
+    arrowSlit: { sheet: 'ruins', x: 227, y: 66, w: 28, h: 29 } as Rect,
 } satisfies Record<string, Rect>
 
 /** Used until the sheets load, and for good if they were never fetched. */

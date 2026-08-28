@@ -30,8 +30,15 @@ export function App(): JSX.Element {
 
     return (
         <main className="shell">
-            <Hud state={state} live={game.live} music={music} onToggleMusic={() => setMusic(chiptune.toggle())} />
             <GameScreen
+                hud={
+                    <Hud
+                        state={state}
+                        live={game.live}
+                        music={music}
+                        onToggleMusic={() => setMusic(chiptune.toggle())}
+                    />
+                }
                 state={state}
                 gated={state.phase === 'title'}
                 onTalk={game.talk}
