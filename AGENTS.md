@@ -9,7 +9,7 @@ Four pieces sharing one repo and one domain root. Three are deployed:
 - **`web/`** — React+Vite landing page at `tixer.dev`. Hosted on **GitHub Pages**. Built output lives in committed `docs/` directory.
 - **`focus/`** — React+Vite kanban + weekly-goals app at `focus.tixer.dev`. Hosted on **Cloudflare Pages** (project name `focus-tixer-dev`).
 - **`worker/`** — Cloudflare Worker + D1 API serving `/api/*`. Hono framework. Auth via Clerk JWT (RS256).
-- **`questhog/`** — React+Vite pixel-art game (**QuestHog**) that explains AI observability. You ask four townsfolk for directions, pick one, then find out every conversation was recorded and score them all against a rule you choose. **Not deployed yet** — no Pages project, no workflow. Dev server on port 3100. Pure client side: no worker, no D1, no auth. The player pastes their own OpenAI or Anthropic key and it never leaves their browser.
+- **`questhog/`** — React+Vite pixel-art game (**QuestHog**) that explains AI observability. You ask four townsfolk for directions, pick one, then find out every conversation was recorded and score them all against a rule you choose. Hosted on **Cloudflare Pages** (project `questhog-tixer-dev`), deployed by hand, not by CI. Dev server on port 3100. Pure client side: no worker, no D1, no auth. The player pastes their own OpenAI or Anthropic key and it never leaves their browser.
 
 No shared bundle, no shared runtime, no shared auth. Treat them as separate apps that happen to live in one repo.
 
@@ -47,6 +47,11 @@ Why the user keeps it this way: keeps the two apps fully independent and indepen
 - `.github/workflows/deploy-focus.yml`
 - Builds with secrets `VITE_CLERK_PUBLISHABLE_KEY` and `VITE_API_URL` → `wrangler pages deploy dist --project-name=focus-tixer-dev`.
 - In production builds, `VITE_MOCK_GOALS` defaults to `0` so Focus hits the real worker. Mock is dev-only.
+
+### QuestHog (questhog/) — manual
+- No CI, on purpose. `cd questhog && pnpm deploy:pages` builds and uploads `dist/` to the `questhog-tixer-dev` Pages project.
+- It cannot be a workflow: the Mixel tileset may ship inside a compiled game but may not be redistributed, so `public/tiles/` is gitignored and a runner has no way to fetch it. A CI build would publish the game with every tree, bush and rock missing.
+- Deploy from a machine that has the pack, or the art silently degrades.
 
 ### Landing page (web/) — manual
 - No CI. Build locally (`cd web && pnpm build` → outputs to `../docs/`), commit the `docs/` diff, push. GitHub Pages serves `/docs` on `main`.

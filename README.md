@@ -8,7 +8,7 @@ Personal site at `tixer.dev` and the **Focus** task app at `focus.tixer.dev`. On
 web/        Landing page    → tixer.dev          (GitHub Pages, serves /docs)
 focus/      Focus app       → focus.tixer.dev    (Cloudflare Pages)
 worker/     API + D1        → /api/*             (Cloudflare Workers)
-questhog/  AI observability game — not deployed yet
+questhog/  AI observability game — Cloudflare Pages, deployed by hand
 docs/       Built output of web/ — committed; what GitHub Pages serves
 ```
 
