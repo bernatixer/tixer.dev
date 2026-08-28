@@ -89,10 +89,16 @@ thing that has to be PostHog's, and no pack will have them.
 
 ## Deploying
 
-Not wired up yet. The intended shape matches `focus/`: a Cloudflare Pages
-project plus a `.github/workflows/deploy-questhog.yml` that builds and runs
-`wrangler pages deploy dist`. That needs the Pages project to exist first, so it
-is a deliberate manual step rather than a workflow that would fail on its first
-push.
+Cloudflare Pages, project `questhog-tixer-dev`, uploaded from a machine that
+has the tileset. `pnpm deploy:pages` builds and pushes `dist/`.
+
+It is deliberately not a GitHub Actions workflow. The Mixel pack may ship
+inside a compiled game but may not be redistributed, so the files are
+gitignored and a runner has no way to get them. Uploading from a laptop that
+already has them keeps the art out of the repo and out of CI. The trade is
+that deploys are manual, which suits a game that changes a few times a month.
+
+GitHub Pages was considered and does not fit: it serves from a branch, so
+publishing there would mean committing the tiles.
 
 Nothing here needs the worker or D1. The game is entirely client side.
