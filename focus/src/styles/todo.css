@@ -605,6 +605,18 @@ body.filtering .task-card.filtered-out {
     flex-shrink: 1;
 }
 
+/* A row holding nothing but hover-revealed controls takes no space at rest —
+   a zero-height flex item still draws its parent's `gap` otherwise. */
+.task-card:not(.new-task-card) .task-meta.row-empty,
+.task-card:not(.new-task-card) .task-footer.row-empty {
+    display: none;
+}
+
+.task-card:not(.new-task-card):hover .task-meta.row-empty,
+.task-card:not(.new-task-card):hover .task-footer.row-empty {
+    display: flex;
+}
+
 /* ============================================
    TASK CARD - Active variant (main zone)
    ============================================ */
@@ -648,11 +660,19 @@ body.filtering .task-card.filtered-out {
    INLINE MILESTONES (active cards)
    ============================================ */
 
+/* Left gutter before a milestone's text: item padding + checkbox + gap,
+   plus the grip when the list is long enough to reorder. The add-milestone
+   input pads by the same amount so its placeholder lines up with them. */
 .active-milestones {
+    --ms-indent: 28px;
     margin-top: 10px;
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+
+.active-milestones:has(.milestone-grip) {
+    --ms-indent: 44px;
 }
 
 .milestone-item {
@@ -709,9 +729,74 @@ body.filtering .task-card.filtered-out {
     margin-top: 2px;
 }
 
+/* Milestone drag-to-reorder */
+.milestone-grip {
+    font-size: 0.6rem;
+    line-height: 1;
+    width: 8px;
+    text-align: center;
+    color: var(--bone);
+    opacity: 0;
+    cursor: grab;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+    user-select: none;
+}
+
+.milestone-item:hover .milestone-grip,
+.subtask-item:hover .milestone-grip {
+    opacity: 0.3;
+}
+
+.milestone-item.dragging,
+.subtask-item.dragging {
+    opacity: 0.4;
+}
+
+.milestone-item.drag-over,
+.subtask-item.drag-over {
+    box-shadow: inset 0 2px 0 var(--acid);
+}
+
+/* Markdown links inside milestone text */
+.milestone-link {
+    color: var(--acid);
+    text-decoration: none;
+    border-bottom: 1px solid rgba(var(--acid-rgb), 0.35);
+}
+
+.milestone-link:hover {
+    border-bottom-color: currentColor;
+}
+
+.milestone-item.completed .milestone-link,
+.subtask-item.completed .milestone-link {
+    color: inherit;
+}
+
+/* Add-milestone only surfaces on card hover. display:none rather than a
+   transparent row so an otherwise-empty card collapses instead of holding
+   blank space. The create-task modal is a .task-card too — exempt it, there
+   the affordances are the whole point. */
+.task-card:not(.new-task-card) .milestone-add,
+.task-card:not(.new-task-card) .add-subtask-section {
+    display: none;
+}
+
+.task-card:not(.new-task-card):hover .milestone-add,
+.task-card:not(.new-task-card) .milestone-add:focus-within {
+    display: block;
+}
+
+.task-card:not(.new-task-card):hover .add-subtask-section,
+.task-card:not(.new-task-card) .add-subtask-section:focus-within {
+    display: flex;
+}
+
 .milestone-add-input {
     width: 100%;
-    padding: 4px 0;
+    box-sizing: border-box;
+    padding: 4px 0 4px var(--ms-indent, 0);
     background: transparent;
     border: none;
     color: var(--bone);
@@ -831,47 +916,82 @@ body.filtering .task-card.filtered-out {
 }
 
 /* ============================================
-   BLOCKED BADGE
+   BLOCKED STRIP — a band across the top of the card,
+   not another box inside it.
    ============================================ */
 
-.blocked-badge {
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.6rem;
-    padding: 6px 10px;
-    margin-top: 8px;
-    background: rgba(255, 149, 0, 0.08);
-    border: 1px solid rgba(255, 149, 0, 0.2);
-    color: var(--priority-high);
+.blocked-strip {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 7px;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.6rem;
+    padding: 5px 10px;
+    /* full-bleed over .task-card.variant-compact padding */
+    margin: -8px -10px 8px;
+    color: var(--priority-high);
+    background: rgba(255, 149, 0, 0.09);
+    border-bottom: 1px solid rgba(255, 149, 0, 0.16);
 }
 
-.blocked-badge span {
+/* Blocked by a free-text reason: quoted note, loud and uppercase. */
+.blocked-strip.by-reason .blocked-strip-text {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+/* Blocked by another task: reads as a pointer at that task. */
+.blocked-strip.by-task {
+    color: var(--bone);
+    background: rgba(var(--white-rgb), 0.05);
+    border-bottom-color: rgba(var(--white-rgb), 0.1);
+}
+
+.blocked-strip.by-task .blocked-strip-text {
+    opacity: 0.75;
+    letter-spacing: 0.02em;
+}
+
+.blocked-strip.by-task .blocked-strip-icon {
+    color: var(--priority-high);
+}
+
+.blocked-strip-icon {
+    flex-shrink: 0;
+    opacity: 0.8;
+}
+
+.blocked-strip-text {
+    flex: 1;
+    min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.blocked-badge .unblock-btn {
+.blocked-strip .unblock-btn {
     background: transparent;
-    border: 1px solid rgba(255, 149, 0, 0.3);
-    color: var(--priority-high);
+    border: none;
+    color: inherit;
     font-family: var(--font-mono, 'JetBrains Mono', monospace);
     font-size: 0.55rem;
-    padding: 3px 8px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 0 2px 6px;
     cursor: pointer;
-    opacity: 0.6;
-    transition: all 0.15s;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
     flex-shrink: 0;
-    letter-spacing: 0.03em;
 }
 
-.blocked-badge .unblock-btn:hover {
+.task-card:hover .blocked-strip .unblock-btn,
+.blocked-strip .unblock-btn:focus-visible {
+    opacity: 0.55;
+}
+
+.blocked-strip .unblock-btn:hover {
     opacity: 1;
-    background: var(--priority-high);
-    color: var(--void);
+    color: var(--acid);
 }
 
 /* ============================================
@@ -1304,7 +1424,12 @@ body.filtering .task-card.filtered-out {
 
 /* Subtasks */
 .subtasks-container {
+    --ms-indent: 24px;
     overflow: visible;
+}
+
+.subtasks-container:has(.milestone-grip) {
+    --ms-indent: 42px;
 }
 
 .subtask-item {
@@ -1385,7 +1510,7 @@ body.filtering .task-card.filtered-out {
 
 .add-subtask-input {
     flex: 1;
-    padding: 4px 0;
+    padding: 4px 0 4px var(--ms-indent, 0);
     background: transparent;
     border: none;
     color: var(--bone);
@@ -1464,6 +1589,18 @@ body.filtering .task-card.filtered-out {
     flex-shrink: 0;
     display: flex;
     align-items: center;
+}
+
+/* Priority is already on the card's left border, so the pill only needs to
+   show up when you might click it. Stays put while its dropdown is open. */
+.task-card:not(.new-task-card) .priority-pill-wrapper {
+    display: none;
+}
+
+.task-card:not(.new-task-card):hover .priority-pill-wrapper,
+.task-card:not(.new-task-card) .priority-pill-wrapper:focus-within,
+.task-card:not(.new-task-card) .priority-pill-wrapper:has(.priority-dropdown) {
+    display: flex;
 }
 
 .priority-pill {
@@ -1596,6 +1733,15 @@ body.filtering .task-card.filtered-out {
     padding: 2px 6px;
     border: 1px dashed rgba(var(--white-rgb), 0.15);
     border-radius: 2px;
+}
+
+.task-card:not(.new-task-card) .tag-editor-wrapper:has(.tag-editor-empty) {
+    display: none;
+}
+
+.task-card:not(.new-task-card):hover .tag-editor-wrapper:has(.tag-editor-empty),
+.task-card:not(.new-task-card) .tag-editor-wrapper:has(.tag-editor-dropdown) {
+    display: flex;
 }
 
 .tag-editor-trigger:hover .tag-editor-empty {

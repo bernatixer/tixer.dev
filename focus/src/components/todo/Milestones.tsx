@@ -1,10 +1,48 @@
-import { FC, KeyboardEvent, MouseEvent, RefObject } from 'react'
+import { FC, KeyboardEvent, MouseEvent, ReactNode, RefObject, useState } from 'react'
 import type { Milestone } from '@/todo/types'
+
+// Markdown links: [label](url). Only http(s)/mailto get linkified.
+const LINK_RE = /\[([^\]]+)\]\(([^)\s]+)\)/g
+const isSafeHref = (url: string) => /^(https?:\/\/|mailto:)/i.test(url)
+
+const renderMilestoneText = (text: string): ReactNode => {
+  const parts: ReactNode[] = []
+  let last = 0
+
+  for (const match of text.matchAll(LINK_RE)) {
+    const [raw, label, url] = match
+    const start = match.index ?? 0
+    if (start > last) parts.push(text.slice(last, start))
+    parts.push(
+      isSafeHref(url) ? (
+        <a
+          key={start}
+          className="milestone-link"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          title={url}
+        >
+          {label}
+        </a>
+      ) : (
+        raw
+      )
+    )
+    last = start + raw.length
+  }
+
+  if (last === 0) return text
+  parts.push(text.slice(last))
+  return parts
+}
 
 interface MilestonesSectionProps {
   milestones: Milestone[]
   onToggle: (milestoneId: string) => void
   onDelete?: (milestoneId: string) => void
+  onReorder?: (from: number, to: number) => void
   newMilestoneText?: string
   onNewMilestoneTextChange?: (value: string) => void
   onAddMilestone?: (event: MouseEvent | KeyboardEvent) => void
@@ -17,6 +55,7 @@ export const MilestonesSection: FC<MilestonesSectionProps> = ({
   milestones,
   onToggle,
   onDelete,
+  onReorder,
   newMilestoneText = '',
   onNewMilestoneTextChange,
   onAddMilestone,
@@ -26,22 +65,60 @@ export const MilestonesSection: FC<MilestonesSectionProps> = ({
 }) => {
   const isActive = variant === 'active'
   const wrapperClassName = isActive ? 'active-milestones' : 'subtasks-container'
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
+
+  const endDrag = () => {
+    setDragIndex(null)
+    setOverIndex(null)
+  }
+
+  const dragProps = (index: number) =>
+    onReorder && milestones.length > 1
+      ? {
+          draggable: true,
+          // keep the card's dnd-kit pointer sensor out of a milestone drag
+          onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
+          onDragStart: () => setDragIndex(index),
+          onDragOver: (e: React.DragEvent) => {
+            e.preventDefault()
+            setOverIndex(index)
+          },
+          onDragEnd: endDrag,
+          onDrop: (e: React.DragEvent) => {
+            e.preventDefault()
+            if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
+            endDrag()
+          },
+        }
+      : {}
 
   return (
     <div className={wrapperClassName} onClick={e => e.stopPropagation()}>
-      {milestones.map(milestone => (
+      {milestones.map((milestone, index) => (
         <label
           key={milestone.id}
-          className={`${isActive ? 'milestone-item' : 'subtask-item'} ${milestone.completed ? 'completed' : ''}`}
+          className={[
+            isActive ? 'milestone-item' : 'subtask-item',
+            milestone.completed ? 'completed' : '',
+            dragIndex === index ? 'dragging' : '',
+            dragIndex !== null && overIndex === index && dragIndex !== index ? 'drag-over' : '',
+          ].filter(Boolean).join(' ')}
           onClick={e => e.stopPropagation()}
+          {...dragProps(index)}
         >
+          {onReorder && milestones.length > 1 && (
+            <span className="milestone-grip" aria-hidden="true">⠿</span>
+          )}
           <input
             type="checkbox"
             className="subtask-checkbox"
             checked={milestone.completed}
             onChange={() => onToggle(milestone.id)}
           />
-          <span className={isActive ? 'milestone-text' : 'subtask-text'}>{milestone.text}</span>
+          <span className={isActive ? 'milestone-text' : 'subtask-text'}>
+            {renderMilestoneText(milestone.text)}
+          </span>
           {onDelete && (
             <button
               className="milestone-delete"

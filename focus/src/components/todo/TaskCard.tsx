@@ -6,7 +6,7 @@ import { memo, FC, useState, MouseEvent, useRef, useEffect, KeyboardEvent } from
 import { useSortable } from '@dnd-kit/sortable'
 import type { Task, TagConfig, TagId, ColumnId, Priority } from '@/todo/types'
 import { TASK_TYPES_BY_ID } from '@/todo/types'
-import { useTaskAge } from '@/hooks/useAppState'
+import { useTaskAge, formatAge } from '@/hooks/useAppState'
 import { useToggleMilestone, useUnblockTask, useUpdateTask, useAddMilestone, useDeleteMilestone, useMoveTask, useDeleteTask } from '@/hooks/useTasks'
 import { DueDateBadge } from './DueDateBadge'
 import { MilestonesSection, ProgressChip } from './Milestones'
@@ -83,29 +83,39 @@ const TaskTypeIcon: FC<TaskTypeIconProps> = ({ task }) => {
 }
 
 // ============================================
-// BLOCKED BADGE
+// BLOCKED STRIP (sits on top of the card)
 // ============================================
 
-interface BlockedBadgeProps {
+interface BlockedStripProps {
   task: Task
   allTasks?: Task[]
   onUnblock?: () => void
 }
 
-const BlockedBadge: FC<BlockedBadgeProps> = ({ task, allTasks, onUnblock }) => {
+const BlockedStrip: FC<BlockedStripProps> = ({ task, allTasks, onUnblock }) => {
   if (!task.blockedBy) return null
 
-  let reason: string
-  if (task.blockedBy.type === 'text') {
-    reason = task.blockedBy.reason
-  } else {
-    const blockerTask = allTasks?.find(t => task.blockedBy?.type === 'task' && task.blockedBy.taskId === t.id)
-    reason = blockerTask ? blockerTask.title : 'Waiting for task'
-  }
+  const byTask = task.blockedBy.type === 'task'
+  const blockerTask = byTask
+    ? allTasks?.find(t => task.blockedBy?.type === 'task' && task.blockedBy.taskId === t.id)
+    : undefined
+  const label = byTask
+    ? blockerTask?.title ?? 'Waiting for task'
+    : task.blockedBy.type === 'text' ? task.blockedBy.reason : ''
 
   return (
-    <div className="blocked-badge" title={reason}>
-      <span>{reason.length > 30 ? `${reason.slice(0, 30)}...` : reason}</span>
+    <div className={`blocked-strip ${byTask ? 'by-task' : 'by-reason'}`} title={label}>
+      <svg className="blocked-strip-icon" width="11" height="11" viewBox="0 0 24 24" aria-hidden="true">
+        {byTask ? (
+          <path
+            d="M10 13a5 5 0 0 0 7.07 0l3-3A5 5 0 0 0 13 3l-1.7 1.7M14 11a5 5 0 0 0-7.07 0l-3 3A5 5 0 0 0 11 21l1.7-1.7"
+            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"
+          />
+        ) : (
+          <path d="M4 3h16a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H9l-5 4V4a1 1 0 0 1 1-1z" fill="currentColor" />
+        )}
+      </svg>
+      <span className="blocked-strip-text">{label}</span>
       {onUnblock && (
         <button
           className="unblock-btn"
@@ -201,6 +211,14 @@ export const TaskCard: FC<TaskCardProps> = memo(({
   const completedMilestones = task.milestones.filter(st => st.completed).length
   const isFilteredOut = activeFilter !== null && !task.tags.includes(activeFilter)
   const isActive = variant === 'active'
+
+  // The meta row / footer hold only hover-revealed controls unless the task
+  // actually has something to show. Collapse them when it doesn't, so a bare
+  // card is just its title instead of a title plus a blank strip.
+  const hasRestingMeta =
+    hasMilestones || daysSinceCreation > 3 || !!task.dueDate || task.tags.length > 0
+  const hasRestingFooter =
+    daysSinceCreation > 3 || !!task.recurrence || !!task.dueDate || task.tags.length > 0
 
   // Sync values when task changes
   useEffect(() => {
@@ -311,6 +329,13 @@ export const TaskCard: FC<TaskCardProps> = memo(({
     deleteMilestone({ task, milestoneId })
   }
 
+  const handleMilestoneReorder = (from: number, to: number) => {
+    const milestones = [...task.milestones]
+    const [moved] = milestones.splice(from, 1)
+    milestones.splice(to, 0, moved)
+    updateTask({ ...task, milestones })
+  }
+
   const handleBlockClick = (e: MouseEvent) => {
     e.stopPropagation()
     if (onBlockTask && task.columnId !== 'blocked' && task.columnId !== 'done') {
@@ -369,6 +394,7 @@ export const TaskCard: FC<TaskCardProps> = memo(({
           milestones={task.milestones}
           onToggle={handleMilestoneToggle}
           onDelete={handleMilestoneDelete}
+          onReorder={handleMilestoneReorder}
           newMilestoneText={newMilestoneText}
           onNewMilestoneTextChange={setNewMilestoneText}
           onAddMilestone={handleAddMilestone}
@@ -444,6 +470,7 @@ export const TaskCard: FC<TaskCardProps> = memo(({
           milestones={task.milestones}
           onToggle={handleMilestoneToggle}
           onDelete={handleMilestoneDelete}
+          onReorder={handleMilestoneReorder}
           newMilestoneText={newMilestoneText}
           onNewMilestoneTextChange={setNewMilestoneText}
           onAddMilestone={handleAddMilestone}
@@ -458,12 +485,12 @@ export const TaskCard: FC<TaskCardProps> = memo(({
         )}
 
         {/* Meta row: priority, tags, actions */}
-        <div className="task-footer">
+        <div className={`task-footer ${hasRestingFooter ? '' : 'row-empty'}`}>
           <div className="task-footer-left">
             <PriorityPill priority={task.priority} onChange={handlePriorityChange} />
             <TagEditor tags={task.tags} availableTags={availableTags} onChange={handleTagsChange} />
             {daysSinceCreation > 3 && (
-              <span className="age-badge">{daysSinceCreation}d</span>
+              <span className="age-badge" title={`${daysSinceCreation} days old`}>{formatAge(daysSinceCreation)}</span>
             )}
             {task.recurrence && <RecurringBadge recurrence={task.recurrence} />}
             <DueDateBadge dueDate={task.dueDate} onChange={handleDueDateChange} />
@@ -478,7 +505,7 @@ export const TaskCard: FC<TaskCardProps> = memo(({
   // ============================================
   // COMPACT CARD (Todo / Inbox sidebar)
   // ============================================
-  const showBlockedBadge = task.columnId === 'blocked' && task.blockedBy
+  const showBlockedStrip = task.columnId === 'blocked' && task.blockedBy
 
   return (
     <div
@@ -489,6 +516,14 @@ export const TaskCard: FC<TaskCardProps> = memo(({
       data-tags={task.tags.join(',')}
       onClick={handleCardClick}
     >
+      {showBlockedStrip && (
+        <BlockedStrip
+          task={task}
+          allTasks={allTasks}
+          onUnblock={() => unblockTask(task.id)}
+        />
+      )}
+
       <div className="task-header">
         <div className="task-title-row">
           {isDraggable && (
@@ -515,26 +550,18 @@ export const TaskCard: FC<TaskCardProps> = memo(({
           )}
           <ExpandToggle expanded={expanded} onToggle={handleExpandToggle} />
         </div>
-        <div className="task-meta">
+        <div className={`task-meta ${hasRestingMeta ? '' : 'row-empty'}`}>
           <PriorityPill priority={task.priority} onChange={handlePriorityChange} />
           {hasMilestones && (
             <ProgressChip completed={completedMilestones} total={task.milestones.length} />
           )}
           {daysSinceCreation > 3 && (
-            <span className="age-badge">{daysSinceCreation}d</span>
+            <span className="age-badge" title={`${daysSinceCreation} days old`}>{formatAge(daysSinceCreation)}</span>
           )}
           <DueDateBadge dueDate={task.dueDate} onChange={handleDueDateChange} />
           <TagEditor tags={task.tags} availableTags={availableTags} onChange={handleTagsChange} />
         </div>
       </div>
-
-      {showBlockedBadge && (
-        <BlockedBadge
-          task={task}
-          allTasks={allTasks}
-          onUnblock={() => unblockTask(task.id)}
-        />
-      )}
 
       {/* Expanded content for compact cards too */}
       {expanded && renderExpandedContent()}

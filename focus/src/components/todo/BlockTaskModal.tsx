@@ -4,6 +4,7 @@
 
 import { FC, useState, FormEvent, useEffect, useMemo } from 'react'
 import type { Task, BlockedBy } from '@/todo/types'
+import { COLUMNS_BY_ID, PRIORITIES } from '@/todo/types'
 import { useBlockTask } from '@/hooks/useTasks'
 import { StyledSelect, SelectOption } from './StyledSelect'
 
@@ -87,6 +88,23 @@ const secondaryButtonStyle: React.CSSProperties = {
   cursor: 'pointer',
 }
 
+const optionMetaStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  flexShrink: 0,
+  fontSize: '0.6rem',
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+}
+
+const priorityDotStyle: React.CSSProperties = {
+  width: '7px',
+  height: '7px',
+  borderRadius: '50%',
+  display: 'inline-block',
+}
+
 const toggleGroupStyle: React.CSSProperties = {
   display: 'flex',
   marginBottom: '16px',
@@ -134,12 +152,25 @@ export const BlockTaskModal: FC<BlockTaskModalProps> = ({
     t => t.id !== task?.id && t.columnId !== 'done'
   )
 
-  // Convert available tasks to select options
-  const taskOptions: SelectOption[] = useMemo(() => 
-    availableTasks.map(t => ({
-      id: t.id,
-      label: t.title,
-    })),
+  // Show where each task lives and how urgent it is, so picking a blocker
+  // doesn't need a trip back to the board.
+  const taskOptions: SelectOption[] = useMemo(() =>
+    availableTasks.map(t => {
+      const priority = PRIORITIES.find(p => p.id === t.priority)
+      return {
+        id: t.id,
+        label: t.title,
+        meta: (
+          <span style={optionMetaStyle}>
+            <span style={{ opacity: 0.45 }}>{COLUMNS_BY_ID[t.columnId]?.title ?? t.columnId}</span>
+            <span
+              style={{ ...priorityDotStyle, background: priority?.color ?? 'transparent' }}
+              title={priority?.name}
+            />
+          </span>
+        ),
+      }
+    }),
     [availableTasks]
   )
 
@@ -265,6 +296,8 @@ export const BlockTaskModal: FC<BlockTaskModalProps> = ({
                 onChange={setSelectedTaskId}
                 placeholder="Select a task..."
                 accentColor="var(--priority-high)"
+                searchable
+                searchPlaceholder="Search tasks…"
               />
             </div>
           )}

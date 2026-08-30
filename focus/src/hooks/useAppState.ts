@@ -112,6 +112,16 @@ export function useTaskAge(task: Task): { ageState: AgeState; daysSinceCreation:
   return { ageState, daysSinceCreation }
 }
 
+/**
+ * Compact age label. Past two weeks nobody wants to divide by 7 in their head,
+ * so it rolls up to weeks and then months.
+ */
+export function formatAge(days: number): string {
+  if (days < 14) return `${days}d`
+  if (days < 60) return `${Math.round(days / 7)}w`
+  return `${Math.round(days / 30)}mo`
+}
+
 // ============================================
 // DUE DATE FORMATTING
 // ============================================
