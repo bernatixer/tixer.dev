@@ -20,7 +20,7 @@ The pieces are independent — no shared bundle, no shared runtime, no shared au
 
 Neo-brutalism + retro-computer print/dither. High-contrast cyber-minimalism with neon yellow (`--acid` = `#BFFF00`). Monospace typography for chrome and labels (JetBrains Mono); Space Grotesk for body. Sharp edges, bold silhouettes, halftone/dithered illustrations.
 
-Inspiration: factory.ai, ryo.lu, aibodh.com, nof1.ai, gensyn.ai, vercel.com/font, usefaction.com, bfl.ai, patterncraft.fun, zed.dev, ampcode.com, initialcommit.co, https://usereach.ai
+Inspiration: factory.ai, ryo.lu, aibodh.com, nof1.ai, gensyn.ai, vercel.com/font, usefaction.com, bfl.ai, patterncraft.fun, zed.dev, ampcode.com, initialcommit.co, https://usereach.ai, https://delta.dev/
 
 Design tokens, theme palette, and the theme hook live as **byte-identical copies** in both `web/` and `focus/`:
 
