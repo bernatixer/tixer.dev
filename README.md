@@ -8,13 +8,10 @@ Personal site at `tixer.dev` and the **Focus** task app at `focus.tixer.dev`. On
 web/        Landing page    → tixer.dev          (GitHub Pages, serves /docs)
 focus/      Focus app       → focus.tixer.dev    (Cloudflare Pages)
 worker/     API + D1        → /api/*             (Cloudflare Workers)
-questhog/  AI observability game — Cloudflare Pages, deployed by hand
 docs/       Built output of web/ — committed; what GitHub Pages serves
 ```
 
 The pieces are independent — no shared bundle, no shared runtime, no shared auth. They only share this repo and the `tixer.dev` apex domain.
-
-`questhog/` holds **QuestHog**, a five minute game about AI observability: you ask four townsfolk the way to the harbour, pick one, and then discover every conversation was written down and can be scored against a rule you pick. See [`questhog/README.md`](questhog/README.md).
 
 ## Design language
 
@@ -64,9 +61,6 @@ cd focus && pnpm install && pnpm dev
 
 # Worker API — http://localhost:5555
 cd worker && pnpm install && pnpm dev
-
-# Lantern — http://localhost:3100
-cd questhog && pnpm install && pnpm dev
 ```
 
 Note: both `web` and `focus` default to port 3000, so don't run them simultaneously.

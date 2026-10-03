@@ -1,8 +1,0 @@
-node_modules
-dist
-.env
-.env.local
-
-# Third-party art. The Mixel pack licence forbids redistributing the files,
-# so they are fetched by hand and never committed. See README.
-public/tiles/
