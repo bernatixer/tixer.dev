@@ -2632,41 +2632,6 @@ body.filtering .task-card.filtered-out {
     gap: 12px;
 }
 
-/* AI button */
-.new-task-ai-btn {
-    background: transparent;
-    border: 1px solid rgba(var(--acid-rgb), 0.4);
-    color: var(--acid);
-    font-size: 0.7rem;
-    padding: 3px 8px;
-    cursor: pointer;
-    flex-shrink: 0;
-    transition: background 0.15s, opacity 0.15s;
-    border-radius: 2px;
-}
-
-.new-task-ai-btn:hover:not(:disabled) {
-    background: rgba(var(--acid-rgb), 0.12);
-}
-
-.new-task-ai-btn:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-}
-
-.new-task-ai-btn.loading {
-    background: rgba(var(--acid-rgb), 0.18);
-}
-
-.new-task-parse-error {
-    margin-top: 6px;
-    margin-left: 28px;
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.6rem;
-    color: var(--priority-urgent);
-    opacity: 0.85;
-}
-
 /* Description — Linear-style borderless textarea, always visible */
 .new-task-description-input {
     display: block;

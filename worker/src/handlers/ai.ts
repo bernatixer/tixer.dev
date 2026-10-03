@@ -50,30 +50,6 @@ async function callZaiJson(
   return content;
 }
 
-function todayLabel(): string {
-  const now = new Date();
-  const ymd = now.toISOString().slice(0, 10);
-  const weekday = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
-  return `${ymd} (${weekday})`;
-}
-
-function buildParseSystemPrompt(availableTags: string[]): string {
-  const today = todayLabel();
-  const tagsLine = availableTags.length === 0 ? "(no existing tags)" : availableTags.join(", ");
-  return (
-    "You parse free-form task descriptions into structured task data.\n" +
-    `Today is ${today}.\n` +
-    "Return ONLY a JSON object (no prose, no markdown) with these exact keys:\n  " +
-    "- title: string. The cleaned, imperative form of the task. Strip date/priority/tag mentions.\n  " +
-    "- description: string | null. Use only if the user clearly intends extra detail beyond the title.\n  " +
-    '- priority: "low" | "medium" | "high" | "urgent". Default "medium". Words like "urgent", "asap", "critical" -> urgent. "important" -> high. "later", "someday" -> low.\n  ' +
-    "- dueDate: string (YYYY-MM-DD) | null. Resolve relative dates from today. If no date is mentioned, return null.\n  " +
-    "- tags: string[]. Pick zero or more from the existing tag list (case-insensitive match). Do NOT invent new tags.\n" +
-    `Existing tags: ${tagsLine}.\n` +
-    'If the input is empty or nonsense, still return the schema with sensible defaults (title=input, priority="medium", others null/empty).'
-  );
-}
-
 const STANDUP_SYSTEM_PROMPT =
   "You write concise daily standup messages for a software professional to post in Slack.\n" +
   "Given a list of completed task titles, write a brief, human first-person summary.\n" +
@@ -88,63 +64,9 @@ const STANDUP_SYSTEM_PROMPT =
   "Return ONLY a JSON object with this exact key:\n" +
   "  - message: string. The full Slack-ready text (heading + bullets, separated by newlines).";
 
-interface ParseTaskRequest {
-  text: string;
-  availableTags?: string[];
-}
-
 interface StandupRequest {
   dateLabel: string;
   taskTitles: string[];
-}
-
-export async function parseTask(c: Ctx) {
-  if (!c.env.ZAI_API_KEY) {
-    return c.json({ error: "ZAI_API_KEY not configured on server" }, 503);
-  }
-  const userId = c.get("userId");
-  let body: ParseTaskRequest;
-  try {
-    body = await c.req.json<ParseTaskRequest>();
-  } catch {
-    return c.json({ error: "Invalid JSON body" }, 400);
-  }
-  const trimmed = (body.text ?? "").trim();
-  if (!trimmed) return c.json({ error: "text must not be empty" }, 400);
-
-  let content: string;
-  try {
-    content = await callZaiJson(
-      c.env.ZAI_API_KEY,
-      buildParseSystemPrompt(body.availableTags ?? []),
-      trimmed,
-      400,
-    );
-  } catch (e) {
-    const posthog = getPostHog(c.env);
-    if (posthog) posthog.captureException(e, userId, { endpoint: "ai/parse-task" });
-    return c.json({ error: (e as Error).message }, 502);
-  }
-
-  try {
-    const result = JSON.parse(content);
-    const posthog = getPostHog(c.env);
-    if (posthog) {
-      posthog.capture({
-        distinctId: userId,
-        event: "ai parse task",
-        properties: {
-          available_tag_count: (body.availableTags ?? []).length,
-        },
-      });
-    }
-    return c.json(result);
-  } catch (e) {
-    return c.json(
-      { error: `z.ai JSON parse error: ${(e as Error).message} - content: ${content}` },
-      502,
-    );
-  }
 }
 
 export async function dailyStandup(c: Ctx) {

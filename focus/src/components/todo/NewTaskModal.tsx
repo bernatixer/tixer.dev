@@ -11,7 +11,6 @@ import { DueDateBadge } from './DueDateBadge'
 import { PriorityPill } from './PriorityPill'
 import { StatusCircle } from './StatusCircle'
 import { MilestonesSection } from './Milestones'
-import { isAiEnabled, parseTaskFromText } from '@/api/ai'
 
 // ============================================
 // TYPE SELECTOR
@@ -121,9 +120,6 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
   const [url, setUrl] = useState('')
   const [milestones, setMilestones] = useState<Milestone[]>([])
   const [newMilestoneText, setNewMilestoneText] = useState('')
-  const [isParsing, setIsParsing] = useState(false)
-  const [parseError, setParseError] = useState<string | null>(null)
-  const aiAvailable = isAiEnabled()
 
   const titleInputRef = useRef<HTMLInputElement>(null)
   const milestoneInputRef = useRef<HTMLInputElement>(null)
@@ -143,8 +139,6 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     setUrl('')
     setMilestones([])
     setNewMilestoneText('')
-    setIsParsing(false)
-    setParseError(null)
     // Defer focus so the input is mounted
     requestAnimationFrame(() => titleInputRef.current?.focus())
   }, [isOpen, initialColumnId])
@@ -158,37 +152,6 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, onClose])
-
-  const handleAiParse = async () => {
-    const text = title.trim()
-    if (!text || isParsing) return
-    setIsParsing(true)
-    setParseError(null)
-    try {
-      const parsed = await parseTaskFromText(text, availableTags)
-      setTitle(parsed.title)
-      if (parsed.description) {
-        setDescription(parsed.description)
-      }
-      setPriority(parsed.priority)
-      setDueDate(parsed.dueDate ? new Date(`${parsed.dueDate}T12:00:00`) : null)
-      const tagIds = parsed.tags
-        .map(name => availableTags.find(t => t.name.toLowerCase() === name.toLowerCase())?.id)
-        .filter((id): id is TagId => Boolean(id))
-      setSelectedTags(tagIds)
-    } catch (err) {
-      setParseError(err instanceof Error ? err.message : 'AI parse failed')
-    } finally {
-      setIsParsing(false)
-    }
-  }
-
-  const handleTitleKeyDown = (e: ReactKeyboardEvent<HTMLInputElement>) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault()
-      if (aiAvailable && title.trim()) handleAiParse()
-    }
-  }
 
   const handleMilestoneToggle = (milestoneId: string) => {
     setMilestones(prev => prev.map(m => (m.id === milestoneId ? { ...m, completed: !m.completed } : m)))
@@ -240,11 +203,9 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
 
   if (!isOpen) return null
 
-  const titlePlaceholder = aiAvailable
-    ? 'What needs to be done? (⌘+Enter to AI parse)'
-    : taskType === 'task'
-      ? 'What needs to be done?'
-      : `What ${taskType} to capture?`
+  const titlePlaceholder = taskType === 'task'
+    ? 'What needs to be done?'
+    : `What ${taskType} to capture?`
 
   return (
     <div className="new-task-overlay" onClick={onClose}>
@@ -253,7 +214,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
           onSubmit={handleSubmit}
           className={`task-card variant-active priority-${priority} new-task-card`}
         >
-          {/* Header: status, type, title, AI */}
+          {/* Header: status, type, title */}
           <div className="task-header">
             <div className="task-title-row">
               <StatusCircle columnId={columnId} onChange={setColumnId} size={18} />
@@ -264,24 +225,10 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
                 className="new-task-title-input"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                onKeyDown={handleTitleKeyDown}
                 placeholder={titlePlaceholder}
               />
-              {aiAvailable && (
-                <button
-                  type="button"
-                  className={`new-task-ai-btn ${isParsing ? 'loading' : ''}`}
-                  onClick={handleAiParse}
-                  disabled={!title.trim() || isParsing}
-                  title="Parse natural language (⌘+Enter)"
-                >
-                  {isParsing ? '✨…' : '✨'}
-                </button>
-              )}
             </div>
           </div>
-
-          {parseError && <div className="new-task-parse-error">{parseError}</div>}
 
           {/* Description — always visible, Linear-style borderless */}
           <textarea

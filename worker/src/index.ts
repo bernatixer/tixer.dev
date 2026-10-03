@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { requireAuth } from "./auth";
 import { health } from "./handlers/health";
 import { getPostHog } from "./posthog";
-import { dailyStandup, parseTask } from "./handlers/ai";
+import { dailyStandup } from "./handlers/ai";
 import {
   createTag,
   deleteTag,
@@ -66,7 +66,6 @@ protectedApp.get("/weekly-goals", listWeeklyGoals);
 protectedApp.post("/weekly-goals", createWeeklyGoal);
 protectedApp.put("/weekly-goals/:id", updateWeeklyGoal);
 protectedApp.delete("/weekly-goals/:id", deleteWeeklyGoal);
-protectedApp.post("/ai/parse-task", parseTask);
 protectedApp.post("/ai/daily-standup", dailyStandup);
 
 app.route("/api", protectedApp);

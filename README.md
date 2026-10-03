@@ -32,7 +32,7 @@ This duplication is **intentional** — both apps stay independently deployable 
 - **React 18 + Vite** for both `web/` and `focus/`
 - **Cloudflare Workers + Hono + D1** for the API
 - **Clerk** for auth (in Focus only; landing page is anonymous)
-- **z.ai / GLM-4.5-flash** for the AI task parser
+- **z.ai / GLM-4.5-flash** for the AI standup composer
 - **TanStack Query** for client cache + mutations
 - **pnpm** as the package manager
 - **No monorepo tooling** — each subdir has its own `package.json` and `pnpm-lock.yaml`
@@ -46,7 +46,7 @@ Personal kanban board with five columns (Inbox / To Do / Doing / Blocked / Done)
 
 Recurring goals re-materialize every Monday with progress reset. When all cells are green, the strip shows a "WEEK CLEARED" trophy chip.
 
-Other Focus features: tag editor, AI task parsing (⌘+Enter on the new task input), milestones per task, blocked-by dependencies (free-text or task reference), priorities, due dates, multiple task types (task / book / video / article / movie), aging indicators, PWA support, light/dark theme toggle.
+Other Focus features: tag editor, AI standup composer in the Done panel, milestones per task, blocked-by dependencies (free-text or task reference), priorities, due dates, multiple task types (task / book / video / article / movie), aging indicators, PWA support, light/dark theme toggle.
 
 ## Development
 

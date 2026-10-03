@@ -15,7 +15,7 @@ No shared bundle, no shared runtime, no shared auth. Treat them as separate apps
 ## Tech stack quick reference
 
 - React 18, Vite, TanStack Query, Clerk, Hono, Cloudflare D1, pnpm.
-- AI tasks parser proxies through the worker to **z.ai / GLM-4.5-flash** (`worker/src/handlers/ai.ts`).
+- The Done panel's AI standup composer proxies through the worker to **z.ai / GLM-4.5-flash** (`worker/src/handlers/ai.ts`).
 - `focus/` is a PWA (`vite-plugin-pwa`).
 - No monorepo tooling — each subdir has its own `package.json` and lockfile. Don't introduce workspaces without asking.
 
