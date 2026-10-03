@@ -289,7 +289,7 @@ export const NewTaskModal: FC<NewTaskModalProps> = ({
             value={description}
             onChange={e => setDescription(e.target.value)}
             placeholder="Add description…"
-            rows={2}
+            rows={1}
           />
 
           {/* URL for non-task types */}

@@ -758,6 +758,11 @@ body.filtering .task-card.filtered-out {
     box-shadow: inset 0 2px 0 var(--acid);
 }
 
+.milestone-item.drag-over-end,
+.subtask-item.drag-over-end {
+    box-shadow: inset 0 -2px 0 var(--acid);
+}
+
 /* Markdown links inside milestone text */
 .milestone-link {
     color: var(--acid);
@@ -2677,7 +2682,8 @@ body.filtering .task-card.filtered-out {
     outline: none;
     resize: vertical;
     box-sizing: border-box;
-    min-height: 56px;
+    /* grow with the text instead of reserving empty lines */
+    field-sizing: content;
 }
 
 .new-task-description-input::placeholder {
@@ -2705,9 +2711,28 @@ body.filtering .task-card.filtered-out {
     background: rgba(var(--white-rgb), 0.06);
 }
 
-/* Milestones inside the modal — align with the description input */
+/* Milestones inside the modal — checkboxes sit in the description's text column
+   (30px minus the item's 6px padding) */
 .new-task-milestones {
-    margin: 12px 0 0 30px;
+    margin: 4px 0 0 24px;
+}
+
+/* A "+" in the checkbox column, so the add input reads as the next row */
+.new-task-milestones .milestone-add {
+    position: relative;
+}
+
+.new-task-milestones .milestone-add::before {
+    content: '+';
+    position: absolute;
+    left: 6px;
+    width: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: center;
+    color: var(--bone);
+    opacity: 0.4;
+    pointer-events: none;
 }
 
 .new-task-milestones .active-milestones {

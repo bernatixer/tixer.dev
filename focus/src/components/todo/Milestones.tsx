@@ -66,12 +66,17 @@ export const MilestonesSection: FC<MilestonesSectionProps> = ({
   const isActive = variant === 'active'
   const wrapperClassName = isActive ? 'active-milestones' : 'subtasks-container'
   const [dragIndex, setDragIndex] = useState<number | null>(null)
-  const [overIndex, setOverIndex] = useState<number | null>(null)
+  // Drop target as a gap between rows: 0 = above the first, length = below the last.
+  const [overGap, setOverGap] = useState<number | null>(null)
 
   const endDrag = () => {
     setDragIndex(null)
-    setOverIndex(null)
+    setOverGap(null)
   }
+
+  // Gaps on either side of the dragged row would be a no-op, so they show no line.
+  const showGap = (gap: number) =>
+    dragIndex !== null && overGap === gap && gap !== dragIndex && gap !== dragIndex + 1
 
   const dragProps = (index: number) =>
     onReorder && milestones.length > 1
@@ -82,12 +87,17 @@ export const MilestonesSection: FC<MilestonesSectionProps> = ({
           onDragStart: () => setDragIndex(index),
           onDragOver: (e: React.DragEvent) => {
             e.preventDefault()
-            setOverIndex(index)
+            const { top, height } = e.currentTarget.getBoundingClientRect()
+            setOverGap(e.clientY > top + height / 2 ? index + 1 : index)
           },
           onDragEnd: endDrag,
           onDrop: (e: React.DragEvent) => {
             e.preventDefault()
-            if (dragIndex !== null && dragIndex !== index) onReorder(dragIndex, index)
+            if (dragIndex !== null && overGap !== null) {
+              // removing the dragged row first shifts every later gap up by one
+              const to = overGap > dragIndex ? overGap - 1 : overGap
+              if (to !== dragIndex) onReorder(dragIndex, to)
+            }
             endDrag()
           },
         }
@@ -102,7 +112,8 @@ export const MilestonesSection: FC<MilestonesSectionProps> = ({
             isActive ? 'milestone-item' : 'subtask-item',
             milestone.completed ? 'completed' : '',
             dragIndex === index ? 'dragging' : '',
-            dragIndex !== null && overIndex === index && dragIndex !== index ? 'drag-over' : '',
+            showGap(index) ? 'drag-over' : '',
+            index === milestones.length - 1 && showGap(milestones.length) ? 'drag-over-end' : '',
           ].filter(Boolean).join(' ')}
           onClick={e => e.stopPropagation()}
           {...dragProps(index)}
