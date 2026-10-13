@@ -3,3 +3,5 @@ allowBuilds:
   core-js: false
   esbuild: true
   protobufjs: false
+  # Wrangler installs this during the Pages deployment.
+  workerd: true
