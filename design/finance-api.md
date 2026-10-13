@@ -102,7 +102,9 @@ cannot make a stale revision-1 delete or update valid again. Account-level stora
 erasure beyond ciphertext deletion would need a separate policy that accounts for
 this protection. Provider backups may retain old ciphertext under their own
 retention policy. Possession of an old encrypted backup and its old secret still
-allows decrypting that backup; valid ciphertext rollback is not fully detectable
+allows decrypting that backup and later payloads encrypted with the same data key,
+even after credential changes; see [key-rotation limits](finance-crypto.md).
+Valid ciphertext rollback is not fully detectable
 without trusted external state.
 
 ## Local verification

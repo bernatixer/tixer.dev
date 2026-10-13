@@ -4,6 +4,7 @@ import { migrateFinanceData, validateFinanceData, type FinanceData } from './mod
 
 export interface StoredVault { envelope: VaultEnvelope; revision: number; updatedAt: string }
 export interface UnlockedVault { data: FinanceData; key: CryptoKey; envelope: VaultEnvelope; dirty: boolean }
+type CredentialChange = 'password' | 'recovery'
 export interface VaultState {
   status: 'loading' | 'error' | 'absent' | 'locked' | 'unlocked'
   record: StoredVault | null
@@ -11,6 +12,7 @@ export interface VaultState {
   busy: boolean
   saving: boolean
   saveError: boolean
+  credentialErrors: CredentialChange[]
   conflict: boolean
   message: string
 }
@@ -21,7 +23,7 @@ export class VaultRequestError extends Error {
 }
 
 export class VaultStore {
-  state: VaultState = { status: 'loading', record: null, session: null, busy: false, saving: false, saveError: false, conflict: false, message: '' }
+  state: VaultState = { status: 'loading', record: null, session: null, busy: false, saving: false, saveError: false, credentialErrors: [], conflict: false, message: '' }
   private epoch = 0
   private controller = new AbortController()
   private getToken: () => Promise<string | null>
@@ -75,7 +77,7 @@ export class VaultStore {
     this.emit({ status: 'loading', session: null, busy: true, saving: false, message: '' })
     try {
       const record = await this.request('GET', epoch)
-      if (epoch === this.epoch) this.emit({ record, status: record ? 'locked' : 'absent', conflict: false, saveError: false })
+      if (epoch === this.epoch) this.emit({ record, status: record ? 'locked' : 'absent', conflict: false, saveError: false, credentialErrors: record ? this.state.credentialErrors : [] })
     } catch (error) {
       if (epoch === this.epoch) this.emit({ status: 'error', message: this.errorMessage(error) })
     } finally { if (epoch === this.epoch) this.emit({ busy: false }) }
@@ -83,17 +85,27 @@ export class VaultStore {
   private errorMessage(error: unknown) {
     return error instanceof VaultRequestError ? error.message : 'Unable to read or unlock this vault. Check your secret or backup and retry. Existing data has been kept.'
   }
-  async run(action: (epoch: number) => Promise<void>, saving = false) {
+  async run(action: (epoch: number) => Promise<void>, operation: 'read' | 'save' | CredentialChange = 'read') {
     if (this.state.busy) return
     const epoch = this.epoch
+    const saving = operation === 'save'
+    const credential = operation === 'password' || operation === 'recovery' ? operation : null
     this.emit({ busy: true, saving, message: this.state.saveError || this.state.conflict ? this.state.message : '' })
-    try { await action(epoch) } catch (error) {
+    try {
+      await action(epoch)
+      // boffin: only the matching credential operation can acknowledge its failed change.
+      if (epoch === this.epoch && credential) this.emit({ credentialErrors: this.state.credentialErrors.filter(value => value !== credential) })
+    } catch (error) {
       // boffin: keep conflict recovery available after editing or exporting local changes.
       if (epoch === this.epoch) this.emit({ message: saving && !(error instanceof VaultRequestError)
         ? 'Changes could not be saved. Your edits remain in this unlocked page. Retry or export an encrypted copy.'
         : this.errorMessage(error), saveError: this.state.saveError || saving,
+        credentialErrors: credential && !this.state.credentialErrors.includes(credential) ? [...this.state.credentialErrors, credential] : this.state.credentialErrors,
         conflict: this.state.conflict || (error instanceof VaultRequestError && error.status === 409) })
     } finally { if (epoch === this.epoch) this.emit({ busy: false, saving: false }) }
+  }
+  dismissCredentialError(credential: CredentialChange) {
+    if (!this.state.busy) this.emit({ credentialErrors: this.state.credentialErrors.filter(value => value !== credential) })
   }
   async unlock(passphrase: string) {
     await this.run(async () => {
@@ -142,7 +154,7 @@ export class VaultStore {
       validateFinanceData(session.data)
       const envelope = await encryptVault(session.data, session.key, session.envelope)
       await this.install(envelope, session.key, session.data, epoch)
-    }, true)
+    }, 'save')
   }
   async importBackup(text: string, secret: string, epoch: number, newPassphrase?: string) {
     this.assertCurrent(epoch)
@@ -167,7 +179,7 @@ export class VaultStore {
       if (epoch !== this.epoch) return
       const envelope = await encryptVault(data, result.key, result.envelope)
       await this.install(envelope, result.key, data, epoch)
-    })
+    }, 'password')
   }
   async changePassword(passphrase: string) {
     await this.run(async () => {
@@ -178,7 +190,7 @@ export class VaultStore {
       this.assertCurrent(epoch)
       const envelope = await encryptVault(session.data, session.key, rotated)
       await this.install(envelope, session.key, session.data, epoch)
-    })
+    }, 'password')
   }
   async backup(): Promise<string> {
     const epoch = this.epoch
@@ -196,7 +208,7 @@ export class VaultStore {
       if (!this.state.record) return
       const epoch = this.epoch
       await this.request('DELETE', epoch, { expectedRevision: this.state.record.revision, vaultId: this.state.record.envelope.vaultId })
-      if (epoch === this.epoch) { this.lock(); this.emit({ status: 'absent', record: null, conflict: false, message: 'Encrypted vault deleted.' }) }
+      if (epoch === this.epoch) { this.lock(); this.emit({ status: 'absent', record: null, conflict: false, credentialErrors: [], message: 'Encrypted vault deleted.' }) }
     })
   }
   lock() { this.invalidate(); this.emit({ session: null, status: this.state.status === 'absent' ? 'absent' : 'locked', busy: false, saving: false, saveError: false, message: '' }) }

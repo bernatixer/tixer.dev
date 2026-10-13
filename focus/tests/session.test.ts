@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { VaultStore } from '../src/finance/session.ts'
 import { createDefaultFinanceData } from '../src/finance/model.ts'
-import { createVault, unlockVault } from '../src/finance/crypto.ts'
+import { createVault, encryptVault, recoverVault, rotateRecovery, unlockVault } from '../src/finance/crypto.ts'
 import { exportBackup } from '../src/finance/envelope.ts'
 
 const passphrase = 'session test passphrase'
@@ -290,6 +290,92 @@ test('failed credential persistence pauses autosave until an explicit action suc
   await assert.rejects(unlockVault(store.state.record!.envelope, passphrase))
 })
 
+test('a plan retry cannot acknowledge a failed password change', async () => {
+  const replacement = 'replacement session passphrase'
+  let stored = record
+  let fail = true
+  const store = new VaultStore(async () => 'token', async (_url, options) => {
+    if (options?.method === 'GET') return Response.json(stored)
+    if (fail) return new Response(null, { status: 500 })
+    const sent = JSON.parse(String(options?.body))
+    stored = { ...stored, envelope: sent.envelope, revision: stored.revision + 1 }
+    return Response.json(stored)
+  })
+  await store.load()
+  await store.unlock(passphrase)
+  await store.changePassword(replacement)
+  fail = false
+  store.update({ ...data, currency: 'USD' })
+  await store.save()
+  assert.equal((await unlockVault(stored.envelope, passphrase)).data.currency, 'USD')
+  await assert.rejects(unlockVault(stored.envelope, replacement))
+  assert.deepEqual(store.state.credentialErrors, ['password'])
+  assert.equal(store.state.saveError, false)
+  await store.run(async () => { await store.backup() })
+  assert.deepEqual(store.state.credentialErrors, ['password'])
+  store.lock()
+  await store.unlock(passphrase)
+  assert.deepEqual(store.state.credentialErrors, ['password'])
+  await store.changePassword(replacement)
+  assert.deepEqual(store.state.credentialErrors, [])
+  assert.deepEqual((await unlockVault(stored.envelope, replacement)).data, store.state.session!.data)
+  await assert.rejects(unlockVault(stored.envelope, passphrase))
+})
+
+test('password and recovery failures are acknowledged independently', async () => {
+  const replacement = 'replacement session passphrase'
+  let stored = record
+  let fail = true
+  const store = new VaultStore(async () => 'token', async (_url, options) => {
+    if (options?.method === 'GET') return Response.json(stored)
+    if (fail) return new Response(null, { status: 500 })
+    const sent = JSON.parse(String(options?.body))
+    stored = { ...stored, envelope: sent.envelope, revision: stored.revision + 1 }
+    return Response.json(stored)
+  })
+  await store.load()
+  await store.unlock(passphrase)
+  const rotated = await rotateRecovery(created.envelope, created.key)
+  const saveRecovery = () => store.run(async epoch => {
+    const session = store.state.session!
+    const envelope = await encryptVault(session.data, session.key, { ...session.envelope, recoveryWrap: rotated.envelope.recoveryWrap })
+    await store.install(envelope, session.key, session.data, epoch)
+  }, 'recovery')
+  await saveRecovery()
+  await store.changePassword(replacement)
+  assert.deepEqual(store.state.credentialErrors, ['recovery', 'password'])
+  fail = false
+  await store.changePassword(replacement)
+  assert.deepEqual(store.state.credentialErrors, ['recovery'])
+  await store.save()
+  assert.deepEqual(store.state.credentialErrors, ['recovery'])
+  await saveRecovery()
+  assert.deepEqual(store.state.credentialErrors, [])
+  assert.deepEqual((await recoverVault(stored.envelope, rotated.recoverySecret, replacement)).data, data)
+  await assert.rejects(recoverVault(stored.envelope, created.recoverySecret, replacement))
+})
+
+test('dismissal only clears the selected warning and late credential failures cannot revive it after lock', async () => {
+  const store = new VaultStore(async () => 'token', async () => Response.json(record))
+  await store.load()
+  await store.unlock(passphrase)
+  for (const credential of ['password', 'recovery'] as const) {
+    await store.run(async () => { throw new Error('Synthetic credential failure') }, credential)
+  }
+  store.dismissCredentialError('password')
+  assert.deepEqual(store.state.credentialErrors, ['recovery'])
+  assert.deepEqual(store.state.record, record)
+  assert.equal(store.state.session!.envelope, store.state.record!.envelope)
+  store.dismissCredentialError('recovery')
+  const response = deferred<void>()
+  const pending = store.run(async () => { await response.promise; throw new Error('Late failure') }, 'password')
+  store.lock()
+  response.resolve()
+  await pending
+  assert.deepEqual(store.state.credentialErrors, [])
+  assert.equal(store.state.session, null)
+})
+
 test('edits remain blocked during security operations', async () => {
   const released = deferred<void>()
   const store = new VaultStore(async () => 'token', async () => Response.json(record))
@@ -468,7 +554,7 @@ test('unexpected save acknowledgements cannot mark local edits saved', async () 
     })
     store.state = { status: 'unlocked', record, session: {
       data, key: created.key, envelope: created.envelope, dirty: true,
-    }, busy: false, saving: false, saveError: false, conflict: false, message: '' }
+    }, busy: false, saving: false, saveError: false, credentialErrors: [], conflict: false, message: '' }
     await store.save()
     assert.equal(store.state.session!.dirty, true, failure)
     assert.deepEqual(store.state.record, record)
@@ -506,7 +592,7 @@ test('a wrong recovery secret cannot alter an existing vault or its unsaved data
   const store = new VaultStore(async () => 'token', async () => { writes++; return Response.json(record) })
   const edited = { ...data, currency: 'USD' }
   const session = { data: edited, key: created.key, envelope: created.envelope, dirty: true }
-  store.state = { status: 'unlocked', record, session, busy: false, saving: false, saveError: false, conflict: false, message: '' }
+  store.state = { status: 'unlocked', record, session, busy: false, saving: false, saveError: false, credentialErrors: [], conflict: false, message: '' }
   const wrong = created.recoverySecret.replace(/[0-9a-f]/, value => value === 'a' ? 'b' : 'a')
   await assert.rejects(store.importBackup(exportBackup(created.envelope), wrong, store.generation, 'new recovery passphrase'))
   assert.equal(writes, 0)
@@ -532,7 +618,7 @@ test('recovery import rejects an unsupported decrypted schema while retaining cu
   let writes = 0
   const store = new VaultStore(async () => 'token', async () => { writes++; return Response.json(record) })
   const session = { data, key: created.key, envelope: created.envelope, dirty: true }
-  store.state = { status: 'unlocked', record, session, busy: false, saving: false, saveError: false, conflict: false, message: '' }
+  store.state = { status: 'unlocked', record, session, busy: false, saving: false, saveError: false, credentialErrors: [], conflict: false, message: '' }
   await assert.rejects(store.importBackup(exportBackup(unsupported.envelope), unsupported.recoverySecret,
     store.generation, 'valid replacement passphrase'), /unsupported schema version/)
   assert.equal(writes, 0)

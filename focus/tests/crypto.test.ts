@@ -76,6 +76,19 @@ test('recovery resets password, password rotation preserves recovery, and recove
   assert.deepEqual((await recoverVault(parseBackup(original), created.recoverySecret, replacement)).data, data);
 });
 
+test('credential changes do not revoke future ciphertext access through an old backup', async () => {
+  const created = await createVault(data, passphrase);
+  const changed = await changePassphrase(created.envelope, created.key, replacement);
+  const rotated = await rotateRecovery(changed, created.key);
+  const laterData = { ...data, note: 'New data saved after both credentials changed' };
+  const later = await encryptVault(laterData, created.key, rotated.envelope);
+  await assert.rejects(unlockVault(later, passphrase));
+  await assert.rejects(recoverVault(later, created.recoverySecret, replacement));
+  const combined = { ...created.envelope, payload: later.payload };
+  assert.deepEqual((await unlockVault(combined, passphrase)).data, laterData);
+  assert.deepEqual((await recoverVault(combined, created.recoverySecret, replacement)).data, laterData);
+});
+
 test('each payload save uses a new nonce and preserves the input on failure', async () => {
   const created = await createVault(data, passphrase);
   const original = exportBackup(created.envelope);
