@@ -90,6 +90,7 @@ export interface Env {
   DB: D1Database;
   CLERK_PEM_PUBLIC_KEY: string;
   CLERK_ISSUER_URL?: string;
+  CLERK_AUTHORIZED_PARTIES?: string;
   ZAI_API_KEY: string;
   COMMIT_SHA?: string;
   POSTHOG_KEY?: string;

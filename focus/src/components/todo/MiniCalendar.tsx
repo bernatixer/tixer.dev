@@ -2,7 +2,7 @@
 // MINI CALENDAR COMPONENT
 // ============================================
 
-import { FC, useState } from 'react'
+import { FC, useEffect, useState } from 'react'
 
 const calendarStyle: React.CSSProperties = {
   padding: '12px',
@@ -67,7 +67,7 @@ const calendarDayStyle = (isSelected: boolean, isToday: boolean, isCurrentMonth:
 const DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 export const formatDateLocal = (date: Date): string => {
-  const year = date.getFullYear()
+  const year = String(date.getFullYear()).padStart(4, '0')
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
@@ -77,19 +77,33 @@ interface MiniCalendarProps {
   selectedDate: string
   onSelect: (date: string) => void
   style?: React.CSSProperties
+  min?: string
+  max?: string
 }
 
-export const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect, style }) => {
+const parseLocalDate = (value: string): Date | null => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null
+  // boffin: keep date-only values in the user's local calendar day.
+  const date = new Date(`${value}T12:00:00`)
+  return Number.isFinite(date.getTime()) && formatDateLocal(date) === value ? date : null
+}
+
+export const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect, style, min, max }) => {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const todayStr = formatDateLocal(today)
 
+  const minimum = min && parseLocalDate(min) ? min : undefined
+  const maximum = max && parseLocalDate(max) ? max : undefined
   const [viewDate, setViewDate] = useState(() => {
-    if (selectedDate) {
-      return new Date(selectedDate)
-    }
-    return new Date()
+    const fallback = minimum && todayStr < minimum ? minimum : maximum && todayStr > maximum ? maximum : todayStr
+    return parseLocalDate(selectedDate) ?? parseLocalDate(fallback)!
   })
+
+  useEffect(() => {
+    const selected = parseLocalDate(selectedDate)
+    if (selected) setViewDate(selected)
+  }, [selectedDate])
 
   const year = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -127,21 +141,16 @@ export const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect, st
     })
   }
 
-  const handleDayClick = (date: Date, isCurrentMonth: boolean) => {
-    if (!isCurrentMonth) return
-    onSelect(formatDateLocal(date))
-  }
-
   const monthName = viewDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
 
   return (
     <div style={{ ...calendarStyle, ...style }}>
       <div style={calendarHeaderStyle}>
-        <button type="button" onClick={prevMonth} style={calendarNavBtnStyle}>
+        <button type="button" aria-label="Previous month" disabled={!!minimum && formatDateLocal(new Date(year, month, 0)) < minimum} onClick={prevMonth} style={calendarNavBtnStyle}>
           ←
         </button>
-        <span style={calendarMonthStyle}>{monthName}</span>
-        <button type="button" onClick={nextMonth} style={calendarNavBtnStyle}>
+        <span aria-live="polite" style={calendarMonthStyle}>{monthName}</span>
+        <button type="button" aria-label="Next month" disabled={!!maximum && formatDateLocal(new Date(year, month + 1, 1)) > maximum} onClick={nextMonth} style={calendarNavBtnStyle}>
           →
         </button>
       </div>
@@ -155,13 +164,18 @@ export const MiniCalendar: FC<MiniCalendarProps> = ({ selectedDate, onSelect, st
           const dateStr = formatDateLocal(date)
           const isSelected = dateStr === selectedDate
           const isToday = dateStr === todayStr
+          const disabled = !isCurrentMonth || !!minimum && dateStr < minimum || !!maximum && dateStr > maximum
 
           return (
             <button
               key={idx}
               type="button"
-              onClick={() => handleDayClick(date, isCurrentMonth)}
-              style={calendarDayStyle(isSelected, isToday, isCurrentMonth)}
+              disabled={disabled}
+              aria-label={date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              aria-pressed={isSelected}
+              aria-current={isToday ? 'date' : undefined}
+              onClick={() => onSelect(dateStr)}
+              style={calendarDayStyle(isSelected, isToday, !disabled)}
             >
               {date.getDate()}
             </button>

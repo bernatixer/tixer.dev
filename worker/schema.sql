@@ -50,3 +50,14 @@ CREATE TABLE IF NOT EXISTS weekly_goals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_weekly_goals_user_week ON weekly_goals(user_id, week_start);
+
+-- A deleted row retains only metadata so revisions cannot repeat after restore.
+CREATE TABLE IF NOT EXISTS financial_vaults (
+    user_id TEXT PRIMARY KEY,
+    vault_id TEXT NOT NULL,
+    envelope TEXT,
+    revision INTEGER NOT NULL CHECK (revision > 0),
+    updated_at TEXT NOT NULL,
+    deleted INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
+    CHECK ((deleted = 0 AND envelope IS NOT NULL) OR (deleted = 1 AND envelope IS NULL))
+);

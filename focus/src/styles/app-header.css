@@ -1,0 +1,105 @@
+.todo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px 16px;
+    border: 1px solid rgba(var(--white-rgb), 0.08);
+    background: rgba(var(--white-rgb), 0.02);
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.todo-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.todo-title-logo {
+    display: block;
+    flex-shrink: 0;
+}
+
+/* Header Controls */
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.app-header .header-btn {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    height: 30px;
+    padding: 0 12px;
+    background: transparent;
+    border: 2px solid rgba(var(--white-rgb), 0.18);
+    color: var(--bone);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+
+.app-header .header-btn:hover {
+    border-color: rgba(var(--white-rgb), 0.4);
+}
+
+
+/* Theme Toggle */
+.app-header .theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    flex-shrink: 0;
+    background: transparent;
+    border: 1px solid var(--acid);
+    color: var(--acid);
+    cursor: pointer;
+    opacity: 0.6;
+    transition: all 0.2s ease;
+}
+
+.app-header .theme-toggle:hover {
+    opacity: 1;
+    background: var(--acid);
+    color: var(--void);
+}
+
+/* Avatar inside header — match the control row height */
+.user-avatar,
+.user-avatar img,
+.cl-userButtonAvatarBox,
+.cl-userButtonAvatarBox img {
+    width: 28px !important;
+    height: 28px !important;
+}
+
+
+.app-header .todo-title > span { color: var(--text-secondary); font-size: .75rem; font-weight: 400; letter-spacing: 0; text-transform: lowercase; }
+.app-header .header-left { gap: 16px; }
+.focus-switch { display: flex; gap: 2px; border: 1px solid rgba(var(--white-rgb), .18); padding: 2px; }
+.focus-switch__item { display: flex; align-items: center; justify-content: center; width: 32px; height: 28px; color: var(--text-secondary); }
+.focus-switch__item:hover { color: var(--acid); background: rgba(var(--acid-rgb), .06); }
+.focus-switch__item[aria-current] { color: var(--acid); background: rgba(var(--acid-rgb), .12); }
+.app-header .header-icon { padding: 0; width: 30px; justify-content: center; }
+.app-header :focus-visible { outline: 2px solid var(--acid); outline-offset: 3px; }
+@media(max-width: 600px) { .app-header { padding: 10px; gap: 10px; } .app-header .header-controls { flex-wrap: wrap; } .app-header .header-left { gap: 10px; } }
+
+.app-header .theme-toggle svg { display: block; flex-shrink: 0; }

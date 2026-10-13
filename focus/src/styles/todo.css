@@ -14,66 +14,6 @@
    HEADER
    ============================================ */
 
-.todo-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-    padding: 10px 16px;
-    border: 1px solid rgba(var(--white-rgb), 0.08);
-    background: rgba(var(--white-rgb), 0.02);
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.header-left {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-}
-
-.todo-title {
-    font-size: 0.95rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.todo-title-logo {
-    display: block;
-    flex-shrink: 0;
-}
-
-/* Header Controls */
-.header-controls {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.header-btn {
-    font-family: var(--font-mono, 'JetBrains Mono', monospace);
-    font-size: 0.7rem;
-    letter-spacing: 0.05em;
-    height: 30px;
-    padding: 0 12px;
-    background: transparent;
-    border: 2px solid rgba(var(--white-rgb), 0.18);
-    color: var(--bone);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    box-sizing: border-box;
-}
-
-.header-btn:hover {
-    border-color: rgba(var(--white-rgb), 0.4);
-}
-
 /* Done counter button */
 .done-counter {
     display: inline-flex;
@@ -145,36 +85,6 @@
     content: '+';
     margin-right: 8px;
     font-weight: 600;
-}
-
-/* Theme Toggle */
-.theme-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 28px;
-    height: 28px;
-    background: transparent;
-    border: 1px solid var(--acid);
-    color: var(--acid);
-    cursor: pointer;
-    opacity: 0.6;
-    transition: all 0.2s ease;
-}
-
-.theme-toggle:hover {
-    opacity: 1;
-    background: var(--acid);
-    color: var(--void);
-}
-
-/* Avatar inside header — match the control row height */
-.user-avatar,
-.user-avatar img,
-.cl-userButtonAvatarBox,
-.cl-userButtonAvatarBox img {
-    width: 28px !important;
-    height: 28px !important;
 }
 
 /* ============================================
