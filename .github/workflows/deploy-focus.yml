@@ -19,11 +19,12 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          # boffin: use the pnpm version that supports our build-approval settings.
+          version: 11.24.0
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
           cache-dependency-path: focus/pnpm-lock.yaml
 
