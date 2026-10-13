@@ -1,0 +1,14 @@
+.finance-select, .finance-date { position: relative; min-width: 0; }
+.finance-select [role=combobox] { min-height: 38px; justify-content: flex-start; letter-spacing: normal; }
+.finance-select [role=combobox]:focus-visible { outline: 2px solid var(--acid); outline-offset: 2px; }
+.finance-select__validation { position: absolute; width: 1px; height: 1px; padding: 0; opacity: 0; pointer-events: none; }
+.finance-select > [role=alert] { color: var(--priority-urgent); }
+.finance-date > input { width: 100%; min-width: 0; min-height: 38px; padding: 8px 40px 8px 10px; border: 1px solid var(--border-default, #444); border-radius: 2px; background: var(--bg-surface, #161616); color: var(--bone); box-sizing: border-box; }
+.finance-date > input::-webkit-calendar-picker-indicator { display: none; }
+.finance-date > input:user-invalid { border-color: var(--priority-urgent); }
+.finance-date .finance-date__trigger { position: absolute; right: 1px; top: 1px; min-height: 36px; width: 36px; padding: 0; border: 0; }
+.finance-date__popover { position: absolute; top: calc(100% + 4px); width: min(300px, calc(100vw - 48px)); background: var(--void); border: 1px solid var(--border-default, #444); box-shadow: 0 8px 24px rgb(0 0 0 / .4); z-index: 100; }
+.finance-date .finance-date__clear { display: block; margin: 0 12px 12px auto; }
+
+.finance-tooltip-trigger { border-bottom: 1px dotted var(--acid); cursor: help; }
+.finance-tooltip { position: fixed; z-index: 1000; width: max-content; max-width: min(260px, calc(100vw - 16px)); padding: 9px 12px; box-sizing: border-box; border: 1px solid var(--border-default); background: var(--bg-base, var(--void)); color: var(--bone); font: 400 .75rem/1.5 var(--font-family, sans-serif); text-align: left; white-space: normal; overflow-wrap: anywhere; box-shadow: 0 4px 16px rgb(0 0 0 / .15); }

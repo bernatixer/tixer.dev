@@ -2,7 +2,7 @@
 // STYLED SELECT COMPONENT
 // ============================================
 
-import { FC, ReactNode, useState, useRef, useEffect, useMemo } from 'react'
+import { FC, ReactNode, useState, useRef, useEffect, useMemo, useId, type KeyboardEvent } from 'react'
 
 // ============================================
 // TYPES
@@ -16,7 +16,14 @@ export interface SelectOption {
   meta?: ReactNode
 }
 
-interface StyledSelectProps {
+export interface StyledSelectProps {
+  id?: string
+  'aria-describedby'?: string
+  'aria-label'?: string
+  'aria-required'?: boolean
+  'aria-invalid'?: boolean
+  compact?: boolean
+  disabled?: boolean
   options: SelectOption[]
   value: string
   onChange: (value: string) => void
@@ -45,7 +52,6 @@ const triggerStyle = (isOpen: boolean, accentColor: string): React.CSSProperties
   color: 'var(--bone)',
   fontFamily: 'inherit',
   fontSize: '0.9rem',
-  outline: 'none',
   cursor: 'pointer',
   textAlign: 'left',
   transition: 'border-color 0.15s',
@@ -62,22 +68,20 @@ const arrowStyle = (isOpen: boolean): React.CSSProperties => ({
   transition: 'transform 0.15s',
 })
 
-const dropdownStyle = (isOpen: boolean): React.CSSProperties => ({
+const dropdownStyle: React.CSSProperties = {
   position: 'absolute',
   top: 'calc(100% + 4px)',
   left: 0,
   right: 0,
   background: 'var(--void)',
   border: '1px solid rgba(var(--white-rgb), 0.15)',
-  maxHeight: isOpen ? 'min(46vh, 420px)' : '0',
+  maxHeight: 'min(46vh, 420px)',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
   zIndex: 100,
-  opacity: isOpen ? 1 : 0,
-  transition: 'max-height 0.2s ease, opacity 0.15s ease',
   boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-})
+}
 
 const searchStyle: React.CSSProperties = {
   width: '100%',
@@ -106,7 +110,7 @@ const optionStyle = (isSelected: boolean, isDisabled: boolean, accentColor: stri
   gap: '10px',
   padding: '9px 14px',
   cursor: isDisabled ? 'not-allowed' : 'pointer',
-  background: isSelected ? `${accentColor}22` : 'transparent',
+  background: isSelected ? `color-mix(in srgb, ${accentColor} 13%, transparent)` : 'transparent',
   color: isDisabled ? 'rgba(var(--white-rgb), 0.3)' : isSelected ? accentColor : 'var(--bone)',
   fontFamily: 'var(--font-mono)',
   fontSize: '0.8rem',
@@ -131,132 +135,146 @@ export const StyledSelect: FC<StyledSelectProps> = ({
   accentColor = 'var(--acid)',
   searchable = false,
   searchPlaceholder = 'Search…',
+  id,
+  'aria-describedby': describedBy,
+  'aria-label': label,
+  'aria-required': required,
+  'aria-invalid': invalid,
+  compact = false,
+  disabled = false,
 }) => {
+  const generatedId = useId()
+  const triggerId = id ?? generatedId
+  const listId = `${generatedId}-options`
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [activeId, setActiveId] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
-
   const selectedOption = options.find(opt => opt.id === value)
-
   const visibleOptions = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!searchable || !q) return options
-    return options.filter(opt => opt.label.toLowerCase().includes(q))
+    return searchable && q ? options.filter(opt => opt.label.toLowerCase().includes(q)) : options
   }, [options, query, searchable])
+  const enabledOptions = visibleOptions.filter(option => !option.disabled)
+  const activeOption = enabledOptions.find(option => option.id === activeId) ?? enabledOptions[0]
+  const optionId = (option: SelectOption) => `${listId}-${options.indexOf(option)}`
+  const open = isOpen && !disabled
 
-  useEffect(() => {
-    if (isOpen && searchable) searchRef.current?.focus()
-    if (!isOpen) setQuery('')
-  }, [isOpen, searchable])
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
-    
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isOpen])
-
-  // Handle keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return
-
-      if (e.key === 'Escape') {
-        setIsOpen(false)
-      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        const enabledOptions = visibleOptions.filter(opt => !opt.disabled)
-        const currentIndex = enabledOptions.findIndex(opt => opt.id === value)
-        let newIndex: number
-
-        if (e.key === 'ArrowDown') {
-          newIndex = currentIndex < enabledOptions.length - 1 ? currentIndex + 1 : 0
-        } else {
-          newIndex = currentIndex > 0 ? currentIndex - 1 : enabledOptions.length - 1
-        }
-
-        onChange(enabledOptions[newIndex].id)
-      } else if (e.key === 'Enter') {
-        setIsOpen(false)
-      }
-    }
-
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown)
-      return () => document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [isOpen, visibleOptions, value, onChange])
-
-  const handleOptionClick = (option: SelectOption) => {
+  const close = (restoreFocus = false) => {
+    setIsOpen(false)
+    setQuery('')
+    if (restoreFocus) triggerRef.current?.focus()
+  }
+  const show = (last = false) => {
+    setQuery('')
+    const enabled = options.filter(option => !option.disabled)
+    setActiveId(enabled.find(option => option.id === value)?.id ?? (last ? enabled[enabled.length - 1] : enabled[0])?.id ?? null)
+    setIsOpen(true)
+  }
+  const choose = (option: SelectOption) => {
     if (option.disabled) return
     onChange(option.id)
-    setIsOpen(false)
+    close(true)
+  }
+
+  useEffect(() => {
+    if (open && searchable) searchRef.current?.focus()
+  }, [open, searchable])
+
+  useEffect(() => {
+    if (!open) return
+    const outside = (event: PointerEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('pointerdown', outside)
+    return () => document.removeEventListener('pointerdown', outside)
+  }, [open])
+
+  useEffect(() => {
+    if (open && activeOption) document.getElementById(optionId(activeOption))?.scrollIntoView({ block: 'nearest' })
+  }, [open, activeOption?.id])
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return
+    if (event.key === 'Tab') { close(); return }
+    if (event.key === 'Escape' && open) {
+      event.preventDefault()
+      event.stopPropagation()
+      close(true)
+      return
+    }
+    const navigation = ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)
+    if (navigation) {
+      if (searchable && event.target === searchRef.current && ['Home', 'End'].includes(event.key)) return
+      event.preventDefault()
+      event.stopPropagation()
+      if (!open) { show(event.key === 'ArrowUp' || event.key === 'End'); return }
+      if (!enabledOptions.length) return
+      const index = enabledOptions.findIndex(option => option.id === activeOption?.id)
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? enabledOptions.length - 1
+        : (index + (event.key === 'ArrowDown' ? 1 : -1) + enabledOptions.length) % enabledOptions.length
+      setActiveId(enabledOptions[next].id)
+    } else if (event.key === 'Enter' || event.key === ' ' && event.target === triggerRef.current) {
+      event.preventDefault()
+      event.stopPropagation()
+      if (!open) show()
+      else if (activeOption) choose(activeOption)
+    } else if (!searchable && event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      const match = enabledOptions.find(option => option.label.toLowerCase().startsWith(event.key.toLowerCase()))
+      if (match) { event.preventDefault(); setActiveId(match.id); setIsOpen(true) }
+    }
   }
 
   return (
-    <div ref={containerRef} style={containerStyle}>
+    <div ref={containerRef} style={{ ...containerStyle, marginBottom: compact ? 0 : containerStyle.marginBottom }} onKeyDown={handleKeyDown}
+      onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) close() }}>
       <button
+        ref={triggerRef}
+        id={triggerId}
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        style={triggerStyle(isOpen, accentColor)}
+        role="combobox"
+        aria-label={label}
+        aria-required={required}
+        aria-invalid={invalid}
+        aria-describedby={describedBy}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={open ? listId : undefined}
+        aria-activedescendant={open && !searchable && activeOption ? optionId(activeOption) : undefined}
+        disabled={disabled}
+        onClick={() => open ? close() : show()}
+        style={{ ...triggerStyle(open, accentColor), ...(compact ? { padding: '8px 32px 8px 10px', minHeight: 38, fontSize: '.8rem' } : {}) }}
       >
-        {selectedOption ? (
-          selectedOption.label
-        ) : (
-          <span style={placeholderStyle}>{placeholder}</span>
-        )}
+        {selectedOption ? selectedOption.label : <span style={placeholderStyle}>{placeholder}</span>}
       </button>
-      <span style={arrowStyle(isOpen)}>▼</span>
-
-      <div style={dropdownStyle(isOpen)}>
-        {searchable && (
-          <input
-            ref={searchRef}
-            type="text"
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder={searchPlaceholder}
-            style={searchStyle}
-            onClick={e => e.stopPropagation()}
-          />
-        )}
-        <div style={{ overflowY: 'auto' }}>
-        {visibleOptions.length === 0 && <div style={emptyStyle}>No matches</div>}
-        {visibleOptions.map(option => (
-          <div
-            key={option.id}
-            onClick={() => handleOptionClick(option)}
-            onMouseEnter={e => {
-              if (!option.disabled) {
-                (e.currentTarget as HTMLElement).style.background = `${accentColor}11`
-              }
-            }}
-            onMouseLeave={e => {
-              if (!option.disabled && option.id !== value) {
-                (e.currentTarget as HTMLElement).style.background = 'transparent'
-              } else if (option.id === value) {
-                (e.currentTarget as HTMLElement).style.background = `${accentColor}22`
-              }
-            }}
-            style={optionStyle(option.id === value, !!option.disabled, accentColor)}
-          >
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {option.label}
-            </span>
+      <span aria-hidden="true" style={arrowStyle(open)}>▼</span>
+      {/* boffin: unmount closed options so their search field cannot receive focus. */}
+      {open && <div style={dropdownStyle}>
+        {searchable && <input ref={searchRef} type="text" value={query}
+          onChange={event => { setQuery(event.target.value); setActiveId(null) }}
+          role="combobox" aria-label={searchPlaceholder} aria-expanded="true" aria-controls={listId}
+          aria-autocomplete="list" aria-activedescendant={activeOption ? optionId(activeOption) : undefined}
+          placeholder={searchPlaceholder} style={searchStyle} />}
+        <div id={listId} role="listbox" aria-label={label ?? placeholder} style={{ overflowY: 'auto' }}>
+          {visibleOptions.length === 0 && <div role="status" style={emptyStyle}>No matches</div>}
+          {visibleOptions.map(option => <div key={option.id} id={optionId(option)} role="option"
+            aria-selected={option.id === value} aria-disabled={option.disabled || undefined}
+            onPointerDown={event => event.preventDefault()}
+            onClick={() => choose(option)}
+            onMouseEnter={() => { if (!option.disabled) setActiveId(option.id) }}
+            style={{ ...optionStyle(option.id === value || option.id === activeOption?.id, !!option.disabled, accentColor),
+              outline: option.id === activeOption?.id ? `1px solid ${accentColor}` : undefined,
+              outlineOffset: '-1px' }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.label}</span>
             {option.meta}
-          </div>
-        ))}
+          </div>)}
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
-

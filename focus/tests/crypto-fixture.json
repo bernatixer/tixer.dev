@@ -1,0 +1,34 @@
+{
+  "envelope": {
+    "version": 1,
+    "vaultId": "00112233-4455-4677-8899-aabbccddeeff",
+    "cipher": "AES-256-GCM",
+    "kdf": {
+      "name": "argon2id",
+      "version": 19,
+      "memoryKiB": 65536,
+      "iterations": 3,
+      "parallelism": 1,
+      "hashLength": 32,
+      "salt": "AAECAwQFBgcICQoLDA0ODw=="
+    },
+    "passwordWrap": {
+      "nonce": "AAECAwQFBgcICQoL",
+      "ciphertext": "2/SdAJ6l0dsKAbkYt/p4G0GkwybmUHhw5Yh+fdKmshT/i95lbYyTJ7NJnCizU0vg"
+    },
+    "recoveryWrap": {
+      "nonce": "DA0ODxAREhMUFRYX",
+      "ciphertext": "rL0v3qEk/fXqRM6gMopYxZIfYQwstxeDR7gVEkivd6haI7xTG6CrZyl4pqL5jyNT"
+    },
+    "payload": {
+      "nonce": "GBkaGxwdHh8gISIj",
+      "ciphertext": "aD0uf68sR3UjStOtNqulIHSclDK7NJx8FwJS5a4T4AsfAFu116oe65DE3RCX7jbI6ospl3Hnjw6Z8Pz85X8S"
+    }
+  },
+  "passphrase": "Independent interop passphrase 2026",
+  "expected": {
+    "note": "Independent fixture",
+    "amount": 7654321
+  },
+  "recoverySecret": "4242424242424242424242424242424242424242424242424242424242424242"
+}

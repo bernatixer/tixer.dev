@@ -15,14 +15,28 @@ const commitSha = (() => {
 
 export default defineConfig({
   plugins: [
+    {
+      name: 'local-preview',
+      configureServer(server) {
+        if (process.env.FOCUS_LOCAL_PREVIEW !== '1') return
+        // boffin: only the dev server maps preview documents; deployed entries keep Clerk authentication.
+        server.middlewares.use((request, _response, next) => {
+          const path = request.url?.split('?')[0]
+          if (path === '/') request.url = '/tests/todo.html'
+          else if (path && /^\/(?:finance|money)(?:\.html)?\/?$/.test(path)) request.url = '/tests/vault.html'
+          next()
+        })
+      },
+    },
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: null,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       workbox: {
         // Always re-fetch the app shell from the network so deploys ship.
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/, /^\/sso-callback/],
+        navigateFallbackDenylist: [/^\/api/, /^\/sso-callback/, /^\/(finance|money)(\/|\.|$)/i],
         runtimeCaching: [
           {
             urlPattern: /^\/$/,
@@ -62,6 +76,9 @@ export default defineConfig({
     },
   },
   build: {
+    rollupOptions: {
+      input: { focus: resolve(__dirname, 'index.html'), finance: resolve(__dirname, 'finance.html') },
+    },
     outDir: 'dist',
     emptyOutDir: true,
   },

@@ -2,7 +2,7 @@
 // TODO APP COMPONENT
 // ============================================
 
-import { FC, useEffect, useState } from 'react'
+import { FC, useEffect, useState, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { SignedIn, SignedOut } from '@clerk/clerk-react'
 import { useFilter, useAuthSync } from '@/hooks'
@@ -40,8 +40,7 @@ const VersionTag: FC = () => {
 // TODO CONTENT
 // ============================================
 
-const TodoContent: FC = () => {
-  const { isReady } = useAuthSync()
+export const TodoWorkspace: FC<{ isReady: boolean; account?: ReactNode }> = ({ isReady, account }) => {
   const { activeFilter, clear: clearFilter } = useFilter()
   const { data: tasks = [] } = useTasks(isReady)
   const { data: tags = [] } = useTags(isReady)
@@ -75,6 +74,7 @@ const TodoContent: FC = () => {
   return (
     <>
       <Header
+        account={account}
         activeFilter={activeFilter}
         availableTags={availableTags}
         onClearFilter={clearFilter}
@@ -113,6 +113,11 @@ const TodoContent: FC = () => {
       />
     </>
   )
+}
+
+const TodoContent: FC = () => {
+  const { isReady } = useAuthSync()
+  return <TodoWorkspace isReady={isReady} />
 }
 
 // ============================================
