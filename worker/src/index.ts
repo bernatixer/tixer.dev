@@ -23,6 +23,13 @@ import {
   listWeeklyGoals,
   updateWeeklyGoal,
 } from "./handlers/weeklyGoals";
+import {
+  deleteWeightEntry,
+  deleteWeightPhase,
+  getWeight,
+  putWeightEntry,
+  putWeightPhase,
+} from "./handlers/weight";
 import type { Env, Variables } from "./types";
 
 const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -81,6 +88,11 @@ protectedApp.post("/weekly-goals", createWeeklyGoal);
 protectedApp.put("/weekly-goals/:id", updateWeeklyGoal);
 protectedApp.delete("/weekly-goals/:id", deleteWeeklyGoal);
 protectedApp.post("/ai/daily-standup", dailyStandup);
+protectedApp.get("/weight", getWeight);
+protectedApp.put("/weight/entries/:date", putWeightEntry);
+protectedApp.delete("/weight/entries/:date", deleteWeightEntry);
+protectedApp.put("/weight/phases/:date", putWeightPhase);
+protectedApp.delete("/weight/phases/:date", deleteWeightPhase);
 
 app.route("/api", protectedApp);
 

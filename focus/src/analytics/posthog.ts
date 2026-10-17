@@ -23,11 +23,12 @@ const KEY = import.meta.env.VITE_POSTHOG_KEY
 const HOST = import.meta.env.VITE_POSTHOG_HOST || 'https://eu.i.posthog.com'
 
 let started = false
-let departingForFinance = false
-const financePath = (path: string) => /^\/(?:finance|money)(?:\/|\.|$)/i.test(path)
+let leavingBoard = false
+// Finance and Weight are private documents; nothing on their paths reaches analytics.
+const privatePath = (path: string) => /^\/(?:finance|money|weight)(?:\/|\.|$)/i.test(path)
 
-export function enterFinance() {
-  departingForFinance = true
+export function leaveBoard() {
+  leavingBoard = true
   if (started) {
     posthog.stopSessionRecording()
     posthog.set_config({ autocapture: false, capture_pageleave: false, disable_session_recording: true })
@@ -39,7 +40,7 @@ window.addEventListener('pageshow', event => {
 })
 
 export function initAnalytics(): boolean {
-  if (started || !KEY || financePath(window.location.pathname)) return false
+  if (started || !KEY || privatePath(window.location.pathname)) return false
   started = true
 
   posthog.init(KEY, {
@@ -62,11 +63,11 @@ export function initAnalytics(): boolean {
     capture_pageview: false,
     capture_pageleave: true,
     before_send: event => {
-      if (departingForFinance || financePath(window.location.pathname)) return null
+      if (leavingBoard || privatePath(window.location.pathname)) return null
       for (const key of ['$current_url', '$referrer', '$pathname', '$initial_current_url', '$initial_referrer']) {
         const value = event?.properties[key]
         if (typeof value === 'string') {
-          try { if (financePath(new URL(value, window.location.origin).pathname)) delete event!.properties[key] } catch { /* Non-URL properties are left unchanged. */ }
+          try { if (privatePath(new URL(value, window.location.origin).pathname)) delete event!.properties[key] } catch { /* Non-URL properties are left unchanged. */ }
         }
       }
       return event

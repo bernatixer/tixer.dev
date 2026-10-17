@@ -7,7 +7,7 @@ import { UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { buildTagMap } from '@/todo/types'
 import type { TagConfig, TagId } from '@/todo/types'
-import { enterFinance } from '@/analytics/posthog'
+import { leaveBoard } from '@/analytics/posthog'
 
 // ============================================
 // FILTER INDICATOR
@@ -55,7 +55,7 @@ export const Header: FC<HeaderProps> = ({
   account = <UserButton appearance={{ elements: { avatarBox: 'user-avatar' } }} />,
 }) => {
   return (
-    <AppHeader mode="todo" onEnterFinance={enterFinance}>
+    <AppHeader mode="todo" onLeaveBoard={leaveBoard}>
         <FilterIndicator activeFilter={activeFilter} availableTags={availableTags} onClear={onClearFilter} />
         <button className="header-btn done-counter" onClick={onOpenDone}>
           Completed

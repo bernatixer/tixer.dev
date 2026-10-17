@@ -1,6 +1,9 @@
 # boffin: serve Finance through its extensionless asset lookup without redirecting the browser.
 /finance.html /finance 200
+/weight.html /weight 200
 /finance /finance.html 302
 /money /finance.html 302
 /finance/* /finance.html 302
 /money/* /finance.html 302
+/weight /weight.html 302
+/weight/* /weight.html 302

@@ -24,6 +24,7 @@ export default defineConfig({
           const path = request.url?.split('?')[0]
           if (path === '/') request.url = '/tests/todo.html'
           else if (path && /^\/(?:finance|money)(?:\.html)?\/?$/.test(path)) request.url = '/tests/vault.html'
+          else if (path && /^\/weight(?:\.html)?\/?$/.test(path)) request.url = '/tests/weight.html'
           next()
         })
       },
@@ -36,7 +37,7 @@ export default defineConfig({
       workbox: {
         // Always re-fetch the app shell from the network so deploys ship.
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api/, /^\/sso-callback/, /^\/(finance|money)(\/|\.|$)/i],
+        navigateFallbackDenylist: [/^\/api/, /^\/sso-callback/, /^\/(finance|money|weight)(\/|\.|$)/i],
         runtimeCaching: [
           {
             urlPattern: /^\/$/,
@@ -77,7 +78,7 @@ export default defineConfig({
   },
   build: {
     rollupOptions: {
-      input: { focus: resolve(__dirname, 'index.html'), finance: resolve(__dirname, 'finance.html') },
+      input: { focus: resolve(__dirname, 'index.html'), finance: resolve(__dirname, 'finance.html'), weight: resolve(__dirname, 'weight.html') },
     },
     outDir: 'dist',
     emptyOutDir: true,

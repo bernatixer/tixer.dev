@@ -93,6 +93,7 @@ Tables:
 
 - **Weekly Goals feature** — shipped 2026-05-10. Lives at the top of the Focus board. Cells fill bottom-up as a progress thermometer; turn solid acid-green when complete. Right-click a cell opens the edit modal; left-click on simple goals toggles, on counters increments. Recurring goals auto-rematerialize Monday. See `focus/src/components/todo/WeeklyGoals.tsx`, `WeeklyGoalModal.tsx`, `focus/src/todo/goals.ts`.
 - **Header slim** — folded the Clerk avatar into the Focus header bar (was previously a separate `TopBar` with a "Back to home" link, both removed). Header is now one tight row.
+- **Weight tab** — `focus/weight.html` → `focus/src/weight/`, its own document like Finance, so it stays out of PostHog (`privatePath` in `analytics/posthog.ts`). Plain D1 tables `weight_entries` + `weight_phases` (kcal phases), `/api/weight`. Goal line = planned deficit ÷ 7700 kcal/kg from the first weigh-in; "real maintenance" is intake minus the 3-week regression slope × 7700. Local preview: `FOCUS_LOCAL_PREVIEW=1` maps `/weight` to `tests/weight.html`.
 - **D1 schema apply in CI** — added to `deploy-worker.yml` so the production DB is always in sync with `schema.sql` on every worker deploy.
 
 ## What's currently mock vs real

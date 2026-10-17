@@ -61,3 +61,19 @@ CREATE TABLE IF NOT EXISTS financial_vaults (
     deleted INTEGER NOT NULL DEFAULT 0 CHECK (deleted IN (0, 1)),
     CHECK ((deleted = 0 AND envelope IS NOT NULL) OR (deleted = 1 AND envelope IS NULL))
 );
+
+CREATE TABLE IF NOT EXISTS weight_entries (
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    weight_kg REAL NOT NULL,
+    PRIMARY KEY (user_id, date)
+);
+
+-- A phase applies from start_date until the next phase starts.
+CREATE TABLE IF NOT EXISTS weight_phases (
+    user_id TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    maintenance_kcal INTEGER NOT NULL,
+    intake_kcal INTEGER NOT NULL,
+    PRIMARY KEY (user_id, start_date)
+);

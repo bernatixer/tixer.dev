@@ -7,10 +7,11 @@ const require = createRequire(import.meta.url);
 const { build } = createRequire(require.resolve('wrangler/package.json'))('esbuild');
 const directory = await mkdtemp(new URL('./.finance-test-', import.meta.url).pathname);
 try {
-  const outfile = join(directory, 'finance.test.mjs');
-  await build({ entryPoints: [new URL('./finance.test.ts', import.meta.url).pathname], outfile,
-    bundle: true, platform: 'node', format: 'esm', packages: 'external', logLevel: 'error' });
-  const result = spawnSync(process.execPath, ['--test', outfile], {
+  const names = ['finance', 'weight'];
+  const outfiles = names.map(name => join(directory, `${name}.test.mjs`));
+  await build({ entryPoints: names.map(name => new URL(`./${name}.test.ts`, import.meta.url).pathname), outdir: directory,
+    outExtension: { '.js': '.mjs' }, entryNames: '[name]', bundle: true, platform: 'node', format: 'esm', packages: 'external', logLevel: 'error' });
+  const result = spawnSync(process.execPath, ['--test', ...outfiles], {
     stdio: 'inherit', cwd: new URL('../', import.meta.url),
   });
   process.exitCode = result.status ?? 1;
