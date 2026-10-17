@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type FormEvent, type PointerEvent, type ReactNode } from 'react'
 import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { useAuthSync } from '@/hooks/useAuthSync'
@@ -37,10 +37,11 @@ function Weight() {
   const { entries, phases } = data
   return <>
     {error && <p role="alert" className="finance-notice">{error}</p>}
+    {!entries.some(entry => entry.date === localToday()) && <TodayForm onSave={weightKg => run(put(`/weight/entries/${localToday()}`, { weightKg }))} />}
     <Stats entries={entries} phases={phases} />
     {entries.length > 0 && <Chart entries={entries} phases={phases} />}
     <div className="weight-columns">
-      <Log entries={entries} phases={phases} onSave={entry => run(put(`/weight/entries/${entry.date}`, { weightKg: entry.weightKg }))}
+      <Log entries={entries} phases={phases}
         onImport={rows => run(Promise.all(rows.map(entry => put(`/weight/entries/${entry.date}`, { weightKg: entry.weightKg }))))}
         onDelete={date => run(del(`/weight/entries/${date}`))} />
       <Phases phases={phases} defaultStart={entries[0]?.date ?? localToday()} onSave={phase => run(put(`/weight/phases/${phase.startDate}`, { maintenanceKcal: phase.maintenanceKcal, intakeKcal: phase.intakeKcal }))}
@@ -76,10 +77,18 @@ function Chart({ entries, phases }: { entries: WeightEntry[]; phases: Phase[] })
   const y = (value: number) => (top - value) / (top - bottom) * 300
   const path = (points: [string, number][]) => points.map(([date, value], i) => `${i ? 'L' : 'M'}${x(date).toFixed(1)},${y(value).toFixed(1)}`).join('')
   const ticks = Array.from({ length: 5 }, (_, i) => top - (top - bottom) * i / 4)
+  const [hover, setHover] = useState<number | null>(null)
+  const hovered = hover === null ? null : dateOf(startDay + hover)
+  const hoveredIndex = entries.findIndex(entry => entry.date === hovered)
+  const hoveredGoal = goal.find(point => point.date === hovered)
+  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const box = event.currentTarget.getBoundingClientRect()
+    setHover(Math.min(days, Math.max(0, Math.round((event.clientX - box.left) / box.width * days))))
+  }
   return <article className="finance-card weight-chart">
     <div className="finance-card-heading"><span className="finance-eyebrow">PROGRESS</span>
       <div className="weight-chart__legend"><span><i className="weight-key--raw" />Weigh-ins</span><span><i className="weight-key--trend" />7-day average</span>{goal.length > 0 && <span><i className="weight-key--goal" />Goal</span>}</div></div>
-    <div className="weight-chart__plot">
+    <div className="weight-chart__plot" onPointerMove={onPointerMove} onPointerLeave={() => setHover(null)}>
       <div className="weight-chart__scale">{ticks.map(tick => <span key={tick} style={{ top: `${(top - tick) / (top - bottom) * 100}%` }}>{tick.toFixed(1)}</span>)}</div>
       {/* Stretched to fit; non-scaling strokes and zero-length round caps keep lines and dots crisp. */}
       <svg viewBox="0 0 1000 300" preserveAspectRatio="none" role="img" aria-label="Weight, 7-day average and goal over time">
@@ -87,34 +96,46 @@ function Chart({ entries, phases }: { entries: WeightEntry[]; phases: Phase[] })
         <line className="weight-chart__today" x1={x(localToday())} x2={x(localToday())} y1="0" y2="300" />
         {goal.length > 0 && <path className="weight-chart__goal" d={path(goal.map(point => [point.date, point.weightKg]))} />}
         <path className="weight-chart__raw" d={path(entries.map(entry => [entry.date, entry.weightKg]))} />
-        {entries.map(entry => <path key={entry.date} className="weight-chart__dot" d={`M${x(entry.date)},${y(entry.weightKg)}h0`}><title>{`${shortDate(entry.date)}: ${kg(entry.weightKg)}`}</title></path>)}
+        {entries.map(entry => <path key={entry.date} className="weight-chart__dot" d={`M${x(entry.date)},${y(entry.weightKg)}h0`} />)}
         <path className="weight-chart__trend" d={path(entries.map((entry, i) => [entry.date, trend[i]]))} />
+        {hovered && <line className="weight-chart__cursor" x1={x(hovered)} x2={x(hovered)} y1="0" y2="300" />}
+        {hoveredIndex >= 0 && <path className="weight-chart__dot weight-chart__dot--active" d={`M${x(hovered!)},${y(entries[hoveredIndex].weightKg)}h0`} />}
       </svg>
+      {/* Shifting by the same percentage as the offset keeps the tooltip inside the plot at both edges. */}
+      {hovered && <div className="weight-chart__tooltip" style={{ left: `${hover! / days * 100}%`, transform: `translateX(-${hover! / days * 100}%)` }}>
+        <time>{shortDate(hovered)}</time>
+        <span>Weigh-in <strong>{hoveredIndex >= 0 ? kg(entries[hoveredIndex].weightKg) : '—'}</strong></span>
+        <span>7-day average <strong>{hoveredIndex >= 0 ? kg(trend[hoveredIndex]) : '—'}</strong></span>
+        {hoveredGoal && <span>Goal <strong>{kg(hoveredGoal.weightKg)}</strong></span>}
+        {hoveredIndex >= 0 && hoveredGoal && <span>Vs goal <strong className={trend[hoveredIndex] - hoveredGoal.weightKg <= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(trend[hoveredIndex] - hoveredGoal.weightKg)} kg</strong></span>}
+      </div>}
     </div>
     <div className="weight-chart__dates"><span>{shortDate(entries[0].date)}</span><span>{shortDate(dateOf(startDay + Math.round(days / 2)))}</span><span>{shortDate(end)}</span></div>
   </article>
 }
 
-function Log({ entries, phases, onSave, onImport, onDelete }: { entries: WeightEntry[]; phases: Phase[]; onSave: (entry: WeightEntry) => Promise<unknown>; onImport: (rows: WeightEntry[]) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
-  const [date, setDate] = useState(localToday())
+function TodayForm({ onSave }: { onSave: (weightKg: number) => Promise<unknown> }) {
   const [weight, setWeight] = useState('')
+  const submit = (event: FormEvent) => { event.preventDefault(); void onSave(Number(weight)) }
+  return <form className="finance-card weight-today" onSubmit={submit}>
+    <span className="finance-eyebrow">TODAY · {shortDate(localToday())}</span>
+    <label className="finance-field">Weight (kg)<input type="number" inputMode="decimal" required min="20" max="400" step="0.05" value={weight} onChange={e => setWeight(e.target.value)} autoFocus /></label>
+    <button type="submit" className="finance-primary">Log weight</button>
+  </form>
+}
+
+function Log({ entries, phases, onImport, onDelete }: { entries: WeightEntry[]; phases: Phase[]; onImport: (rows: WeightEntry[]) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
   const [paste, setPaste] = useState('')
   const trend = movingAverage(entries)
   const goal = new Map(goalLine(entries, phases, last(entries)?.date ?? localToday()).map(point => [point.date, point.weightKg]))
-  const submit = (event: FormEvent) => { event.preventDefault(); void onSave({ date, weightKg: Number(weight) }).then(() => setWeight('')) }
   const parsed = parseSheetRows(paste)
   return <article className="finance-card">
-    <span className="finance-eyebrow">LOG</span>
-    <form className="finance-fields" onSubmit={submit}>
-      <label className="finance-field">Date<input type="date" required max={localToday()} value={date} onChange={e => setDate(e.target.value)} /></label>
-      <label className="finance-field">Weight (kg)<input type="number" inputMode="decimal" required min="20" max="400" step="0.05" value={weight} onChange={e => setWeight(e.target.value)} autoFocus /></label>
-      <button type="submit" className="finance-primary">{entries.some(entry => entry.date === date) ? 'Update' : 'Log'}</button>
-    </form>
-    <details className="finance-details" open={!entries.length}><summary>Import from spreadsheet</summary>
-      <p className="finance-muted">Copy the DATE and WEIGHT columns and paste them here. Existing days are overwritten.</p>
+    <span className="finance-eyebrow">HISTORY</span>
+    {!entries.length && <>
+      <p className="finance-muted">Starting from a spreadsheet? Copy the DATE and WEIGHT columns and paste them here.</p>
       <textarea className="weight-paste" rows={4} value={paste} onChange={e => setPaste(e.target.value)} placeholder={'14/10/2026\t81\n15/10/2026\t80,55'} />
       <button type="button" disabled={!parsed.length} onClick={() => void onImport(parsed).then(() => setPaste(''))}>Import {parsed.length || ''} {parsed.length === 1 ? 'entry' : 'entries'}</button>
-    </details>
+    </>}
     {entries.length > 0 && <table className="weight-table">
       <thead><tr><th>Date</th><th>Weight</th><th>7-day avg</th><th>Goal</th><th>Vs goal</th><th /></tr></thead>
       <tbody>{entries.map((entry, i) => ({ entry, avg: trend[i], target: goal.get(entry.date) })).reverse().map(({ entry, avg, target }) => <tr key={entry.date}>

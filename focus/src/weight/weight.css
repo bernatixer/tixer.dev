@@ -21,6 +21,15 @@
 .weight-chart__legend { display: flex; flex-wrap: wrap; gap: 16px; color: var(--text-secondary); font-size: .7rem; }
 .weight-chart__legend span { display: flex; align-items: center; gap: 8px; }
 .weight-chart__legend i { width: 16px; height: 3px; }
+.weight-chart__plot { touch-action: pan-y; }
+.weight-chart__cursor { stroke: var(--text-secondary); stroke-width: 1; }
+.weight-chart__dot--active { stroke: var(--acid); stroke-width: 11; }
+.weight-chart__tooltip { position: absolute; top: 0; width: 200px; padding: 10px 12px; pointer-events: none; border: 1px solid var(--border-default); background: var(--bg-base, var(--void)); color: var(--bone); font-size: .72rem; box-shadow: 0 4px 16px rgb(0 0 0 / .15); }
+.weight-chart__tooltip time { display: block; margin-bottom: 6px; color: var(--text-secondary); }
+.weight-chart__tooltip span { display: flex; justify-content: space-between; gap: 12px; margin-top: 3px; }
+.weight-chart__tooltip strong { font: 500 .72rem var(--font-mono, monospace); }
+.weight-app .weight-today { display: flex; align-items: end; flex-wrap: wrap; gap: 14px 20px; margin: 0 0 18px; padding: 16px 18px; }
+.weight-today .finance-eyebrow { flex-basis: 100%; }
 .weight-key--raw { background: var(--bone); }
 .weight-key--trend { background: var(--acid); }
 .weight-key--goal { background: var(--tag-work); }
