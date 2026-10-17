@@ -124,21 +124,37 @@ function TodayForm({ entries, phases, onSave }: { entries: WeightEntry[]; phases
   const streak = streakBefore(entries, today)
   // Steppers start from the last weigh-in so a typical day is a couple of taps.
   const step = (delta: number) => setWeight(((weight === '' ? previous?.weightKg ?? 80 : value) + delta).toFixed(2))
-  const submit = (event: FormEvent) => { event.preventDefault(); if (valid) void onSave(value) }
-  return <form className="weight-today" onSubmit={submit}>
+  const [locking, setLocking] = useState(false)
+  // Blink the reading like a scale settling before it saves.
+  const submit = (event: FormEvent) => {
+    event.preventDefault()
+    if (!valid || locking) return
+    setLocking(true)
+    setTimeout(() => void onSave(value).finally(() => setLocking(false)), window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 900)
+  }
+  return <form className={`weight-today${locking ? ' is-locking' : ''}`} onSubmit={submit}>
     <div className="weight-today__glow" aria-hidden="true" />
     <span className="finance-eyebrow">{new Date(`${today}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>
     <h2>Morning weigh-in</h2>
-    <div className="weight-today__input">
-      <button type="button" aria-label="Decrease by 0.05 kg" onClick={() => step(-0.05)}>−</button>
-      <label><input type="number" inputMode="decimal" required min="20" max="400" step="0.05" aria-label="Today's weight in kg" placeholder={previous ? previous.weightKg.toFixed(2) : '00.00'} value={weight} onChange={e => setWeight(e.target.value)} autoFocus /><span>kg</span></label>
-      <button type="button" aria-label="Increase by 0.05 kg" onClick={() => step(0.05)}>+</button>
+    <div className="weight-scale">
+      <label className="weight-scale__display">
+        <span className="weight-scale__reading">
+          <span className="weight-scale__ghost" aria-hidden="true">88.88</span>
+          <input type="number" inputMode="decimal" required min="20" max="400" step="0.05" aria-label="Today's weight in kg" placeholder={previous ? previous.weightKg.toFixed(2) : '00.00'} value={weight} onChange={e => setWeight(e.target.value)} autoFocus />
+        </span>
+        <span className="weight-scale__unit">kg</span>
+      </label>
+      <div className="weight-scale__buttons">
+        <button type="button" aria-label="Decrease by 0.05 kg" onClick={() => step(-0.05)}>−</button>
+        <button type="button" aria-label="Increase by 0.05 kg" onClick={() => step(0.05)}>+</button>
+      </div>
+      <div className="weight-scale__feet" aria-hidden="true"><i /><i /></div>
     </div>
     <p className="weight-today__compare" aria-live="polite">
       {previous && <span>{valid ? <strong className={value - previous.weightKg <= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(value - previous.weightKg)} kg</strong> : <strong>{kg(previous.weightKg)}</strong>} {valid ? 'vs' : 'on'} {shortDate(previous.date)}</span>}
       {goal && <span>{valid ? <strong className={value - goal.weightKg <= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(value - goal.weightKg)} kg</strong> : <strong>{kg(goal.weightKg)}</strong>} {valid ? 'vs goal' : 'goal today'}</span>}
     </p>
-    <button type="submit" className="finance-primary weight-today__submit" disabled={!valid}>Log weight ↵</button>
+    <button type="submit" className="finance-primary weight-today__submit" disabled={!valid || locking}>{locking ? 'Reading…' : 'Log weight ↵'}</button>
     {streak > 0 && <small className="weight-today__streak"><span aria-hidden="true">{Array.from({ length: Math.min(streak, 7) }, (_, i) => <i key={i} />)}</span>{streak}-day streak, keep it going</small>}
   </form>
 }
