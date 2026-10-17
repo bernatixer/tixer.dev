@@ -139,7 +139,7 @@ function TodayForm({ entries, phases, onSave }: { entries: WeightEntry[]; phases
     <div className="weight-scale">
       <label className="weight-scale__display">
         <span className="weight-scale__reading">
-          <span className="weight-scale__ghost" aria-hidden="true">88.88</span>
+          <span className="weight-scale__ghost" aria-hidden="true">{(88.88).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           <input type="number" inputMode="decimal" required min="20" max="400" step="0.05" aria-label="Today's weight in kg" placeholder={previous ? previous.weightKg.toFixed(2) : '00.00'} value={weight} onChange={e => setWeight(e.target.value)} autoFocus />
         </span>
         <span className="weight-scale__unit">kg</span>
