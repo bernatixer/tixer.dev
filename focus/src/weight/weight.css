@@ -83,5 +83,38 @@
 .weight-table td:last-child { padding-right: 0; }
 .weight-app .weight-table .finance-remove { min-height: 24px; padding: 2px 8px; border-color: transparent; }
 
+.weight-plan__now { margin-top: 18px; }
+.weight-plan__now > small { font: .66rem var(--font-mono, monospace); letter-spacing: .12em; text-transform: uppercase; color: var(--text-secondary); }
+.weight-energy { position: relative; display: flex; height: 34px; margin: 30px 0 34px; background: rgba(var(--white-rgb), .04); }
+.weight-energy > div { position: relative; height: 100%; transition: width .3s; }
+.weight-energy span { position: absolute; font: .66rem var(--font-mono, monospace); white-space: nowrap; }
+.weight-energy__intake { background: linear-gradient(90deg, rgba(var(--acid-rgb), .35), var(--acid)); }
+.weight-energy__intake span { left: 0; top: calc(100% + 8px); color: var(--text-secondary); }
+.weight-energy__gap span { left: 50%; top: 50%; transform: translate(-50%, -50%); font-weight: 600; }
+.weight-energy__gap--deficit { background: repeating-linear-gradient(-45deg, rgba(var(--acid-rgb), .28) 0 4px, transparent 4px 9px); outline: 1px dashed rgba(var(--acid-rgb), .5); outline-offset: -1px; }
+.weight-energy__gap--deficit span { color: var(--acid); }
+.weight-energy__gap--surplus { background: repeating-linear-gradient(-45deg, rgba(255, 68, 68, .3) 0 4px, transparent 4px 9px); }
+.weight-energy__gap--surplus span { color: var(--priority-urgent); }
+.weight-energy__marker { position: absolute; top: -8px; bottom: -8px; width: 2px; margin-left: -1px; background: var(--bone); }
+.weight-energy__marker span { right: 0; bottom: calc(100% + 4px); color: var(--bone); }
+.weight-plan__figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
+.weight-app .weight-plan__figures > div { display: block; padding: 0; }
+.weight-plan__figures dt { font: .66rem var(--font-mono, monospace); letter-spacing: .1em; text-transform: uppercase; color: var(--text-secondary); }
+.weight-app .weight-plan__figures dd { margin: 4px 0 0; text-align: left; font: 500 1.5rem var(--font-mono, monospace); }
+.weight-plan__figures dd small { font-size: .75rem; color: var(--text-secondary); }
+.weight-plan__form .finance-fields { margin: 16px 0 0; }
+.weight-plan__form .finance-field { flex: 1 1 140px; }
+.weight-app .weight-plan__preview { margin: -18px 0 0; text-align: right; font: .75rem var(--font-mono, monospace); color: var(--acid); }
+.weight-plan__actions { display: flex; gap: 10px; margin-top: 18px; }
+.weight-plan__timeline { list-style: none; margin: 26px 0 0; padding: 0; border-top: 1px solid var(--border-default); }
+.weight-plan__timeline li { position: relative; display: flex; align-items: center; padding-left: 22px; }
+.weight-plan__timeline li::before { content: ''; position: absolute; left: 4px; top: 0; bottom: 0; width: 1px; background: var(--border-default); }
+.weight-plan__timeline li::after { content: ''; position: absolute; left: 0; top: 50%; width: 9px; height: 9px; margin-top: -5px; border: 1px solid var(--text-secondary); background: var(--bg-surface, var(--void)); }
+.weight-plan__timeline li.is-current::after { background: var(--acid); border-color: var(--acid); box-shadow: 0 0 8px rgba(var(--acid-rgb), .6); }
+.weight-app .weight-plan__phase { flex: 1; display: grid; grid-template-columns: 70px 1fr auto; gap: 12px; justify-content: stretch; text-align: left; min-height: 40px; border: 0; padding: 6px 8px; }
+.weight-app .weight-plan__phase:hover { background: rgba(var(--white-rgb), .04); }
+.weight-plan__phase span { color: var(--text-secondary); }
+.weight-plan__phase strong { font-weight: 500; }
+.weight-app .weight-plan__timeline .finance-remove { min-height: 28px; border-color: transparent; padding: 2px 8px; }
 @media(max-width: 1000px) { .weight-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .weight-stat:last-child { grid-column: 1 / -1; } .weight-columns { grid-template-columns: 1fr; } }
 @media(max-width: 650px) { .weight-app { padding: 12px 16px 60px; } .weight-chart__plot { height: 200px; } .weight-table th:nth-child(4), .weight-table td:nth-child(4) { display: none; } }

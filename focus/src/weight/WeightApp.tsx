@@ -185,28 +185,58 @@ function Log({ entries, phases, onImport, onDelete }: { entries: WeightEntry[]; 
   </article>
 }
 
+function EnergyBar({ maintenance, intake }: { maintenance: number; intake: number }) {
+  const scale = Math.max(maintenance, intake, 1)
+  const gap = maintenance - intake
+  return <div className="weight-energy" role="img" aria-label={`Eating ${intake} of ${maintenance} kcal`}>
+    <div className="weight-energy__intake" style={{ width: `${Math.min(intake, maintenance) / scale * 100}%` }}><span>{intake} in</span></div>
+    {gap !== 0 && <div className={`weight-energy__gap weight-energy__gap--${gap > 0 ? 'deficit' : 'surplus'}`} style={{ width: `${Math.abs(gap) / scale * 100}%` }}><span>{gap > 0 ? '−' : '+'}{Math.abs(gap)}</span></div>}
+    <i className="weight-energy__marker" style={{ left: `${maintenance / scale * 100}%` }}><span>{maintenance} burn</span></i>
+  </div>
+}
+
 function Phases({ phases, defaultStart, onSave, onDelete }: { phases: Phase[]; defaultStart: string; onSave: (phase: Phase) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
-  const previous = last(phases)
-  const [startDate, setStartDate] = useState(previous ? localToday() : defaultStart)
-  const [maintenance, setMaintenance] = useState(previous ? String(previous.maintenanceKcal) : '')
-  const [intake, setIntake] = useState(previous ? String(previous.intakeKcal) : '')
-  const submit = (event: FormEvent) => { event.preventDefault(); void onSave({ startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake) }) }
+  const today = localToday()
+  const current = phaseOn(phases, today) ?? phases[0]
+  const [editing, setEditing] = useState(!phases.length)
+  const [startDate, setStartDate] = useState(phases.length ? today : defaultStart)
+  const [maintenance, setMaintenance] = useState(current ? String(current.maintenanceKcal) : '')
+  const [intake, setIntake] = useState(current ? String(current.intakeKcal) : '')
   const perWeek = (phase: Phase) => (phase.maintenanceKcal - phase.intakeKcal) * 7 / KCAL_PER_KG
-  return <article className="finance-card">
-    <span className="finance-eyebrow">KCAL PLAN</span>
-    <p className="finance-muted">Each phase runs until the next one starts. The goal line drops by the daily deficit ÷ {KCAL_PER_KG} kcal per kg.</p>
-    {phases.length > 0 && <table className="weight-table">
-      <thead><tr><th>From</th><th>Maintenance</th><th>Intake</th><th>Deficit / day</th><th>Expected / week</th><th /></tr></thead>
-      <tbody>{[...phases].reverse().map(phase => <tr key={phase.startDate}>
-        <td>{shortDate(phase.startDate)}</td><td>{phase.maintenanceKcal}</td><td>{phase.intakeKcal}</td><td>{phase.maintenanceKcal - phase.intakeKcal}</td><td>{signed(-perWeek(phase))} kg</td>
-        <td><button type="button" className="finance-remove" aria-label={`Delete phase from ${phase.startDate}`} onClick={() => { if (window.confirm(`Delete the phase starting ${shortDate(phase.startDate)}?`)) void onDelete(phase.startDate) }}>×</button></td>
-      </tr>)}</tbody>
-    </table>}
-    <form className="finance-fields" onSubmit={submit}>
-      <label className="finance-field">From<input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
-      <label className="finance-field">Maintenance (kcal)<input type="number" required min="500" max="10000" step="1" placeholder="2300" value={maintenance} onChange={e => setMaintenance(e.target.value)} /></label>
-      <label className="finance-field">Intake (kcal)<input type="number" required min="0" max="10000" step="1" placeholder="1800" value={intake} onChange={e => setIntake(e.target.value)} /></label>
-      <button type="submit" className="finance-primary">{phases.some(phase => phase.startDate === startDate) ? 'Update phase' : 'Add phase'}</button>
-    </form>
+  const edit = (phase: Phase) => { setStartDate(phase.startDate); setMaintenance(String(phase.maintenanceKcal)); setIntake(String(phase.intakeKcal)); setEditing(true) }
+  const submit = (event: FormEvent) => { event.preventDefault(); void onSave({ startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake) }).then(() => setEditing(false)) }
+  const draft = { startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake) }
+  const draftValid = maintenance !== '' && intake !== '' && draft.maintenanceKcal >= 500
+  return <article className="finance-card weight-plan">
+    <div className="finance-card-heading"><span className="finance-eyebrow">KCAL PLAN</span>
+      {phases.length > 0 && !editing && <button type="button" onClick={() => { setStartDate(today); setEditing(true) }}>+ New phase</button>}</div>
+    {current && !editing && <div className="weight-plan__now">
+      <small>{current.startDate <= today ? 'Now' : 'Starts'} · since {shortDate(current.startDate)}</small>
+      <EnergyBar maintenance={current.maintenanceKcal} intake={current.intakeKcal} />
+      <dl className="weight-plan__figures">
+        <div><dt>Per day</dt><dd className={perWeek(current) >= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(current.intakeKcal - current.maintenanceKcal, 0)} <small>kcal</small></dd></div>
+        <div><dt>Per week</dt><dd className={perWeek(current) >= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(-perWeek(current))} <small>kg</small></dd></div>
+        <div><dt>1 kg takes</dt><dd>{perWeek(current) > 0 ? Math.round(7 / perWeek(current)) : '∞'} <small>days</small></dd></div>
+      </dl>
+    </div>}
+    {editing && <form className="weight-plan__form" onSubmit={submit}>
+      {!phases.length && <p className="finance-muted">What you burn and what you plan to eat. The goal line drops by the daily deficit ÷ {KCAL_PER_KG} kcal per kg.</p>}
+      <div className="finance-fields">
+        <label className="finance-field">From<input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
+        <label className="finance-field">Burn (maintenance)<input type="number" required min="500" max="10000" step="1" placeholder="2300" value={maintenance} onChange={e => setMaintenance(e.target.value)} /></label>
+        <label className="finance-field">Eat (intake)<input type="number" required min="0" max="10000" step="1" placeholder="1800" value={intake} onChange={e => setIntake(e.target.value)} /></label>
+      </div>
+      {draftValid && <><EnergyBar maintenance={draft.maintenanceKcal} intake={draft.intakeKcal} /><p className="weight-plan__preview">{signed(-perWeek(draft))} kg / week</p></>}
+      <div className="weight-plan__actions">
+        <button type="submit" className="finance-primary">{phases.some(phase => phase.startDate === startDate) ? 'Save phase' : 'Add phase'}</button>
+        {phases.length > 0 && <button type="button" onClick={() => setEditing(false)}>Cancel</button>}
+      </div>
+    </form>}
+    {phases.length > 0 && <ol className="weight-plan__timeline">{[...phases].reverse().map(phase => <li key={phase.startDate} className={phase === current ? 'is-current' : undefined}>
+      <button type="button" className="weight-plan__phase" onClick={() => edit(phase)} aria-label={`Edit phase from ${shortDate(phase.startDate)}`}>
+        <time>{shortDate(phase.startDate)}</time><span>{phase.intakeKcal} / {phase.maintenanceKcal} kcal</span><strong>{signed(-perWeek(phase))} kg/wk</strong>
+      </button>
+      <button type="button" className="finance-remove" aria-label={`Delete phase from ${phase.startDate}`} onClick={() => { if (window.confirm(`Delete the phase starting ${shortDate(phase.startDate)}?`)) void onDelete(phase.startDate) }}>×</button>
+    </li>)}</ol>}
   </article>
 }
