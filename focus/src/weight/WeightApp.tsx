@@ -134,9 +134,11 @@ function TodayForm({ entries, phases, onSave }: { entries: WeightEntry[]; phases
   }
   return <form className={`weight-today${locking ? ' is-locking' : ''}`} onSubmit={submit}>
     <div className="weight-today__glow" aria-hidden="true" />
-    <span className="finance-eyebrow">{new Date(`${today}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>
-    <h2>Morning weigh-in</h2>
     <div className="weight-today__body">
+    <div className="weight-today__title">
+      <span className="finance-eyebrow">{new Date(`${today}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>
+      <h2>Morning weigh-in</h2>
+    </div>
     <div className="weight-scale">
       <label className="weight-scale__display">
         <input type="number" inputMode="decimal" required min="20" max="400" step="0.05" aria-label="Today's weight in kg" placeholder={previous ? previous.weightKg.toFixed(2) : '00.00'} value={weight} onChange={e => setWeight(e.target.value)} autoFocus />
