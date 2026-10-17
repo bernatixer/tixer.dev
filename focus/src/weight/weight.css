@@ -40,8 +40,9 @@
 .weight-scale::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(115deg, transparent 35%, rgba(var(--white-rgb), .06) 45%, transparent 55%); }
 .weight-scale:focus-within { transform: scale(.985); box-shadow: inset 0 1px 0 rgba(var(--white-rgb), .12), 0 12px 28px -18px rgb(0 0 0 / .55), 0 0 0 1px rgba(var(--acid-rgb), .25); }
 .weight-scale__display { position: relative; display: flex; align-items: baseline; justify-content: center; gap: 6px; width: 100%; box-sizing: border-box; padding: 16px 14px 14px; border-radius: 12px; background: #050805; border: 1px solid rgba(var(--acid-rgb), .18); box-shadow: inset 0 2px 10px rgb(0 0 0 / .8); cursor: text; }
-.weight-scale__display input { font: 500 clamp(2.6rem, 11vw, 3.6rem)/1 var(--font-mono, 'JetBrains Mono', monospace); letter-spacing: -.02em; }
-.weight-scale__display input { position: relative; width: 5.2ch; padding: 0; border: 0; background: none; color: #BFFF00; text-align: right; filter: drop-shadow(0 0 7px rgba(191, 255, 0, .5)); -moz-appearance: textfield; }
+/* Prefixed to outrank finance.css's `.finance-app input { font: inherit }`, which can load after this file. */
+.weight-app .weight-scale__display input { font: 500 clamp(2.6rem, 11vw, 3.6rem)/1 var(--font-mono, 'JetBrains Mono', monospace); letter-spacing: -.02em; }
+.weight-app .weight-scale__display input { position: relative; width: 5.2ch; padding: 0; border: 0; background: none; color: #BFFF00; text-align: right; filter: drop-shadow(0 0 7px rgba(191, 255, 0, .5)); -moz-appearance: textfield; }
 .weight-scale__display input::placeholder { color: rgba(191, 255, 0, .28); }
 .weight-scale__display input::-webkit-inner-spin-button, .weight-scale__display input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .weight-app .weight-scale__display input:focus-visible { outline: none; }
@@ -74,7 +75,7 @@
 .weight-key--trend { background: var(--acid); }
 .weight-key--goal { background: var(--tag-work); }
 
-.weight-paste { width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--border-default); background: var(--bg-surface, #161616); color: var(--bone); font: .8rem var(--font-mono, monospace); }
+.weight-app .weight-paste { width: 100%; box-sizing: border-box; margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--border-default); background: var(--bg-surface, #161616); color: var(--bone); font: .8rem var(--font-mono, monospace); }
 .weight-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: .8rem; }
 .weight-table th, .weight-table td { text-align: right; }
 .weight-table :is(th, td):first-child { text-align: left; }
