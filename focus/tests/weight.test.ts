@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyse, goalLine, movingAverage, parseSheetRows } from '../src/weight/model.ts';
+import { analyse, goalLine, streakBefore, movingAverage, parseSheetRows } from '../src/weight/model.ts';
 
 const sheet = 'DATE\tWEIGHT\tGOAL\n14/10/2026\t81\t81,00\n15/10/2026\t80,55\t80,94\n16/10/2026\t81,05\t80,89\n17/10/2026\t80,75\t80,83\n18/10/2026\t\t80,78';
 const phases = [{ startDate: '2026-10-14', maintenanceKcal: 2300, intakeKcal: 1800 }];
@@ -32,4 +32,10 @@ test('analysis recovers real maintenance from a steady trend', () => {
   assert.equal(result.maintenanceKcal, 2570);
   assert.ok(Math.abs(result.plannedKgPerWeek! + 3500 / 7700) < 1e-9);
   assert.equal(analyse(parseSheetRows(sheet), phases)!.maintenanceKcal, null);
+});
+
+test('streak counts consecutive days up to yesterday', () => {
+  const entries = parseSheetRows(sheet);
+  assert.equal(streakBefore(entries, '2026-10-18'), 4);
+  assert.equal(streakBefore(entries, '2026-10-19'), 0);
 });

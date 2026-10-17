@@ -77,6 +77,14 @@ export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21
   }
 }
 
+// Consecutive logged days ending the day before `date`.
+export function streakBefore(entries: WeightEntry[], date: string): number {
+  const logged = new Set(entries.map(entry => entry.date))
+  let streak = 0
+  while (logged.has(dateOf(dayNumber(date) - streak - 1))) streak++
+  return streak
+}
+
 // Accepts rows copied from the sheet: "14/10/2026<TAB>80,55" (or ISO dates); rows without a weight are skipped.
 export function parseSheetRows(text: string): WeightEntry[] {
   const entries = new Map<string, number>()
