@@ -136,12 +136,10 @@ function TodayForm({ entries, phases, onSave }: { entries: WeightEntry[]; phases
     <div className="weight-today__glow" aria-hidden="true" />
     <span className="finance-eyebrow">{new Date(`${today}T00:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>
     <h2>Morning weigh-in</h2>
+    <div className="weight-today__body">
     <div className="weight-scale">
       <label className="weight-scale__display">
-        <span className="weight-scale__reading">
-          <span className="weight-scale__ghost" aria-hidden="true">{(88.88).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          <input type="number" inputMode="decimal" required min="20" max="400" step="0.05" aria-label="Today's weight in kg" placeholder={previous ? previous.weightKg.toFixed(2) : '00.00'} value={weight} onChange={e => setWeight(e.target.value)} autoFocus />
-        </span>
+        <input type="number" inputMode="decimal" required min="20" max="400" step="0.05" aria-label="Today's weight in kg" placeholder={previous ? previous.weightKg.toFixed(2) : '00.00'} value={weight} onChange={e => setWeight(e.target.value)} autoFocus />
         <span className="weight-scale__unit">kg</span>
       </label>
       <div className="weight-scale__buttons">
@@ -150,12 +148,15 @@ function TodayForm({ entries, phases, onSave }: { entries: WeightEntry[]; phases
       </div>
       <div className="weight-scale__feet" aria-hidden="true"><i /><i /></div>
     </div>
-    <p className="weight-today__compare" aria-live="polite">
-      {previous && <span>{valid ? <strong className={value - previous.weightKg <= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(value - previous.weightKg)} kg</strong> : <strong>{kg(previous.weightKg)}</strong>} {valid ? 'vs' : 'on'} {shortDate(previous.date)}</span>}
-      {goal && <span>{valid ? <strong className={value - goal.weightKg <= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(value - goal.weightKg)} kg</strong> : <strong>{kg(goal.weightKg)}</strong>} {valid ? 'vs goal' : 'goal today'}</span>}
-    </p>
-    <button type="submit" className="finance-primary weight-today__submit" disabled={!valid || locking}>{locking ? 'Reading…' : 'Log weight ↵'}</button>
-    {streak > 0 && <small className="weight-today__streak"><span aria-hidden="true">{Array.from({ length: Math.min(streak, 7) }, (_, i) => <i key={i} />)}</span>{streak}-day streak, keep it going</small>}
+    <div className="weight-today__side">
+      <dl className="weight-today__compare" aria-live="polite">
+        {previous && <div><dt>{valid ? 'vs' : 'Last'} · {shortDate(previous.date)}</dt><dd>{valid ? <span className={value - previous.weightKg <= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(value - previous.weightKg)} kg</span> : kg(previous.weightKg)}</dd></div>}
+        {goal && <div><dt>{valid ? 'vs goal today' : 'Goal today'}</dt><dd>{valid ? <span className={value - goal.weightKg <= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(value - goal.weightKg)} kg</span> : kg(goal.weightKg)}</dd></div>}
+      </dl>
+      <button type="submit" className="finance-primary weight-today__submit" disabled={!valid || locking}>{locking ? 'Reading…' : 'Log weight ↵'}</button>
+      {streak > 0 && <small className="weight-today__streak"><span aria-hidden="true">{Array.from({ length: Math.min(streak, 7) }, (_, i) => <i key={i} />)}</span>{streak}-day streak, keep it going</small>}
+    </div>
+    </div>
   </form>
 }
 
