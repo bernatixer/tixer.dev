@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { getPostHog } from "../posthog";
 import type { Env, Variables } from "../types";
 import { addMeal, claimEstimate, correctMealKcal, dayProgress, describe, estimateMeal, limitMessage, mealButtons, mealMessage } from "./meals";
 import { saveWeight } from "./weight";
@@ -68,7 +69,7 @@ async function logMeal(env: Env, link: { user_id: string; time_zone: string }, c
       await telegramCall(env, "sendMessage", { chat_id: chatId, text: limitMessage(claim.limit) });
       return;
     }
-    const estimate = await estimateMeal(env, text, photoId ? await downloadPhoto(env, photoId) : undefined, language);
+    const estimate = await estimateMeal(env, text, photoId ? await downloadPhoto(env, photoId) : undefined, language, link.user_id);
     if (!estimate) {
       await telegramCall(env, "sendMessage", { chat_id: chatId, text: "That doesn’t look like food. Send a meal (text or photo), or your weight." });
       return;
@@ -83,6 +84,9 @@ async function logMeal(env: Env, link: { user_id: string; time_zone: string }, c
   } catch (error) {
     console.error("meal estimate failed", error);
     await telegramCall(env, "sendMessage", { chat_id: chatId, text: "Couldn’t estimate that right now. Try again in a minute." }).catch(() => undefined);
+  } finally {
+    // Runs after the webhook's own flush, so the estimate's events need sending here.
+    await getPostHog(env)?.flush().catch(() => undefined);
   }
 }
 

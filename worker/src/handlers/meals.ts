@@ -1,4 +1,5 @@
 import type { Context } from "hono";
+import { captureAIGeneration } from "../ai-observability";
 import type { Env, Variables } from "../types";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
@@ -42,22 +43,55 @@ function languageName(tag: string) {
 }
 
 // `language` is a BCP 47 tag from the browser or Telegram; a photo alone gives the model nothing to go on.
-export async function estimateMeal(env: Env, text: string, image?: string, language = "en"): Promise<MealEstimate | null> {
+export async function estimateMeal(env: Env, text: string, image?: string, language = "en", distinctId?: string): Promise<MealEstimate | null> {
   if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
+  const traceId = crypto.randomUUID();
+  const startedAt = Date.now();
   const content: unknown[] = [];
   if (image) content.push({ type: "image_url", image_url: { url: image } });
   content.push({ type: "text", text: text || "Estimate this meal." });
-  const response = await fetch(OPENAI_ENDPOINT, {
-    method: "POST",
-    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      model: MEAL_MODEL, reasoning_effort: "low", response_format: { type: "json_object" },
-      messages: [{ role: "system", content: `${SYSTEM_PROMPT}\nWrite every item name in ${languageName(language)}.` }, { role: "user", content }],
-    }),
-  });
-  if (!response.ok) throw new Error(`OpenAI returned ${response.status}: ${await response.text().catch(() => "")}`);
-  const body = await response.json() as { choices?: { message?: { content?: string } }[] };
-  return parseEstimate(body.choices?.[0]?.message?.content ?? "");
+  const messages = [{ role: "system", content: `${SYSTEM_PROMPT}\nWrite every item name in ${languageName(language)}.` }, { role: "user", content }];
+  let status: number | undefined;
+
+  try {
+    const response = await fetch(OPENAI_ENDPOINT, {
+      method: "POST",
+      headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: MEAL_MODEL, reasoning_effort: "low", response_format: { type: "json_object" },
+        messages,
+      }),
+    });
+    status = response.status;
+    if (!response.ok) throw new Error(`OpenAI returned ${response.status}: ${await response.text().catch(() => "")}`);
+    const body = await response.json() as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    const output = body.choices?.[0]?.message?.content ?? "";
+    captureAIGeneration(env, {
+      distinctId,
+      provider: "openai",
+      model: MEAL_MODEL,
+      traceId,
+      input: messages,
+      output,
+      inputTokens: body.usage?.prompt_tokens,
+      outputTokens: body.usage?.completion_tokens,
+      latencyMs: Date.now() - startedAt,
+      httpStatus: status,
+    });
+    return parseEstimate(output);
+  } catch (error) {
+    captureAIGeneration(env, {
+      distinctId,
+      provider: "openai",
+      model: MEAL_MODEL,
+      traceId,
+      input: messages,
+      latencyMs: Date.now() - startedAt,
+      httpStatus: status,
+      error,
+    });
+    throw error;
+  }
 }
 
 export const describe = (estimate: MealEstimate) => estimate.title;
@@ -151,7 +185,7 @@ export async function postMeal(c: Ctx) {
   const language = typeof input?.language === "string" && /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(input.language) ? input.language : undefined;
   const claim = await claimEstimate(c.env.DB, c.get("userId"));
   if (!claim.allowed) return c.json({ error: limitMessage(claim.limit) }, 429);
-  const estimate = await estimateMeal(c.env, text, image, language).catch(() => undefined);
+  const estimate = await estimateMeal(c.env, text, image, language, c.get("userId")).catch(() => undefined);
   if (estimate === undefined) return c.json({ error: "Estimator unavailable" }, 502);
   if (!estimate) return c.json({ error: "That doesn't look like food" }, 422);
   return c.json(await addMeal(c.env.DB, c.get("userId"), date, describe(estimate), estimate));

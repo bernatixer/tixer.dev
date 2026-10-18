@@ -2,6 +2,7 @@
 // and forward the parsed JSON. Prompts copied verbatim from back/src/handlers/ai.rs.
 
 import type { Context } from "hono";
+import { captureAIGeneration } from "../ai-observability";
 import { getPostHog } from "../posthog";
 import type { Env, Variables } from "../types";
 
@@ -12,42 +13,76 @@ const ZAI_MODEL = "glm-4.5-flash";
 
 interface ZaiResponse {
   choices?: Array<{ message?: { content?: string } }>;
+  usage?: { prompt_tokens?: number; completion_tokens?: number };
 }
 
 async function callZaiJson(
-  apiKey: string,
+  env: Env,
+  distinctId: string,
   system: string,
   user: string,
   maxTokens: number,
 ): Promise<string> {
-  const resp = await fetch(ZAI_ENDPOINT, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
+  const traceId = crypto.randomUUID();
+  const startedAt = Date.now();
+  const messages = [
+    { role: "system", content: system },
+    { role: "user", content: user },
+  ];
+  let status: number | undefined;
+
+  try {
+    const resp = await fetch(ZAI_ENDPOINT, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${env.ZAI_API_KEY}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: ZAI_MODEL,
+        messages,
+        response_format: { type: "json_object" },
+        temperature: 0.3,
+        max_tokens: maxTokens,
+        thinking: { type: "disabled" },
+      }),
+    });
+    status = resp.status;
+
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => "");
+      throw new Error(`z.ai returned ${resp.status}: ${text}`);
+    }
+
+    const parsed = (await resp.json()) as ZaiResponse;
+    const content = parsed.choices?.[0]?.message?.content;
+    if (!content) throw new Error("z.ai returned no choices");
+    captureAIGeneration(env, {
+      distinctId,
+      provider: "zai",
       model: ZAI_MODEL,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.3,
-      max_tokens: maxTokens,
-      thinking: { type: "disabled" },
-    }),
-  });
-
-  if (!resp.ok) {
-    const text = await resp.text().catch(() => "");
-    throw new Error(`z.ai returned ${resp.status}: ${text}`);
+      traceId,
+      input: messages,
+      output: content,
+      inputTokens: parsed.usage?.prompt_tokens,
+      outputTokens: parsed.usage?.completion_tokens,
+      latencyMs: Date.now() - startedAt,
+      httpStatus: status,
+    });
+    return content;
+  } catch (error) {
+    captureAIGeneration(env, {
+      distinctId,
+      provider: "zai",
+      model: ZAI_MODEL,
+      traceId,
+      input: messages,
+      latencyMs: Date.now() - startedAt,
+      httpStatus: status,
+      error,
+    });
+    throw error;
   }
-
-  const parsed = (await resp.json()) as ZaiResponse;
-  const content = parsed.choices?.[0]?.message?.content;
-  if (!content) throw new Error("z.ai returned no choices");
-  return content;
 }
 
 const STANDUP_SYSTEM_PROMPT =
@@ -90,7 +125,7 @@ export async function dailyStandup(c: Ctx) {
 
   let content: string;
   try {
-    content = await callZaiJson(c.env.ZAI_API_KEY, STANDUP_SYSTEM_PROMPT, userPrompt, 400);
+    content = await callZaiJson(c.env, userId, STANDUP_SYSTEM_PROMPT, userPrompt, 400);
   } catch (e) {
     const posthog = getPostHog(c.env);
     if (posthog) posthog.captureException(e, userId, { endpoint: "ai/daily-standup" });
