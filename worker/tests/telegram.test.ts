@@ -9,16 +9,16 @@ import { database } from './sqlite.ts';
 const { publicKey, privateKey } = await generateKeyPair('RS256');
 const db = database();
 after(() => db.sqlite.close());
-const env = { DB: db, CLERK_PEM_PUBLIC_KEY: await exportSPKI(publicKey), ZAI_API_KEY: 'zai-key', TELEGRAM_BOT_TOKEN: 'bot-token', TELEGRAM_WEBHOOK_SECRET: 'hook-secret' };
+const env = { DB: db, CLERK_PEM_PUBLIC_KEY: await exportSPKI(publicKey), ZAI_API_KEY: '', OPENAI_API_KEY: 'openai-key', TELEGRAM_BOT_TOKEN: 'bot-token', TELEGRAM_WEBHOOK_SECRET: 'hook-secret' };
 const token = (sub: string) => new SignJWT({ sub }).setProtectedHeader({ alg: 'RS256' }).setExpirationTime('5m').sign(privateKey);
 
-// Outbound calls (Telegram, z.ai) are recorded and answered from `zai` / canned Telegram results.
+// Outbound calls (Telegram, OpenAI) are recorded and answered from `estimate` / canned Telegram results.
 const calls: { url: string; body: any }[] = [];
-let zai = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180}, {"name": "toast", "kcal": 90}]}';
+let estimate = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180}, {"name": "toast", "kcal": 90}]}';
 globalThis.fetch = (async (input: string, init?: RequestInit) => {
   const url = String(input), body = init?.body ? JSON.parse(String(init.body)) : null;
   calls.push({ url, body });
-  if (url.includes('api.z.ai')) return Response.json({ choices: [{ message: { content: `Thinking... ${zai}` } }] });
+  if (url.includes('api.openai.com')) return Response.json({ choices: [{ message: { content: estimate } }] });
   if (url.endsWith('/getFile')) return Response.json({ ok: true, result: { file_path: 'photos/p.jpg' } });
   if (url.includes('/file/bot')) return new Response(new Uint8Array([1, 2, 3]));
   return Response.json({ ok: true, result: { message_id: 55 } });
@@ -89,15 +89,15 @@ test('meals log from text and photos, correct by reply, and days close with done
   calls.length = 0;
   await telegram(7, '', 'hook-secret', { photo: [{ file_id: 'small' }, { file_id: 'big' }] });
   assert.equal(calls[0].body.file_id, 'big');
-  const sentToZai = JSON.stringify(calls.find(call => call.url.includes('api.z.ai'))!.body);
-  assert.ok(sentToZai.includes('data:image/jpeg;base64,AQID'), 'the photo travels as data');
-  assert.ok(!sentToZai.includes('bot-token'), 'the bot token never reaches the estimator');
+  const sentToModel = JSON.stringify(calls.find(call => call.url.includes('api.openai.com'))!.body);
+  assert.ok(sentToModel.includes('data:image/jpeg;base64,AQID'), 'the photo travels as data');
+  assert.ok(!sentToModel.includes('bot-token'), 'the bot token never reaches the estimator');
   assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM meals WHERE user_id = 'm'").get()!.n, 2);
 
-  zai = '{"is_food": false, "items": []}';
+  estimate = '{"is_food": false, "items": []}';
   await telegram(7, 'what is the weather');
   assert.match(calls.at(-1)!.body.text, /doesn’t look like food/);
-  zai = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180}, {"name": "toast", "kcal": 90}]}';
+  estimate = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180}, {"name": "toast", "kcal": 90}]}';
 
   assert.equal((await telegram(7, 'Done')).body!.text, '✓ Day closed');
   assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM meal_days WHERE user_id = 'm'").get()!.n, 1);

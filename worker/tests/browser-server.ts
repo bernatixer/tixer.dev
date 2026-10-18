@@ -9,8 +9,8 @@ const { publicKey, privateKey } = await generateKeyPair('RS256');
 const issuer = 'https://finance-test.clerk.accounts.dev';
 const db = database();
 const env = { DB: db, CLERK_PEM_PUBLIC_KEY: await exportSPKI(publicKey),
-  CLERK_ISSUER_URL: issuer, CLERK_AUTHORIZED_PARTIES: 'http://localhost:3000', ZAI_API_KEY: '',
-  TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET };
+  CLERK_ISSUER_URL: issuer, CLERK_AUTHORIZED_PARTIES: 'http://localhost:3000',
+  TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET, ZAI_API_KEY: '', OPENAI_API_KEY: process.env.OPENAI_API_KEY };
 const port = Number(process.env.FINANCE_TEST_PORT ?? 5556);
 let failNext = false;
 

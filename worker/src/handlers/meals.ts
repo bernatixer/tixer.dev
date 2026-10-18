@@ -3,9 +3,8 @@ import type { Env, Variables } from "../types";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
-const ZAI_ENDPOINT = "https://api.z.ai/api/paas/v4/chat/completions";
-// Vision-capable; thinking can't be disabled on this series, so calls take a few seconds.
-const ZAI_VISION_MODEL = "glm-5.3-flash";
+const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
+const MEAL_MODEL = "gpt-5.4-mini";
 
 const SYSTEM_PROMPT =
   "You estimate calories in meals for a food log.\n" +
@@ -16,7 +15,7 @@ const SYSTEM_PROMPT =
 
 export interface MealEstimate { items: { name: string; kcal: number }[]; totalKcal: number }
 
-// Thinking models may wrap the JSON in prose, so take the outermost object.
+// Tolerates prose around the JSON, so take the outermost object.
 export function parseEstimate(content: string): MealEstimate | null {
   const json = content.slice(content.indexOf("{"), content.lastIndexOf("}") + 1);
   let parsed: { is_food?: unknown; items?: unknown };
@@ -30,16 +29,19 @@ export function parseEstimate(content: string): MealEstimate | null {
 }
 
 export async function estimateMeal(env: Env, text: string, image?: string): Promise<MealEstimate | null> {
-  if (!env.ZAI_API_KEY) throw new Error("ZAI_API_KEY not configured");
+  if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
   const content: unknown[] = [];
   if (image) content.push({ type: "image_url", image_url: { url: image } });
   content.push({ type: "text", text: text || "Estimate this meal." });
-  const response = await fetch(ZAI_ENDPOINT, {
+  const response = await fetch(OPENAI_ENDPOINT, {
     method: "POST",
-    headers: { authorization: `Bearer ${env.ZAI_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({ model: ZAI_VISION_MODEL, messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content }], temperature: 0.2 }),
+    headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: MEAL_MODEL, reasoning_effort: "low", response_format: { type: "json_object" },
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content }],
+    }),
   });
-  if (!response.ok) throw new Error(`z.ai returned ${response.status}: ${await response.text().catch(() => "")}`);
+  if (!response.ok) throw new Error(`OpenAI returned ${response.status}: ${await response.text().catch(() => "")}`);
   const body = await response.json() as { choices?: { message?: { content?: string } }[] };
   return parseEstimate(body.choices?.[0]?.message?.content ?? "");
 }
