@@ -62,6 +62,21 @@ export async function estimateMeal(env: Env, text: string, image?: string, langu
 
 export const describe = (estimate: MealEstimate) => estimate.title;
 
+export const DEFAULT_ESTIMATES_PER_DAY = 5;
+
+// Claims one estimate before the model is called, so a user over the cap never costs anything.
+export async function claimEstimate(db: D1Database, userId: string, now = new Date()): Promise<{ allowed: boolean; limit: number }> {
+  const date = now.toISOString().slice(0, 10);
+  const row = await db.prepare("SELECT per_day FROM meal_estimate_limits WHERE user_id = ?").bind(userId).first<{ per_day: number }>();
+  const limit = row?.per_day ?? DEFAULT_ESTIMATES_PER_DAY;
+  const used = await db.prepare(
+    "INSERT INTO meal_estimate_usage (user_id, date, count) VALUES (?, ?, 1) ON CONFLICT (user_id, date) DO UPDATE SET count = count + 1 RETURNING count",
+  ).bind(userId, date).first<{ count: number }>();
+  return { allowed: (used?.count ?? 1) <= limit, limit };
+}
+
+export const limitMessage = (limit: number) => `You’ve used today’s ${limit} meal estimates. More tomorrow.`;
+
 export async function addMeal(db: D1Database, userId: string, date: string, description: string, estimate: MealEstimate, telegramMessageId: number | null = null) {
   const { protein, carbs, fat, fibre, sugar } = estimate.nutrients;
   const meal = { id: crypto.randomUUID(), date, description, kcal: estimate.totalKcal, proteinG: protein, carbsG: carbs, fatG: fat, fibreG: fibre, sugarG: sugar, createdAt: new Date().toISOString() };
@@ -134,6 +149,8 @@ export async function postMeal(c: Ctx) {
   const image = typeof input?.image === "string" && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(input.image) && input.image.length <= 3_000_000 ? input.image : undefined;
   if ((!text && !image) || (input?.image !== undefined && !image) || !isDate(date)) return c.json({ error: "Invalid meal" }, 400);
   const language = typeof input?.language === "string" && /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(input.language) ? input.language : undefined;
+  const claim = await claimEstimate(c.env.DB, c.get("userId"));
+  if (!claim.allowed) return c.json({ error: limitMessage(claim.limit) }, 429);
   const estimate = await estimateMeal(c.env, text, image, language).catch(() => undefined);
   if (estimate === undefined) return c.json({ error: "Estimator unavailable" }, 502);
   if (!estimate) return c.json({ error: "That doesn't look like food" }, 422);

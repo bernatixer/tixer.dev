@@ -317,7 +317,7 @@ function Food({ meals, phase, bodyKg, onAdd, onUpdate, onDelete }: { meals: Meal
   const add = (event: FormEvent) => {
     event.preventDefault(); setPending({ text, photo }); setError(''); setText(''); setPhoto(undefined)
     // Restore what was typed if the estimate fails, so nothing has to be re-entered.
-    void onAdd(text, photo).catch(failure => { setText(text); setPhoto(photo); throw failure }).catch(failure => setError(failure instanceof ApiError && failure.status === 422 ? 'That doesn’t look like food.' : 'Couldn’t estimate that right now. Try again in a minute.')).finally(() => setPending(undefined))
+    void onAdd(text, photo).catch(failure => { setText(text); setPhoto(photo); throw failure }).catch(failure => setError(failure instanceof ApiError && failure.status === 422 ? 'That doesn’t look like food.' : failure instanceof ApiError && failure.status === 429 ? 'You’ve used today’s meal estimates. More tomorrow.' : 'Couldn’t estimate that right now. Try again in a minute.')).finally(() => setPending(undefined))
   }
   return <article className="finance-card weight-food">
     <span className="finance-eyebrow">FOOD · TODAY</span>

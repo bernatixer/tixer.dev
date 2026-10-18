@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { Env, Variables } from "../types";
-import { addMeal, correctMealKcal, dayProgress, describe, estimateMeal, mealButtons, mealMessage } from "./meals";
+import { addMeal, claimEstimate, correctMealKcal, dayProgress, describe, estimateMeal, limitMessage, mealButtons, mealMessage } from "./meals";
 import { saveWeight } from "./weight";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
@@ -63,6 +63,11 @@ async function downloadPhoto(env: Env, fileId: string): Promise<string> {
 
 async function logMeal(env: Env, link: { user_id: string; time_zone: string }, chatId: number, text: string, photoId?: string, language?: string) {
   try {
+    const claim = await claimEstimate(env.DB, link.user_id);
+    if (!claim.allowed) {
+      await telegramCall(env, "sendMessage", { chat_id: chatId, text: limitMessage(claim.limit) });
+      return;
+    }
     const estimate = await estimateMeal(env, text, photoId ? await downloadPhoto(env, photoId) : undefined, language);
     if (!estimate) {
       await telegramCall(env, "sendMessage", { chat_id: chatId, text: "That doesn’t look like food. Send a meal (text or photo), or your weight." });

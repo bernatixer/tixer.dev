@@ -112,3 +112,17 @@ CREATE TABLE IF NOT EXISTS meals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_meals_user_date ON meals(user_id, date);
+
+-- Per-user override of the daily meal-estimate cap; users without a row get the default in meals.ts.
+CREATE TABLE IF NOT EXISTS meal_estimate_limits (
+    user_id TEXT PRIMARY KEY,
+    per_day INTEGER NOT NULL CHECK (per_day >= 0)
+);
+
+-- Every estimate counts, food or not, since each one is a paid model call.
+CREATE TABLE IF NOT EXISTS meal_estimate_usage (
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    count INTEGER NOT NULL,
+    PRIMARY KEY (user_id, date)
+);

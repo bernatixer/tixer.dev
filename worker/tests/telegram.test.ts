@@ -140,3 +140,20 @@ test('reminders go once, at the local hour, and only when today is empty', async
   await sendReminders(env as never, eightInMadrid, send);
   assert.deepEqual(sent, ['1']);
 });
+
+test('meal estimates are capped per user per day, with database overrides', async () => {
+  db.sqlite.exec("DELETE FROM telegram_links; DELETE FROM meals; DELETE FROM meal_estimate_usage; DELETE FROM meal_estimate_limits;");
+  db.sqlite.exec("INSERT INTO telegram_links (user_id, chat_id, time_zone, remind_hour) VALUES ('capped', '8', 'Europe/Madrid', 8), ('vip', '9', 'Europe/Madrid', 8)");
+  db.sqlite.exec("INSERT INTO meal_estimate_limits (user_id, per_day) VALUES ('vip', 7)");
+  const modelCalls = () => calls.filter(call => call.url.includes('api.openai.com')).length;
+  calls.length = 0;
+  for (let i = 0; i < 6; i++) await telegram(8, `meal ${i}`);
+  assert.equal(modelCalls(), 5, 'the default allows 5 a day');
+  assert.equal(calls.at(-1)!.body.text, 'You’ve used today’s 5 meal estimates. More tomorrow.');
+  calls.length = 0;
+  for (let i = 0; i < 8; i++) await telegram(9, `meal ${i}`);
+  assert.equal(modelCalls(), 7, 'a row in meal_estimate_limits overrides the default');
+
+  const response = await api('capped', 'POST', '/../meals', { text: 'toast', date: '2026-10-18' });
+  assert.equal(response.status, 429, 'the web card shares the same allowance');
+});
