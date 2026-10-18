@@ -53,3 +53,11 @@ test('meal kcal corrections and day closing are per user', async () => {
   assert.equal((await call('b', 'DELETE', '/../meals/meal-a')).status, 204);
   assert.equal(((await call('a', 'GET', '')).json as { meals: unknown[] }).meals.length, 1, 'another user cannot delete it');
 });
+
+test('meal photos must be inline images', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  for (const image of ['https://example.com/a.jpg', 'data:text/html;base64,PGgxPg==', 'data:image/png;base64,' + 'A'.repeat(3_000_000)]) {
+    assert.equal((await call('a', 'POST', '/../meals', { text: '', image, date: today })).status, 400, image.slice(0, 40));
+  }
+  assert.equal((await call('a', 'POST', '/../meals', { text: '', date: today })).status, 400, 'needs text or a photo');
+});

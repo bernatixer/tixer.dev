@@ -11,7 +11,7 @@ const SYSTEM_PROMPT =
   "Given a description and/or a photo, list each food with a realistic portion-based kcal estimate.\n" +
   "Use amounts the user states; otherwise assume a typical adult portion and count cooking oil, sauces and drinks you can see or that are mentioned.\n" +
   "If the input is not food or drink, return is_food false.\n" +
-  "Return ONLY a JSON object: {\"is_food\": boolean, \"items\": [{\"name\": string, \"kcal\": integer}]}. Names are short, in the user's language.";
+  "Return ONLY a JSON object: {\"is_food\": boolean, \"items\": [{\"name\": string, \"kcal\": integer}]}. Names are short and in the language given.";
 
 export interface MealEstimate { items: { name: string; kcal: number }[]; totalKcal: number }
 
@@ -28,7 +28,12 @@ export function parseEstimate(content: string): MealEstimate | null {
   return items.length && totalKcal <= 10000 ? { items, totalKcal } : null;
 }
 
-export async function estimateMeal(env: Env, text: string, image?: string): Promise<MealEstimate | null> {
+function languageName(tag: string) {
+  try { return new Intl.DisplayNames(["en"], { type: "language" }).of(tag) ?? "English"; } catch { return "English"; }
+}
+
+// `language` is a BCP 47 tag from the browser or Telegram; a photo alone gives the model nothing to go on.
+export async function estimateMeal(env: Env, text: string, image?: string, language = "en"): Promise<MealEstimate | null> {
   if (!env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not configured");
   const content: unknown[] = [];
   if (image) content.push({ type: "image_url", image_url: { url: image } });
@@ -38,7 +43,7 @@ export async function estimateMeal(env: Env, text: string, image?: string): Prom
     headers: { authorization: `Bearer ${env.OPENAI_API_KEY}`, "content-type": "application/json" },
     body: JSON.stringify({
       model: MEAL_MODEL, reasoning_effort: "low", response_format: { type: "json_object" },
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content }],
+      messages: [{ role: "system", content: `${SYSTEM_PROMPT}\nWrite every item name in ${languageName(language)}.` }, { role: "user", content }],
     }),
   });
   if (!response.ok) throw new Error(`OpenAI returned ${response.status}: ${await response.text().catch(() => "")}`);
@@ -65,8 +70,11 @@ export async function postMeal(c: Ctx) {
   const input = await c.req.json<Record<string, unknown>>().catch(() => null);
   const text = typeof input?.text === "string" ? input.text.trim().slice(0, 500) : "";
   const date = typeof input?.date === "string" ? input.date : "";
-  if (!text || !isDate(date)) return c.json({ error: "Invalid meal" }, 400);
-  const estimate = await estimateMeal(c.env, text).catch(() => undefined);
+  // Browsers downscale before upload; the cap only stops oversized payloads reaching the model.
+  const image = typeof input?.image === "string" && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(input.image) && input.image.length <= 3_000_000 ? input.image : undefined;
+  if ((!text && !image) || (input?.image !== undefined && !image) || !isDate(date)) return c.json({ error: "Invalid meal" }, 400);
+  const language = typeof input?.language === "string" && /^[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(input.language) ? input.language : undefined;
+  const estimate = await estimateMeal(c.env, text, image, language).catch(() => undefined);
   if (estimate === undefined) return c.json({ error: "Estimator unavailable" }, 502);
   if (!estimate) return c.json({ error: "That doesn't look like food" }, 422);
   return c.json(await addMeal(c.env.DB, c.get("userId"), date, describe(estimate), estimate.totalKcal));

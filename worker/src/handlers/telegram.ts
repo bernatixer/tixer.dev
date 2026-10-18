@@ -57,9 +57,9 @@ async function downloadPhoto(env: Env, fileId: string): Promise<string> {
   return `data:image/jpeg;base64,${btoa(binary)}`;
 }
 
-async function logMeal(env: Env, link: { user_id: string; time_zone: string }, chatId: number, text: string, photoId?: string) {
+async function logMeal(env: Env, link: { user_id: string; time_zone: string }, chatId: number, text: string, photoId?: string, language?: string) {
   try {
-    const estimate = await estimateMeal(env, text, photoId ? await downloadPhoto(env, photoId) : undefined);
+    const estimate = await estimateMeal(env, text, photoId ? await downloadPhoto(env, photoId) : undefined, language);
     if (!estimate) {
       await telegramCall(env, "sendMessage", { chat_id: chatId, text: "That doesn’t look like food. Send a meal (text or photo), your weight, or “done” to close the day." });
       return;
@@ -81,6 +81,7 @@ interface TelegramMessage {
   caption?: string;
   photo?: { file_id: string }[];
   reply_to_message?: { message_id?: number };
+  from?: { language_code?: string };
 }
 
 export async function telegramWebhook(c: Ctx) {
@@ -122,7 +123,7 @@ export async function telegramWebhook(c: Ctx) {
     return reply(c, chatId, `✓ ${weightKg.toFixed(2)} kg logged`);
   }
   if (!photo && !text) return c.body(null, 200);
-  c.executionCtx.waitUntil(logMeal(c.env, link, chatId, text.slice(0, 500), photo));
+  c.executionCtx.waitUntil(logMeal(c.env, link, chatId, text.slice(0, 500), photo, message?.from?.language_code));
   return c.json({ method: "sendChatAction", chat_id: chatId, action: "typing" });
 }
 

@@ -42,7 +42,7 @@ function Weight() {
     <Stats entries={entries} phases={phases} eaten={eaten} />
     {entries.length > 0 && <Chart entries={entries} phases={phases} />}
     <Food meals={meals.filter(meal => meal.date === localToday())} closed={closedDays.includes(localToday())} phase={phaseOn(phases, localToday())}
-      onAdd={text => post<object, Meal>('/meals', { text, date: localToday() }).then(load)}
+      onAdd={(text, image) => post<object, Meal>('/meals', { text, image, date: localToday(), language: navigator.language }).then(load)}
       onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))}
       onClose={closed => run(put(`/meal-days/${localToday()}`, { closed }))} />
     <div className="weight-columns">
@@ -249,14 +249,26 @@ function Phases({ phases, defaultStart, onSave, onDelete }: { phases: Phase[]; d
   </article>
 }
 
-function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { meals: Meal[]; closed: boolean; phase?: Phase; onAdd: (text: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onClose: (closed: boolean) => Promise<unknown> }) {
+// Phone photos are several MB; 1024px JPEG is plenty for estimating a plate.
+async function shrinkPhoto(file: File, maxSide = 1024): Promise<string> {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height))
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale)
+  canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  bitmap.close()
+  return canvas.toDataURL('image/jpeg', 0.85)
+}
+
+function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { meals: Meal[]; closed: boolean; phase?: Phase; onAdd: (text: string, image?: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onClose: (closed: boolean) => Promise<unknown> }) {
   const [text, setText] = useState('')
+  const [photo, setPhoto] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const total = meals.reduce((sum, meal) => sum + meal.kcal, 0)
   const add = (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError('')
-    void onAdd(text).then(() => setText(''), failure => setError(failure instanceof ApiError && failure.status === 422 ? 'That doesn’t look like food.' : 'Couldn’t estimate that right now. Try again in a minute.')).finally(() => setBusy(false))
+    void onAdd(text, photo).then(() => { setText(''); setPhoto(undefined) }, failure => setError(failure instanceof ApiError && failure.status === 422 ? 'That doesn’t look like food.' : 'Couldn’t estimate that right now. Try again in a minute.')).finally(() => setBusy(false))
   }
   return <article className="finance-card weight-food">
     <div className="finance-card-heading"><span className="finance-eyebrow">FOOD · TODAY</span>
@@ -271,11 +283,19 @@ function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { me
       <button type="button" className="finance-remove" aria-label={`Delete ${meal.description}`} onClick={() => void onDelete(meal.id)}>×</button>
     </li>)}</ul>}
     <form className="weight-food__add" onSubmit={add}>
-      <input value={text} onChange={e => setText(e.target.value)} placeholder="What did you eat? e.g. 2 eggs, toast and a coffee with milk" maxLength={500} required disabled={busy} />
-      <button type="submit" className="finance-primary" disabled={busy || !text.trim()}>{busy ? 'Estimating…' : 'Add'}</button>
+      <label className="weight-food__camera" title="Add a photo">
+        {photo ? <img src={photo} alt="Meal photo" /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 3 7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3Zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" /></svg>}
+        <input type="file" accept="image/*" capture="environment" aria-label="Meal photo" disabled={busy} onChange={e => {
+          const file = e.target.files?.[0]; e.target.value = ''
+          if (file) void shrinkPhoto(file).then(setPhoto, () => setError('Couldn’t read that photo.'))
+        }} />
+      </label>
+      {photo && <button type="button" className="finance-remove" aria-label="Remove photo" onClick={() => setPhoto(undefined)}>×</button>}
+      <input value={text} onChange={e => setText(e.target.value)} placeholder={photo ? 'Anything to add? e.g. half portion' : 'What did you eat? e.g. 2 eggs, toast and a coffee with milk'} maxLength={500} required={!photo} disabled={busy} />
+      <button type="submit" className="finance-primary" disabled={busy || (!text.trim() && !photo)}>{busy ? 'Estimating…' : 'Add'}</button>
     </form>
     {error && <p role="alert" className="finance-danger">{error}</p>}
-    <p className="finance-muted weight-food__hint">Estimates are rough; fix any number by editing it. Close the day once everything’s in, so it counts towards your real maintenance. In Telegram, send a meal or a photo, and “done” to close.</p>
+    <p className="finance-muted weight-food__hint">Estimates are rough; fix any number by editing it. Close the day once everything’s in, so it counts towards your real maintenance. In Telegram, send a meal or a photo, and “done” to close. Photos are only used for the estimate, never stored.</p>
   </article>
 }
 
