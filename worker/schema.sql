@@ -105,6 +105,7 @@ CREATE TABLE IF NOT EXISTS meals (
     protein_g REAL,
     carbs_g REAL,
     fat_g REAL,
+    saturated_g REAL,
     fibre_g REAL,
     sugar_g REAL,
     telegram_message_id INTEGER,

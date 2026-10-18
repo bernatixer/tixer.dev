@@ -291,7 +291,7 @@ function useCountUp(target: number, ms = 600) {
   return value
 }
 
-const NUTRIENT_LABELS = [['carbsG', 'Carbs'], ['fatG', 'Fat'], ['fibreG', 'Fibre'], ['sugarG', 'Sugar']] as const
+const NUTRIENT_LABELS = [['carbsG', 'Carbs'], ['fatG', 'Fat'], ['saturatedG', 'Sat. fat'], ['fibreG', 'Fibre'], ['sugarG', 'Sugar']] as const
 
 function Food({ meals, phase, bodyKg, onAdd, onUpdate, onDelete }: { meals: Meal[]; phase?: Phase; bodyKg?: number; onAdd: (text: string, image?: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown> }) {
   const [text, setText] = useState('')

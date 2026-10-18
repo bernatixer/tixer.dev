@@ -1,7 +1,7 @@
 export interface WeightEntry { date: string; weightKg: number }
 export interface Phase { startDate: string; maintenanceKcal: number; intakeKcal: number; proteinPerKg?: number | null }
 // Nutrient grams are null on meals logged before they were estimated.
-export interface Meal { id: string; date: string; description: string; kcal: number; proteinG?: number | null; carbsG?: number | null; fatG?: number | null; fibreG?: number | null; sugarG?: number | null; createdAt: string }
+export interface Meal { id: string; date: string; description: string; kcal: number; proteinG?: number | null; carbsG?: number | null; fatG?: number | null; saturatedG?: number | null; fibreG?: number | null; sugarG?: number | null; createdAt: string }
 
 // Common guidance while cutting is 1.6–2.2 g/kg; the middle keeps muscle without crowding out other food.
 export const DEFAULT_PROTEIN_PER_KG = 1.8

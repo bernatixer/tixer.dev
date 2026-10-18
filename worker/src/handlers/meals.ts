@@ -8,13 +8,13 @@ const MEAL_MODEL = "gpt-5.5";
 
 const SYSTEM_PROMPT =
   "You estimate calories and nutrients in meals for a food log.\n" +
-  "Given a description and/or a photo, list each food with a realistic portion-based estimate of kcal and grams of protein, carbohydrate, fat, fibre and sugar.\n" +
+  "Given a description and/or a photo, list each food with a realistic portion-based estimate of kcal and grams of protein, carbohydrate, fat, saturated fat, fibre and sugar.\n" +
   "Use amounts the user states; otherwise assume a typical adult portion and count cooking oil, sauces and drinks you can see or that are mentioned.\n" +
   "If the input is not food or drink, return is_food false.\n" +
   "Also give the whole meal a short title (2-5 words) and one food emoji that fits it.\n" +
-  "Return ONLY a JSON object: {\"is_food\": boolean, \"title\": string, \"emoji\": string, \"items\": [{\"name\": string, \"kcal\": integer, \"protein_g\": number, \"carbs_g\": number, \"fat_g\": number, \"fibre_g\": number, \"sugar_g\": number}]}. Names are short and in the language given.";
+  "Return ONLY a JSON object: {\"is_food\": boolean, \"title\": string, \"emoji\": string, \"items\": [{\"name\": string, \"kcal\": integer, \"protein_g\": number, \"carbs_g\": number, \"fat_g\": number, \"saturated_g\": number, \"fibre_g\": number, \"sugar_g\": number}]}. Names are short and in the language given.";
 
-export const NUTRIENTS = ["protein", "carbs", "fat", "fibre", "sugar"] as const;
+export const NUTRIENTS = ["protein", "carbs", "fat", "saturated", "fibre", "sugar"] as const;
 export type Nutrients = Record<(typeof NUTRIENTS)[number], number>;
 export interface MealEstimate { title: string; emoji: string; items: { name: string; kcal: number }[]; totalKcal: number; nutrients: Nutrients }
 
@@ -78,10 +78,10 @@ export async function claimEstimate(db: D1Database, userId: string, now = new Da
 export const limitMessage = (limit: number) => `You’ve used today’s ${limit} meal estimates. More tomorrow.`;
 
 export async function addMeal(db: D1Database, userId: string, date: string, description: string, estimate: MealEstimate, telegramMessageId: number | null = null) {
-  const { protein, carbs, fat, fibre, sugar } = estimate.nutrients;
-  const meal = { id: crypto.randomUUID(), date, description, kcal: estimate.totalKcal, proteinG: protein, carbsG: carbs, fatG: fat, fibreG: fibre, sugarG: sugar, createdAt: new Date().toISOString() };
-  await db.prepare("INSERT INTO meals (id, user_id, date, description, kcal, protein_g, carbs_g, fat_g, fibre_g, sugar_g, telegram_message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(meal.id, userId, date, description, meal.kcal, protein, carbs, fat, fibre, sugar, telegramMessageId, meal.createdAt).run();
+  const { protein, carbs, fat, saturated, fibre, sugar } = estimate.nutrients;
+  const meal = { id: crypto.randomUUID(), date, description, kcal: estimate.totalKcal, proteinG: protein, carbsG: carbs, fatG: fat, saturatedG: saturated, fibreG: fibre, sugarG: sugar, createdAt: new Date().toISOString() };
+  await db.prepare("INSERT INTO meals (id, user_id, date, description, kcal, protein_g, carbs_g, fat_g, saturated_g, fibre_g, sugar_g, telegram_message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(meal.id, userId, date, description, meal.kcal, protein, carbs, fat, saturated, fibre, sugar, telegramMessageId, meal.createdAt).run();
   return meal;
 }
 
@@ -98,13 +98,13 @@ export interface DayProgress { kcal: number; kcalTarget: number | null; protein:
 
 // Telegram HTML: a plain list rather than <pre>, which would add a copy button.
 export function mealMessage(estimate: MealEstimate, today: DayProgress) {
-  const { protein, carbs, fat, fibre, sugar } = estimate.nutrients;
+  const { protein, carbs, fat, saturated, fibre, sugar } = estimate.nutrients;
   const lines = [
     `${estimate.emoji} <b>${escapeHtml(estimate.title)}</b>`,
     `<b>≈ ${estimate.totalKcal} kcal</b>`,
     "",
     `🥩 <b>${Math.round(protein)}g</b> protein  ·  🍚 <b>${Math.round(carbs)}g</b> carbs  ·  🧈 <b>${Math.round(fat)}g</b> fat`,
-    `<i>fibre ${Math.round(fibre)}g · sugar ${Math.round(sugar)}g</i>`,
+    `<i>sat. fat ${Math.round(saturated)}g · fibre ${Math.round(fibre)}g · sugar ${Math.round(sugar)}g</i>`,
     "",
     ...estimate.items.map(item => `• ${escapeHtml(item.name)} — ${item.kcal}`),
   ];

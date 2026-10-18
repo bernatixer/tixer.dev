@@ -68,9 +68,9 @@ test('a bot code links the chat, and replies log weight for that user', async ()
 });
 
 test('meal estimates parse from wrapped JSON and reject non-food', () => {
-  assert.deepEqual(parseEstimate('ok {"is_food": true, "items": [{"name": "salad", "kcal": 580.4, "protein_g": 30, "carbs_g": 20.25, "fat_g": 42, "fibre_g": 5, "sugar_g": 4}, {"name": "coke", "kcal": 140, "carbs_g": 35, "sugar_g": "lots"}]} done'),
+  assert.deepEqual(parseEstimate('ok {"is_food": true, "items": [{"name": "salad", "kcal": 580.4, "protein_g": 30, "carbs_g": 20.25, "fat_g": 42, "saturated_g": 12, "fibre_g": 5, "sugar_g": 4}, {"name": "coke", "kcal": 140, "carbs_g": 35, "sugar_g": "lots"}]} done'),
     { title: 'salad, coke', emoji: '🍽', items: [{ name: 'salad', kcal: 580 }, { name: 'coke', kcal: 140 }], totalKcal: 720,
-      nutrients: { protein: 30, carbs: 55.3, fat: 42, fibre: 5, sugar: 4 } }, 'missing or malformed grams count as zero');
+      nutrients: { protein: 30, carbs: 55.3, fat: 42, saturated: 12, fibre: 5, sugar: 4 } }, 'missing or malformed grams count as zero');
   assert.equal(parseEstimate('{"is_food": false, "items": []}'), null);
   assert.equal(parseEstimate('no json here'), null);
 });
@@ -88,7 +88,7 @@ test('meals log from text and photos as a formatted estimate with buttons', asyn
   const sent = calls.at(-1)!.body;
   assert.equal(sent.parse_mode, 'HTML');
   assert.equal(sent.text, ['🍳 <b>Eggs &amp; toast</b>', '<b>≈ 270 kcal</b>', '',
-    '🥩 <b>15g</b> protein  ·  🍚 <b>16g</b> carbs  ·  🧈 <b>12g</b> fat', '<i>fibre 2g · sugar 0g</i>', '',
+    '🥩 <b>15g</b> protein  ·  🍚 <b>16g</b> carbs  ·  🧈 <b>12g</b> fat', '<i>sat. fat 0g · fibre 2g · sugar 0g</i>', '',
     '• eggs — 180', '• toast — 90', '', '<b>Today</b>', 'Kcal ▰▰▱▱▱▱▱▱▱▱ 270 / 1800', 'Protein ▰▱▱▱▱▱▱▱▱▱ 15 / 144g'].join('\n'));
   const [meal] = meals();
   assert.deepEqual(sent.reply_markup.inline_keyboard[0].map((button: any) => button.callback_data), [`fix:${meal.id}`, `undo:${meal.id}`]);
