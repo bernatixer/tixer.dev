@@ -4,7 +4,7 @@ import type { Env, Variables } from "../types";
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
 const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
-const MEAL_MODEL = "gpt-5.4-mini";
+const MEAL_MODEL = "gpt-5.5";
 
 const SYSTEM_PROMPT =
   "You estimate calories in meals for a food log.\n" +

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent, type ReactNode } from 'react'
 import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { useAuthSync } from '@/hooks/useAuthSync'
@@ -41,17 +41,19 @@ function Weight() {
     {!entries.some(entry => entry.date === localToday()) && <TodayForm entries={entries} phases={phases} onSave={weightKg => run(put(`/weight/entries/${localToday()}`, { weightKg }))} />}
     <Stats entries={entries} phases={phases} eaten={eaten} />
     {entries.length > 0 && <Chart entries={entries} phases={phases} />}
-    <Food meals={meals.filter(meal => meal.date === localToday())} closed={closedDays.includes(localToday())} phase={phaseOn(phases, localToday())}
-      onAdd={(text, image) => post<object, Meal>('/meals', { text, image, date: localToday(), language: navigator.language }).then(load)}
-      onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))}
-      onClose={closed => run(put(`/meal-days/${localToday()}`, { closed }))} />
     <div className="weight-columns">
-      <Log entries={entries} phases={phases}
-        onImport={rows => run(Promise.all(rows.map(entry => put(`/weight/entries/${entry.date}`, { weightKg: entry.weightKg }))))}
-        onDelete={date => run(del(`/weight/entries/${date}`))} />
+      <Food meals={meals.filter(meal => meal.date === localToday())} closed={closedDays.includes(localToday())} phase={phaseOn(phases, localToday())}
+        onAdd={(text, image) => post<object, Meal>('/meals', { text, image, date: localToday(), language: navigator.language }).then(load)}
+        onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))}
+        onClose={closed => run(put(`/meal-days/${localToday()}`, { closed }))} />
       <Phases phases={phases} defaultStart={entries[0]?.date ?? localToday()} onSave={phase => run(put(`/weight/phases/${phase.startDate}`, { maintenanceKcal: phase.maintenanceKcal, intakeKcal: phase.intakeKcal }))}
         onDelete={date => run(del(`/weight/phases/${date}`))} />
     </div>
+    <Drawer title="HISTORY" meta={entries.length ? `${entries.length} weigh-in${entries.length === 1 ? '' : 's'}` : 'Import from a spreadsheet'} open={!entries.length}>
+      <Log entries={entries} phases={phases}
+        onImport={rows => run(Promise.all(rows.map(entry => put(`/weight/entries/${entry.date}`, { weightKg: entry.weightKg }))))}
+        onDelete={date => run(del(`/weight/entries/${date}`))} />
+    </Drawer>
     <TelegramCard />
   </>
 }
@@ -175,8 +177,7 @@ function Log({ entries, phases, onImport, onDelete }: { entries: WeightEntry[]; 
   const trend = movingAverage(entries)
   const goal = new Map(goalLine(entries, phases, last(entries)?.date ?? localToday()).map(point => [point.date, point.weightKg]))
   const parsed = parseSheetRows(paste)
-  return <article className="finance-card">
-    <span className="finance-eyebrow">HISTORY</span>
+  return <>
     {!entries.length && <>
       <p className="finance-muted">Starting from a spreadsheet? Copy the DATE and WEIGHT columns and paste them here.</p>
       <textarea className="weight-paste" rows={4} value={paste} onChange={e => setPaste(e.target.value)} placeholder={'14/10/2026\t81\n15/10/2026\t80,55'} />
@@ -190,7 +191,15 @@ function Log({ entries, phases, onImport, onDelete }: { entries: WeightEntry[]; 
         <td><button type="button" className="finance-remove" aria-label={`Delete ${entry.date}`} onClick={() => { if (window.confirm(`Delete ${shortDate(entry.date)}?`)) void onDelete(entry.date) }}>×</button></td>
       </tr>)}</tbody>
     </table>}
-  </article>
+  </>
+}
+
+// Collapsed by default: logs and settings stay out of the way of the daily view.
+function Drawer({ title, meta, open, children }: { title: string; meta: ReactNode; open?: boolean; children: ReactNode }) {
+  return <details className="finance-card weight-drawer" open={open}>
+    <summary><span className="finance-eyebrow">{title}</span><span className="weight-drawer__meta">{meta}</span></summary>
+    <div className="weight-drawer__body">{children}</div>
+  </details>
 }
 
 function EnergyBar({ maintenance, intake }: { maintenance: number; intake: number }) {
@@ -260,28 +269,65 @@ async function shrinkPhoto(file: File, maxSide = 1024): Promise<string> {
   return canvas.toDataURL('image/jpeg', 0.85)
 }
 
+// Eases a number towards its new value so totals tick up instead of jumping.
+function useCountUp(target: number, ms = 600) {
+  const [value, setValue] = useState(target)
+  const from = useRef(target)
+  useEffect(() => {
+    const start = performance.now(), origin = from.current
+    if (origin === target || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { from.current = target; setValue(target); return }
+    let frame = requestAnimationFrame(function tick(now) {
+      const t = Math.min(1, (now - start) / ms), eased = 1 - (1 - t) ** 3
+      setValue(Math.round(origin + (target - origin) * eased)); from.current = Math.round(origin + (target - origin) * eased)
+      if (t < 1) frame = requestAnimationFrame(tick)
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [target, ms])
+  return value
+}
+
 function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { meals: Meal[]; closed: boolean; phase?: Phase; onAdd: (text: string, image?: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onClose: (closed: boolean) => Promise<unknown> }) {
   const [text, setText] = useState('')
   const [photo, setPhoto] = useState<string>()
-  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState<{ text: string; photo?: string }>()
   const [error, setError] = useState('')
+  const busy = pending !== undefined
   const total = meals.reduce((sum, meal) => sum + meal.kcal, 0)
+  const shownTotal = useCountUp(total)
+  // Meals that weren't in the last list flash for the length of the animation; the first list has nothing to compare against.
+  const seen = useRef<Set<string> | null>(null)
+  const [fresh, setFresh] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    const added = seen.current ? meals.filter(meal => !seen.current!.has(meal.id)).map(meal => meal.id) : []
+    seen.current = new Set(meals.map(meal => meal.id))
+    if (!added.length) return
+    setFresh(new Set(added))
+    const timer = setTimeout(() => setFresh(new Set()), 1400)
+    return () => clearTimeout(timer)
+  }, [meals])
   const add = (event: FormEvent) => {
-    event.preventDefault(); setBusy(true); setError('')
-    void onAdd(text, photo).then(() => { setText(''); setPhoto(undefined) }, failure => setError(failure instanceof ApiError && failure.status === 422 ? 'That doesn’t look like food.' : 'Couldn’t estimate that right now. Try again in a minute.')).finally(() => setBusy(false))
+    event.preventDefault(); setPending({ text, photo }); setError(''); setText(''); setPhoto(undefined)
+    // Restore what was typed if the estimate fails, so nothing has to be re-entered.
+    void onAdd(text, photo).catch(failure => { setText(text); setPhoto(photo); throw failure }).catch(failure => setError(failure instanceof ApiError && failure.status === 422 ? 'That doesn’t look like food.' : 'Couldn’t estimate that right now. Try again in a minute.')).finally(() => setPending(undefined))
   }
   return <article className="finance-card weight-food">
     <div className="finance-card-heading"><span className="finance-eyebrow">FOOD · TODAY</span>
       {meals.length > 0 && <button type="button" className={closed ? undefined : 'finance-primary'} onClick={() => void onClose(!closed)}>{closed ? '✓ Day closed · reopen' : 'Close day'}</button>}</div>
-    <div className="weight-food__total"><strong>{total}</strong> kcal{phase && <small> of {phase.intakeKcal} planned · {total <= phase.intakeKcal ? `${phase.intakeKcal - total} left` : <span className="weight-stat--bad">{total - phase.intakeKcal} over</span>}</small>}</div>
+    <div className="weight-food__total"><strong>{shownTotal}</strong> kcal{phase && <small> of {phase.intakeKcal} planned · {total <= phase.intakeKcal ? `${phase.intakeKcal - total} left` : <span className="weight-stat--bad">{total - phase.intakeKcal} over</span>}</small>}</div>
     {phase && <progress className={total > phase.intakeKcal ? 'is-over' : undefined} value={Math.min(total, phase.intakeKcal)} max={phase.intakeKcal} aria-label="Eaten of planned intake" />}
-    {meals.length > 0 && <ul className="weight-food__meals">{meals.map(meal => <li key={meal.id}>
-      <time>{new Date(meal.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</time>
+    {(meals.length > 0 || pending) && <ul className="weight-food__meals">{meals.map(meal => <li key={meal.id} className={fresh.has(meal.id) ? 'is-new' : undefined}>
+      <time>{new Date(meal.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}</time>
       <span>{meal.description}</span>
       <label><input type="number" min="0" max="10000" step="1" defaultValue={meal.kcal} aria-label={`kcal for ${meal.description}`}
         onBlur={e => { const kcal = Number(e.target.value); if (Number.isInteger(kcal) && kcal >= 0 && kcal !== meal.kcal) void onUpdate(meal.id, kcal) }} /> kcal</label>
       <button type="button" className="finance-remove" aria-label={`Delete ${meal.description}`} onClick={() => void onDelete(meal.id)}>×</button>
-    </li>)}</ul>}
+    </li>)}
+      {pending && <li className="is-pending" aria-live="polite">
+        {pending.photo ? <span className="weight-food__scan"><img src={pending.photo} alt="" /></span> : <time>now</time>}
+        <span className="weight-food__thinking">{pending.text || 'Reading your photo'}<i>Estimating</i></span>
+        <span className="weight-food__dots" aria-hidden="true"><i /><i /><i /></span>
+      </li>}
+    </ul>}
     <form className="weight-food__add" onSubmit={add}>
       <label className="weight-food__camera" title="Add a photo">
         {photo ? <img src={photo} alt="Meal photo" /> : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 3 7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.2L15 3Zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z" /></svg>}
@@ -295,7 +341,6 @@ function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { me
       <button type="submit" className="finance-primary" disabled={busy || (!text.trim() && !photo)}>{busy ? 'Estimating…' : 'Add'}</button>
     </form>
     {error && <p role="alert" className="finance-danger">{error}</p>}
-    <p className="finance-muted weight-food__hint">Estimates are rough; fix any number by editing it. Close the day once everything’s in, so it counts towards your real maintenance. In Telegram, send a meal or a photo, and “done” to close. Photos are only used for the estimate, never stored.</p>
   </article>
 }
 
@@ -319,16 +364,13 @@ function TelegramCard() {
   const setReminder = (remindHour: number) => void put<object, TelegramState>('/telegram', { timeZone, remindHour }).then(setState, () => setError('Could not save the reminder time.'))
   const disconnect = () => { if (window.confirm('Stop Telegram reminders and unlink this chat?')) void del('/telegram').then(() => setState({ linked: false }), () => setError('Could not disconnect.')) }
   if (!state) return error ? <p role="alert" className="finance-notice">{error}</p> : null
-  if (state.linked) return <article className="finance-card weight-telegram weight-telegram--linked">
+  return <Drawer title="TELEGRAM" meta={state.linked ? <span className="weight-telegram__status">● Connected · {hourLabel(state.remindHour)}</span> : 'Not connected'}>
+    {state.linked ? <div className="weight-telegram weight-telegram--linked">
     <svg className="weight-telegram__icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.4 3.2 2.9 10.4c-1.2.5-1.2 1.6 0 2l4.6 1.4 1.8 5.5c.2.7 1 .9 1.5.4l2.6-2.4 4.9 3.6c.8.5 1.6.2 1.8-.8l3-14.3c.3-1.3-.5-1.9-1.7-1.6Zm-11.2 11.5-.4 3.7-1.5-4.6L18 7.3Z" /></svg>
     <span>Daily reminder from <a href={`https://t.me/${BOT}`} target="_blank" rel="noreferrer">@{BOT}</a> at</span>
     <select className="weight-telegram__hour" aria-label="Reminder time" title={state.timeZone} value={state.remindHour} onChange={e => setReminder(Number(e.target.value))}>{hours.map(h => <option key={h} value={h}>{hourLabel(h)}</option>)}</select>
     <button type="button" className="weight-telegram__disconnect" onClick={disconnect}>Disconnect</button>
-    {error && <p role="alert" className="finance-danger">{error}</p>}
-  </article>
-  return <article className="finance-card weight-telegram">
-    <span className="finance-eyebrow">TELEGRAM</span>
-    <form onSubmit={connect}>
+    </div> : <form className="weight-telegram" onSubmit={connect}>
       <ol className="weight-telegram__steps">
         <li>Open <a href={`https://t.me/${BOT}`} target="_blank" rel="noreferrer">@{BOT}</a> and press <strong>Start</strong>.</li>
         <li>Enter the code it sends you. Each day it’ll ask for your weight; reply with the number to log it. Send meals as text or photos to log food.</li>
@@ -338,7 +380,7 @@ function TelegramCard() {
         <label className="finance-field">Remind me at<select value={hour} onChange={e => setHour(Number(e.target.value))}>{hours.map(h => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></label>
         <button type="submit" className="finance-primary" disabled={code.length < 6}>Connect</button>
       </div>
-    </form>
+    </form>}
     {error && <p role="alert" className="finance-danger">{error}</p>}
-  </article>
+  </Drawer>
 }
