@@ -262,13 +262,16 @@ function TelegramCard() {
   const setReminder = (remindHour: number) => void put<object, TelegramState>('/telegram', { timeZone, remindHour }).then(setState, () => setError('Could not save the reminder time.'))
   const disconnect = () => { if (window.confirm('Stop Telegram reminders and unlink this chat?')) void del('/telegram').then(() => setState({ linked: false }), () => setError('Could not disconnect.')) }
   if (!state) return error ? <p role="alert" className="finance-notice">{error}</p> : null
+  if (state.linked) return <article className="finance-card weight-telegram weight-telegram--linked">
+    <svg className="weight-telegram__icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.4 3.2 2.9 10.4c-1.2.5-1.2 1.6 0 2l4.6 1.4 1.8 5.5c.2.7 1 .9 1.5.4l2.6-2.4 4.9 3.6c.8.5 1.6.2 1.8-.8l3-14.3c.3-1.3-.5-1.9-1.7-1.6Zm-11.2 11.5-.4 3.7-1.5-4.6L18 7.3Z" /></svg>
+    <span>Daily reminder from <a href={`https://t.me/${BOT}`} target="_blank" rel="noreferrer">@{BOT}</a> at</span>
+    <select className="weight-telegram__hour" aria-label="Reminder time" title={state.timeZone} value={state.remindHour} onChange={e => setReminder(Number(e.target.value))}>{hours.map(h => <option key={h} value={h}>{hourLabel(h)}</option>)}</select>
+    <button type="button" className="weight-telegram__disconnect" onClick={disconnect}>Disconnect</button>
+    {error && <p role="alert" className="finance-danger">{error}</p>}
+  </article>
   return <article className="finance-card weight-telegram">
-    <div className="finance-card-heading"><span className="finance-eyebrow">TELEGRAM</span>{state.linked && <span className="weight-telegram__status">● Connected</span>}</div>
-    {state.linked ? <div className="finance-fields">
-      <p className="finance-muted">@{BOT} asks for your weight every day you haven’t logged yet. Reply with the number to log it.</p>
-      <label className="finance-field">Remind me at<select value={state.remindHour} onChange={e => setReminder(Number(e.target.value))}>{hours.map(h => <option key={h} value={h}>{hourLabel(h)}</option>)}</select><small>{state.timeZone}</small></label>
-      <button type="button" onClick={disconnect}>Disconnect</button>
-    </div> : <form onSubmit={connect}>
+    <span className="finance-eyebrow">TELEGRAM</span>
+    <form onSubmit={connect}>
       <ol className="weight-telegram__steps">
         <li>Open <a href={`https://t.me/${BOT}`} target="_blank" rel="noreferrer">@{BOT}</a> and press <strong>Start</strong>.</li>
         <li>Enter the code it sends you. Each day it’ll ask for your weight; reply with the number to log it.</li>
@@ -278,7 +281,7 @@ function TelegramCard() {
         <label className="finance-field">Remind me at<select value={hour} onChange={e => setHour(Number(e.target.value))}>{hours.map(h => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></label>
         <button type="submit" className="finance-primary" disabled={code.length < 6}>Connect</button>
       </div>
-    </form>}
+    </form>
     {error && <p role="alert" className="finance-danger">{error}</p>}
   </article>
 }
