@@ -10,3 +10,7 @@ database_id = "d9a0d7bf-86b8-46ae-a9a7-0eb3cce7a0ec"
 
 [dev]
 port = 5555
+
+# Hourly so each user's reminder lands at their own local hour.
+[triggers]
+crons = ["0 * * * *"]

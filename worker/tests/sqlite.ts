@@ -6,6 +6,11 @@ export function database() {
   sqlite.exec(readFileSync('schema.sql', 'utf8'));
   return {
     sqlite,
+    async batch(statements: { run(): Promise<unknown> }[]) {
+      sqlite.exec('BEGIN');
+      try { const results = []; for (const statement of statements) results.push(await statement.run()); sqlite.exec('COMMIT'); return results; }
+      catch (error) { sqlite.exec('ROLLBACK'); throw error; }
+    },
     prepare(sql: string) {
       let values: unknown[] = [];
       return {

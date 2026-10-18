@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
-import app from '../src/index.ts';
+import { app } from '../src/index.ts';
 import { database } from './sqlite.ts';
 
 const { publicKey, privateKey } = await generateKeyPair('RS256');

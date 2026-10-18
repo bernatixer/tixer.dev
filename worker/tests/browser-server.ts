@@ -2,14 +2,15 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
-import app from '../src/index.ts';
+import { app } from '../src/index.ts';
 import { database } from './sqlite.ts';
 
 const { publicKey, privateKey } = await generateKeyPair('RS256');
 const issuer = 'https://finance-test.clerk.accounts.dev';
 const db = database();
 const env = { DB: db, CLERK_PEM_PUBLIC_KEY: await exportSPKI(publicKey),
-  CLERK_ISSUER_URL: issuer, CLERK_AUTHORIZED_PARTIES: 'http://localhost:3000', ZAI_API_KEY: '' };
+  CLERK_ISSUER_URL: issuer, CLERK_AUTHORIZED_PARTIES: 'http://localhost:3000', ZAI_API_KEY: '',
+  TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET };
 const port = Number(process.env.FINANCE_TEST_PORT ?? 5556);
 let failNext = false;
 

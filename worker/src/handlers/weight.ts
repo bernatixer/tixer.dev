@@ -16,6 +16,12 @@ async function body(c: Ctx): Promise<Record<string, unknown> | null> {
   }
 }
 
+export function saveWeight(db: D1Database, userId: string, date: string, weightKg: number) {
+  return db.prepare(
+    "INSERT INTO weight_entries (user_id, date, weight_kg) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET weight_kg = excluded.weight_kg",
+  ).bind(userId, date, weightKg).run();
+}
+
 export async function getWeight(c: Ctx) {
   const userId = c.get("userId");
   const [entries, phases] = await Promise.all([
@@ -32,9 +38,7 @@ export async function putWeightEntry(c: Ctx) {
   const date = c.req.param("date") ?? "";
   const input = await body(c);
   if (!isDate(date) || !inRange(input?.weightKg, 20, 400)) return c.json({ error: "Invalid entry" }, 400);
-  await c.env.DB.prepare(
-    "INSERT INTO weight_entries (user_id, date, weight_kg) VALUES (?, ?, ?) ON CONFLICT (user_id, date) DO UPDATE SET weight_kg = excluded.weight_kg",
-  ).bind(c.get("userId"), date, input.weightKg).run();
+  await saveWeight(c.env.DB, c.get("userId"), date, input.weightKg);
   return c.json({ date, weightKg: input.weightKg });
 }
 

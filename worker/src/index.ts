@@ -30,9 +30,17 @@ import {
   putWeightEntry,
   putWeightPhase,
 } from "./handlers/weight";
+import {
+  getTelegram,
+  linkTelegram,
+  sendReminders,
+  telegramWebhook,
+  unlinkTelegram,
+  updateTelegram,
+} from "./handlers/telegram";
 import type { Env, Variables } from "./types";
 
-const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
 
 const ALLOWED_ORIGINS = new Set<string>(DEFAULT_AUTHORIZED_PARTIES);
 const isFinancePath = (path: string) => path === "/api/finance" || path.startsWith("/api/finance/");
@@ -62,6 +70,8 @@ app.use("*", async (c, next) => {
 });
 
 app.get("/api/health", health);
+// Telegram authenticates with its webhook secret, not a Clerk session.
+app.post("/api/telegram/webhook", telegramWebhook);
 
 const financeApp = new Hono<{ Bindings: Env; Variables: Variables }>();
 financeApp.onError((_error, c) => c.json({ error: "Finance unavailable" }, 500));
@@ -93,7 +103,14 @@ protectedApp.put("/weight/entries/:date", putWeightEntry);
 protectedApp.delete("/weight/entries/:date", deleteWeightEntry);
 protectedApp.put("/weight/phases/:date", putWeightPhase);
 protectedApp.delete("/weight/phases/:date", deleteWeightPhase);
+protectedApp.get("/telegram", getTelegram);
+protectedApp.post("/telegram/link", linkTelegram);
+protectedApp.put("/telegram", updateTelegram);
+protectedApp.delete("/telegram", unlinkTelegram);
 
 app.route("/api", protectedApp);
 
-export default app;
+export default {
+  fetch: app.fetch,
+  scheduled: (_event: ScheduledController, env: Env, ctx: ExecutionContext) => ctx.waitUntil(sendReminders(env)),
+} satisfies ExportedHandler<Env>;

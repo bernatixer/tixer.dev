@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type FormEvent, type PointerEvent, ty
 import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { useAuthSync } from '@/hooks/useAuthSync'
-import { del, get, put } from '@/api/client'
+import { ApiError, del, get, post, put } from '@/api/client'
 import { analyse, dateOf, last, phaseOn, streakBefore, dayNumber, goalLine, KCAL_PER_KG, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
 import '@/finance/finance.css'
 import './weight.css'
@@ -47,6 +47,7 @@ function Weight() {
       <Phases phases={phases} defaultStart={entries[0]?.date ?? localToday()} onSave={phase => run(put(`/weight/phases/${phase.startDate}`, { maintenanceKcal: phase.maintenanceKcal, intakeKcal: phase.intakeKcal }))}
         onDelete={date => run(del(`/weight/phases/${date}`))} />
     </div>
+    <TelegramCard />
   </>
 }
 
@@ -238,5 +239,46 @@ function Phases({ phases, defaultStart, onSave, onDelete }: { phases: Phase[]; d
       </button>
       <button type="button" className="finance-remove" aria-label={`Delete phase from ${phase.startDate}`} onClick={() => { if (window.confirm(`Delete the phase starting ${shortDate(phase.startDate)}?`)) void onDelete(phase.startDate) }}>×</button>
     </li>)}</ol>}
+  </article>
+}
+
+const BOT = 'focustixer_bot'
+type TelegramState = { linked: false } | { linked: true; timeZone: string; remindHour: number }
+const hours = Array.from({ length: 24 }, (_, hour) => hour)
+const hourLabel = (hour: number) => `${String(hour).padStart(2, '0')}:00`
+
+function TelegramCard() {
+  const [state, setState] = useState<TelegramState | null>(null)
+  const [code, setCode] = useState('')
+  const [hour, setHour] = useState(8)
+  const [error, setError] = useState('')
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  useEffect(() => { void get<TelegramState>('/telegram').then(setState, () => setError('Could not load Telegram settings.')) }, [])
+  const connect = (event: FormEvent) => {
+    event.preventDefault(); setError('')
+    void post<object, TelegramState>('/telegram/link', { code, timeZone, remindHour: hour }).then(setState, failure =>
+      setError(failure instanceof ApiError && failure.status === 404 ? 'That code didn’t work. Send /start to the bot for a new one.' : 'Could not connect. Try again.'))
+  }
+  const setReminder = (remindHour: number) => void put<object, TelegramState>('/telegram', { timeZone, remindHour }).then(setState, () => setError('Could not save the reminder time.'))
+  const disconnect = () => { if (window.confirm('Stop Telegram reminders and unlink this chat?')) void del('/telegram').then(() => setState({ linked: false }), () => setError('Could not disconnect.')) }
+  if (!state) return error ? <p role="alert" className="finance-notice">{error}</p> : null
+  return <article className="finance-card weight-telegram">
+    <div className="finance-card-heading"><span className="finance-eyebrow">TELEGRAM</span>{state.linked && <span className="weight-telegram__status">● Connected</span>}</div>
+    {state.linked ? <div className="finance-fields">
+      <p className="finance-muted">@{BOT} asks for your weight every day you haven’t logged yet. Reply with the number to log it.</p>
+      <label className="finance-field">Remind me at<select value={state.remindHour} onChange={e => setReminder(Number(e.target.value))}>{hours.map(h => <option key={h} value={h}>{hourLabel(h)}</option>)}</select><small>{state.timeZone}</small></label>
+      <button type="button" onClick={disconnect}>Disconnect</button>
+    </div> : <form onSubmit={connect}>
+      <ol className="weight-telegram__steps">
+        <li>Open <a href={`https://t.me/${BOT}`} target="_blank" rel="noreferrer">@{BOT}</a> and press <strong>Start</strong>.</li>
+        <li>Enter the code it sends you. Each day it’ll ask for your weight; reply with the number to log it.</li>
+      </ol>
+      <div className="finance-fields">
+        <label className="finance-field">Code<input required value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="ABC234" maxLength={6} autoComplete="off" spellCheck={false} className="weight-telegram__code" /></label>
+        <label className="finance-field">Remind me at<select value={hour} onChange={e => setHour(Number(e.target.value))}>{hours.map(h => <option key={h} value={h}>{hourLabel(h)}</option>)}</select></label>
+        <button type="submit" className="finance-primary" disabled={code.length < 6}>Connect</button>
+      </div>
+    </form>}
+    {error && <p role="alert" className="finance-danger">{error}</p>}
   </article>
 }

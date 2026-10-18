@@ -77,3 +77,19 @@ CREATE TABLE IF NOT EXISTS weight_phases (
     intake_kcal INTEGER NOT NULL,
     PRIMARY KEY (user_id, start_date)
 );
+
+-- One Telegram chat per user; reminders fire at remind_hour in time_zone.
+CREATE TABLE IF NOT EXISTS telegram_links (
+    user_id TEXT PRIMARY KEY,
+    chat_id TEXT NOT NULL UNIQUE,
+    time_zone TEXT NOT NULL,
+    remind_hour INTEGER NOT NULL,
+    last_reminded TEXT
+);
+
+-- Short-lived codes the bot hands out; entering one in Focus proves the chat is yours.
+CREATE TABLE IF NOT EXISTS telegram_codes (
+    code TEXT PRIMARY KEY,
+    chat_id TEXT NOT NULL,
+    expires_at TEXT NOT NULL
+);

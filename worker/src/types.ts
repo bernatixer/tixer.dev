@@ -95,6 +95,8 @@ export interface Env {
   COMMIT_SHA?: string;
   POSTHOG_KEY?: string;
   POSTHOG_HOST?: string;
+  TELEGRAM_BOT_TOKEN?: string;
+  TELEGRAM_WEBHOOK_SECRET?: string;
 }
 
 export interface Variables {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { after, test } from 'node:test';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
-import app from '../src/index.ts';
+import { app } from '../src/index.ts';
 import { database as openDatabase } from './sqlite.ts';
 
 const { publicKey, privateKey } = await generateKeyPair('RS256');
