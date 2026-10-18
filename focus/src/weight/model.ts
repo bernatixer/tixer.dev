@@ -51,7 +51,7 @@ export interface Analysis {
   loggedDays: number
 }
 
-// `eaten` holds totals for closed days only; other days fall back to the planned intake.
+// `eaten` holds totals for days with complete-looking food logs; other days fall back to the planned intake.
 export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21, eaten = new Map<string, number>()): Analysis | null {
   if (!entries.length) return null
   const latest = last(entries)!
@@ -89,9 +89,21 @@ export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21
   }
 }
 
-export function closedDayTotals(meals: Meal[], closedDays: string[]): Map<string, number> {
-  const closed = new Set(closedDays), totals = new Map<string, number>()
-  for (const meal of meals) if (closed.has(meal.date)) totals.set(meal.date, (totals.get(meal.date) ?? 0) + meal.kcal)
+// Food days roll over at 02:00 (matches the worker), so a late snack counts towards the evening before.
+export const mealDay = (now = new Date()) => { const shifted = new Date(now.getTime() - 2 * 3600e3); return dateOf(Math.floor((shifted.getTime() - shifted.getTimezoneOffset() * 60000) / DAY_MS)) }
+
+// ponytail: a day logged below half its planned intake is assumed to be missing meals and falls back to the plan;
+// a per-day "complete" flag would be exact if this guess turns out wrong too often.
+export const MIN_LOGGED_SHARE = 0.5
+
+// Totals for finished food days that look complete; today is still in progress, so it never counts.
+export function loggedDayTotals(meals: Meal[], phases: Phase[], today: string): Map<string, number> {
+  const totals = new Map<string, number>()
+  for (const meal of meals) if (meal.date < today) totals.set(meal.date, (totals.get(meal.date) ?? 0) + meal.kcal)
+  for (const [date, kcal] of totals) {
+    const planned = phaseOn(phases, date)?.intakeKcal
+    if (planned && kcal < planned * MIN_LOGGED_SHARE) totals.delete(date)
+  }
   return totals
 }
 

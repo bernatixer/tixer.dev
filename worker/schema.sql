@@ -112,18 +112,3 @@ CREATE TABLE IF NOT EXISTS meals (
 );
 
 CREATE INDEX IF NOT EXISTS idx_meals_user_date ON meals(user_id, date);
-
--- A closed day's meals are complete, so its total can stand in for planned intake.
-CREATE TABLE IF NOT EXISTS meal_days (
-    user_id TEXT NOT NULL,
-    date TEXT NOT NULL,
-    PRIMARY KEY (user_id, date)
-);
-
--- One row per nudge sent, so each kind goes out at most once a day.
-CREATE TABLE IF NOT EXISTS telegram_nudges (
-    user_id TEXT NOT NULL,
-    date TEXT NOT NULL,
-    kind TEXT NOT NULL,
-    PRIMARY KEY (user_id, date, kind)
-);

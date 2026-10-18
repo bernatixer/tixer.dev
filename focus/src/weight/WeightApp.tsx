@@ -3,7 +3,7 @@ import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { useAuthSync } from '@/hooks/useAuthSync'
 import { ApiError, del, get, post, put } from '@/api/client'
-import { analyse, closedDayTotals, dateOf, DEFAULT_PROTEIN_PER_KG, last, phaseOn, streakBefore, type Meal, dayNumber, goalLine, KCAL_PER_KG, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
+import { analyse, dateOf, DEFAULT_PROTEIN_PER_KG, last, loggedDayTotals, mealDay, phaseOn, streakBefore, type Meal, dayNumber, goalLine, KCAL_PER_KG, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
 import '@/finance/finance.css'
 import './weight.css'
 
@@ -34,8 +34,9 @@ function Weight() {
   const run = (action: Promise<unknown>) => { setError(''); return action.then(load, () => setError('Could not save. Try again.')) }
 
   if (!data) return error ? <p role="alert" className="finance-notice">{error}</p> : <p className="finance-loading">Loading…</p>
-  const { entries, phases, meals, closedDays } = data
-  const eaten = closedDayTotals(meals, closedDays)
+  const { entries, phases, meals } = data
+  const foodDay = mealDay()
+  const eaten = loggedDayTotals(meals, phases, foodDay)
   const bodyKg = entries.length ? last(movingAverage(entries)) : undefined
   return <>
     {error && <p role="alert" className="finance-notice">{error}</p>}
@@ -43,10 +44,9 @@ function Weight() {
     <Stats entries={entries} phases={phases} eaten={eaten} />
     {entries.length > 0 && <Chart entries={entries} phases={phases} />}
     <div className="weight-columns">
-      <Food meals={meals.filter(meal => meal.date === localToday())} closed={closedDays.includes(localToday())} phase={phaseOn(phases, localToday())} bodyKg={bodyKg}
-        onAdd={(text, image) => post<object, Meal>('/meals', { text, image, date: localToday(), language: navigator.language }).then(load)}
-        onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))}
-        onClose={closed => run(put(`/meal-days/${localToday()}`, { closed }))} />
+      <Food meals={meals.filter(meal => meal.date === foodDay)} phase={phaseOn(phases, foodDay)} bodyKg={bodyKg}
+        onAdd={(text, image) => post<object, Meal>('/meals', { text, image, date: foodDay, language: navigator.language }).then(load)}
+        onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))} />
       <Phases phases={phases} bodyKg={bodyKg} defaultStart={entries[0]?.date ?? localToday()} onSave={phase => run(put(`/weight/phases/${phase.startDate}`, { maintenanceKcal: phase.maintenanceKcal, intakeKcal: phase.intakeKcal, proteinPerKg: phase.proteinPerKg }))}
         onDelete={date => run(del(`/weight/phases/${date}`))} />
     </div>
@@ -59,7 +59,7 @@ function Weight() {
   </>
 }
 
-type WeightData = { entries: WeightEntry[]; phases: Phase[]; meals: Meal[]; closedDays: string[] }
+type WeightData = { entries: WeightEntry[]; phases: Phase[]; meals: Meal[] }
 
 function Stats({ entries, phases, eaten }: { entries: WeightEntry[]; phases: Phase[]; eaten: Map<string, number> }) {
   const result = analyse(entries, phases, 21, eaten)
@@ -293,7 +293,7 @@ function useCountUp(target: number, ms = 600) {
 
 const NUTRIENT_LABELS = [['carbsG', 'Carbs'], ['fatG', 'Fat'], ['fibreG', 'Fibre'], ['sugarG', 'Sugar']] as const
 
-function Food({ meals, closed, phase, bodyKg, onAdd, onUpdate, onDelete, onClose }: { meals: Meal[]; closed: boolean; phase?: Phase; bodyKg?: number; onAdd: (text: string, image?: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onClose: (closed: boolean) => Promise<unknown> }) {
+function Food({ meals, phase, bodyKg, onAdd, onUpdate, onDelete }: { meals: Meal[]; phase?: Phase; bodyKg?: number; onAdd: (text: string, image?: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown> }) {
   const [text, setText] = useState('')
   const [photo, setPhoto] = useState<string>()
   const [pending, setPending] = useState<{ text: string; photo?: string }>()
@@ -320,8 +320,7 @@ function Food({ meals, closed, phase, bodyKg, onAdd, onUpdate, onDelete, onClose
     void onAdd(text, photo).catch(failure => { setText(text); setPhoto(photo); throw failure }).catch(failure => setError(failure instanceof ApiError && failure.status === 422 ? 'That doesn’t look like food.' : 'Couldn’t estimate that right now. Try again in a minute.')).finally(() => setPending(undefined))
   }
   return <article className="finance-card weight-food">
-    <div className="finance-card-heading"><span className="finance-eyebrow">FOOD · TODAY</span>
-      {meals.length > 0 && <button type="button" className={closed ? undefined : 'finance-primary'} onClick={() => void onClose(!closed)}>{closed ? '✓ Day closed · reopen' : 'Close day'}</button>}</div>
+    <span className="finance-eyebrow">FOOD · TODAY</span>
     <div className="weight-food__total"><strong>{shownTotal}</strong> kcal{phase && <small> of {phase.intakeKcal} planned · {total <= phase.intakeKcal ? `${phase.intakeKcal - total} left` : <span className="weight-stat--bad">{total - phase.intakeKcal} over</span>}</small>}</div>
     {phase && <progress className={total > phase.intakeKcal ? 'is-over' : undefined} value={Math.min(total, phase.intakeKcal)} max={phase.intakeKcal} aria-label="Eaten of planned intake" />}
     {meals.some(meal => meal.proteinG != null) && <dl className="weight-food__nutrients">

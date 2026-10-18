@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { after, test } from 'node:test';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
 import { app } from '../src/index.ts';
-import { parseWeight, sendReminders } from '../src/handlers/telegram.ts';
+import { mealDate, parseWeight, sendReminders } from '../src/handlers/telegram.ts';
 import { parseEstimate } from '../src/handlers/meals.ts';
 import { database } from './sqlite.ts';
 
@@ -14,7 +14,7 @@ const token = (sub: string) => new SignJWT({ sub }).setProtectedHeader({ alg: 'R
 
 // Outbound calls (Telegram, OpenAI) are recorded and answered from `estimate` / canned Telegram results.
 const calls: { url: string; body: any }[] = [];
-let estimate = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180, "protein_g": 12, "fat_g": 12}, {"name": "toast", "kcal": 90, "protein_g": 3, "carbs_g": 16, "fibre_g": 2}]}';
+let estimate = '{"is_food": true, "title": "Eggs & toast", "emoji": "🍳", "items": [{"name": "eggs", "kcal": 180, "protein_g": 12, "fat_g": 12}, {"name": "toast", "kcal": 90, "protein_g": 3, "carbs_g": 16, "fibre_g": 2}]}';
 globalThis.fetch = (async (input: string, init?: RequestInit) => {
   const url = String(input), body = init?.body ? JSON.parse(String(init.body)) : null;
   calls.push({ url, body });
@@ -24,11 +24,11 @@ globalThis.fetch = (async (input: string, init?: RequestInit) => {
   return Response.json({ ok: true, result: { message_id: 55 } });
 }) as typeof fetch;
 
-async function telegram(chatId: number, text: string, secret = 'hook-secret', extra: Record<string, unknown> = {}) {
+async function telegram(chatId: number, text: string, secret = 'hook-secret', extra: Record<string, unknown> = {}, update?: unknown) {
   const pending: Promise<unknown>[] = [];
   const response = await app.request('/api/telegram/webhook', { method: 'POST',
     headers: { 'content-type': 'application/json', 'x-telegram-bot-api-secret-token': secret },
-    body: JSON.stringify({ message: { chat: { id: chatId }, text, ...extra } }) }, env as never,
+    body: JSON.stringify(update ?? { message: { chat: { id: chatId }, text, ...extra } }) }, env as never,
     { waitUntil: (promise: Promise<unknown>) => pending.push(promise), passThroughOnException() {} } as never);
   await Promise.all(pending);
   return { status: response.status, body: response.status === 200 ? await response.json() as { text: string; action?: string } : null };
@@ -69,23 +69,30 @@ test('a bot code links the chat, and replies log weight for that user', async ()
 
 test('meal estimates parse from wrapped JSON and reject non-food', () => {
   assert.deepEqual(parseEstimate('ok {"is_food": true, "items": [{"name": "salad", "kcal": 580.4, "protein_g": 30, "carbs_g": 20.25, "fat_g": 42, "fibre_g": 5, "sugar_g": 4}, {"name": "coke", "kcal": 140, "carbs_g": 35, "sugar_g": "lots"}]} done'),
-    { items: [{ name: 'salad', kcal: 580 }, { name: 'coke', kcal: 140 }], totalKcal: 720,
+    { title: 'salad, coke', emoji: '🍽', items: [{ name: 'salad', kcal: 580 }, { name: 'coke', kcal: 140 }], totalKcal: 720,
       nutrients: { protein: 30, carbs: 55.3, fat: 42, fibre: 5, sugar: 4 } }, 'missing or malformed grams count as zero');
   assert.equal(parseEstimate('{"is_food": false, "items": []}'), null);
   assert.equal(parseEstimate('no json here'), null);
 });
 
-test('meals log from text and photos, correct by reply, and days close with done', async () => {
-  db.sqlite.exec("DELETE FROM telegram_links; DELETE FROM meals; DELETE FROM meal_days;");
-  db.sqlite.exec("INSERT INTO telegram_links (user_id, chat_id, time_zone, remind_hour) VALUES ('m', '7', 'Europe/Madrid', 8)");
-  calls.length = 0;
-  assert.equal((await telegram(7, '2 eggs and toast')).body!.action, 'typing');
-  assert.match(calls.at(-1)!.body.text, /≈ 270 kcal\nP 15g · C 16g · F 12g · fibre 2g · sugar 0g\n\n• eggs · 180\n• toast · 90/);
-  assert.deepEqual(db.sqlite.prepare("SELECT description, kcal, protein_g AS p, carbs_g AS c, telegram_message_id AS mid FROM meals WHERE user_id = 'm'").all().map(row => ({ ...row })),
-    [{ description: '2 eggs and toast', kcal: 270, p: 15, c: 16, mid: 55 }]);
+const meals = () => db.sqlite.prepare("SELECT id, description, kcal, protein_g AS p, fat_g AS f, telegram_message_id AS mid FROM meals WHERE user_id = 'm' ORDER BY created_at").all().map(row => ({ ...row })) as any[];
+const press = (data: string, messageId = 55) => telegram(7, '', 'hook-secret', {}, { callback_query: { id: 'cb', data, message: { message_id: messageId, chat: { id: 7 } } } });
 
-  assert.equal((await telegram(7, '320', 'hook-secret', { reply_to_message: { message_id: 55 } })).body!.text, '✓ Updated to 320 kcal');
-  assert.deepEqual({ ...db.sqlite.prepare("SELECT kcal, protein_g AS p, fat_g AS f FROM meals WHERE user_id = 'm'").get() }, { kcal: 320, p: 17.8, f: 14.2 }, 'nutrients scale with the correction');
+test('meals log from text and photos as a formatted estimate with buttons', async () => {
+  db.sqlite.exec("DELETE FROM telegram_links; DELETE FROM meals; DELETE FROM weight_phases; DELETE FROM weight_entries;");
+  db.sqlite.exec("INSERT INTO telegram_links (user_id, chat_id, time_zone, remind_hour) VALUES ('m', '7', 'Europe/Madrid', 8)");
+  db.sqlite.exec(`INSERT INTO weight_phases (user_id, start_date, maintenance_kcal, intake_kcal) VALUES ('m', '2000-01-01', 2300, 1800)`);
+  db.sqlite.exec(`INSERT INTO weight_entries (user_id, date, weight_kg) VALUES ('m', '${mealDate('Europe/Madrid')}', 80)`);
+  calls.length = 0;
+  assert.equal((await telegram(7, '2 eggs & toast')).body!.action, 'typing');
+  const sent = calls.at(-1)!.body;
+  assert.equal(sent.parse_mode, 'HTML');
+  assert.equal(sent.text, ['🍳 <b>Eggs &amp; toast</b>', '<b>≈ 270 kcal</b>', '',
+    '🥩 <b>15g</b> protein  ·  🍚 <b>16g</b> carbs  ·  🧈 <b>12g</b> fat', '<i>fibre 2g · sugar 0g</i>', '',
+    '• eggs — 180', '• toast — 90', '', '<b>Today</b>', 'Kcal ▰▰▱▱▱▱▱▱▱▱ 270 / 1800', 'Protein ▰▱▱▱▱▱▱▱▱▱ 15 / 144g'].join('\n'));
+  const [meal] = meals();
+  assert.deepEqual(sent.reply_markup.inline_keyboard[0].map((button: any) => button.callback_data), [`fix:${meal.id}`, `undo:${meal.id}`]);
+  assert.deepEqual({ ...meal, id: undefined }, { id: undefined, description: 'Eggs & toast', kcal: 270, p: 15, f: 12, mid: 55 });
 
   calls.length = 0;
   await telegram(7, '', 'hook-secret', { photo: [{ file_id: 'small' }, { file_id: 'big' }] });
@@ -93,28 +100,33 @@ test('meals log from text and photos, correct by reply, and days close with done
   const sentToModel = JSON.stringify(calls.find(call => call.url.includes('api.openai.com'))!.body);
   assert.ok(sentToModel.includes('data:image/jpeg;base64,AQID'), 'the photo travels as data');
   assert.ok(!sentToModel.includes('bot-token'), 'the bot token never reaches the estimator');
-  assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM meals WHERE user_id = 'm'").get()!.n, 2);
+  assert.equal(meals().length, 2);
 
   estimate = '{"is_food": false, "items": []}';
   await telegram(7, 'what is the weather');
   assert.match(calls.at(-1)!.body.text, /doesn’t look like food/);
-  estimate = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180, "protein_g": 12, "fat_g": 12}, {"name": "toast", "kcal": 90, "protein_g": 3, "carbs_g": 16, "fibre_g": 2}]}';
-
-  assert.equal((await telegram(7, 'Done')).body!.text, '✓ Day closed');
-  assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM meal_days WHERE user_id = 'm'").get()!.n, 1);
+  estimate = '{"is_food": true, "title": "Eggs & toast", "emoji": "🍳", "items": [{"name": "eggs", "kcal": 180, "protein_g": 12, "fat_g": 12}, {"name": "toast", "kcal": 90, "protein_g": 3, "carbs_g": 16, "fibre_g": 2}]}';
 });
 
-test('the evening close-out asks once, only for open days with meals', async () => {
-  db.sqlite.exec("DELETE FROM telegram_links; DELETE FROM meals; DELETE FROM meal_days; DELETE FROM telegram_nudges;");
-  db.sqlite.exec("INSERT INTO telegram_links (user_id, chat_id, time_zone, remind_hour) VALUES ('open', '1', 'Europe/Madrid', 8), ('closed', '2', 'Europe/Madrid', 8), ('none', '3', 'Europe/Madrid', 8)");
-  db.sqlite.exec("INSERT INTO meals (id, user_id, date, description, kcal, created_at) VALUES ('1', 'open', '2026-10-18', 'x', 500, ''), ('2', 'closed', '2026-10-18', 'x', 500, '')");
-  db.sqlite.exec("INSERT INTO meal_days (user_id, date) VALUES ('closed', '2026-10-18')");
-  const sent: string[] = [];
-  const send = (async (_url: string, init: RequestInit) => { sent.push(JSON.parse(String(init.body)).chat_id); return Response.json({ ok: true }); }) as typeof fetch;
-  const ninePmInMadrid = new Date('2026-10-18T19:00:00Z');
-  await sendReminders(env as never, ninePmInMadrid, send);
-  await sendReminders(env as never, ninePmInMadrid, send);
-  assert.deepEqual(sent, ['1']);
+test('meal buttons fix and undo only the linked user\'s meals', async () => {
+  const [meal] = meals();
+  assert.equal((await press(`fix:${meal.id}`)).body!.text, 'Send the new kcal');
+  assert.equal(calls.at(-1)!.body.reply_markup.force_reply, true);
+  assert.equal(meals()[0].mid, 55, 'the prompt becomes the reply target');
+  assert.equal((await telegram(7, '320', 'hook-secret', { reply_to_message: { message_id: 55 } })).body!.text, '✓ Updated to 320 kcal');
+  assert.deepEqual([meals()[0].kcal, meals()[0].p, meals()[0].f], [320, 17.8, 14.2], 'nutrients scale with the correction');
+
+  db.sqlite.exec("INSERT INTO meals (id, user_id, date, description, kcal, created_at) VALUES ('other', 'someone-else', '2026-10-18', 'x', 1, '')");
+  assert.equal((await press('undo:other')).body!.text, 'That meal is already gone.');
+  assert.equal((await press(`undo:${meal.id}`)).body!.text, 'Removed');
+  assert.match(calls.at(-1)!.body.text, /^↩️ <s>Eggs &amp; toast · 320 kcal<\/s>/);
+  assert.equal(meals().length, 1);
+  assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM meals WHERE id = 'other'").get()!.n, 1);
+});
+
+test('food days roll over at 02:00 local time', () => {
+  assert.equal(mealDate('Europe/Madrid', new Date('2026-10-18T23:30:00Z')), '2026-10-18', '01:30 counts towards the evening before');
+  assert.equal(mealDate('Europe/Madrid', new Date('2026-10-19T00:30:00Z')), '2026-10-19', '02:30 starts the new day');
 });
 
 test('reminders go once, at the local hour, and only when today is empty', async () => {

@@ -38,7 +38,7 @@ import {
   unlinkTelegram,
   updateTelegram,
 } from "./handlers/telegram";
-import { deleteMeal, postMeal, putMeal, putMealDay } from "./handlers/meals";
+import { deleteMeal, postMeal, putMeal } from "./handlers/meals";
 import type { Env, Variables } from "./types";
 
 export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
@@ -107,7 +107,6 @@ protectedApp.delete("/weight/phases/:date", deleteWeightPhase);
 protectedApp.post("/meals", postMeal);
 protectedApp.put("/meals/:id", putMeal);
 protectedApp.delete("/meals/:id", deleteMeal);
-protectedApp.put("/meal-days/:date", putMealDay);
 protectedApp.get("/telegram", getTelegram);
 protectedApp.post("/telegram/link", linkTelegram);
 protectedApp.put("/telegram", updateTelegram);

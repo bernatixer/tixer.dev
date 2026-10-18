@@ -26,7 +26,7 @@ export async function getWeight(c: Ctx) {
   const userId = c.get("userId");
   // Meals only feed the 3-week maintenance window and today's card; 35 days covers both with slack.
   const since = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10);
-  const [entries, phases, meals, closedDays] = await Promise.all([
+  const [entries, phases, meals] = await Promise.all([
     c.env.DB.prepare("SELECT date, weight_kg AS weightKg FROM weight_entries WHERE user_id = ? ORDER BY date")
       .bind(userId).all(),
     c.env.DB.prepare(
@@ -34,9 +34,8 @@ export async function getWeight(c: Ctx) {
     ).bind(userId).all(),
     c.env.DB.prepare("SELECT id, date, description, kcal, protein_g AS proteinG, carbs_g AS carbsG, fat_g AS fatG, fibre_g AS fibreG, sugar_g AS sugarG, created_at AS createdAt FROM meals WHERE user_id = ? AND date >= ? ORDER BY date, created_at")
       .bind(userId, since).all(),
-    c.env.DB.prepare("SELECT date FROM meal_days WHERE user_id = ? AND date >= ? ORDER BY date").bind(userId, since).all<{ date: string }>(),
   ]);
-  return c.json({ entries: entries.results, phases: phases.results, meals: meals.results, closedDays: closedDays.results.map(row => row.date) });
+  return c.json({ entries: entries.results, phases: phases.results, meals: meals.results });
 }
 
 export async function putWeightEntry(c: Ctx) {

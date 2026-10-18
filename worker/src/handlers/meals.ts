@@ -11,18 +11,19 @@ const SYSTEM_PROMPT =
   "Given a description and/or a photo, list each food with a realistic portion-based estimate of kcal and grams of protein, carbohydrate, fat, fibre and sugar.\n" +
   "Use amounts the user states; otherwise assume a typical adult portion and count cooking oil, sauces and drinks you can see or that are mentioned.\n" +
   "If the input is not food or drink, return is_food false.\n" +
-  "Return ONLY a JSON object: {\"is_food\": boolean, \"items\": [{\"name\": string, \"kcal\": integer, \"protein_g\": number, \"carbs_g\": number, \"fat_g\": number, \"fibre_g\": number, \"sugar_g\": number}]}. Names are short and in the language given.";
+  "Also give the whole meal a short title (2-5 words) and one food emoji that fits it.\n" +
+  "Return ONLY a JSON object: {\"is_food\": boolean, \"title\": string, \"emoji\": string, \"items\": [{\"name\": string, \"kcal\": integer, \"protein_g\": number, \"carbs_g\": number, \"fat_g\": number, \"fibre_g\": number, \"sugar_g\": number}]}. Names are short and in the language given.";
 
 export const NUTRIENTS = ["protein", "carbs", "fat", "fibre", "sugar"] as const;
 export type Nutrients = Record<(typeof NUTRIENTS)[number], number>;
-export interface MealEstimate { items: { name: string; kcal: number }[]; totalKcal: number; nutrients: Nutrients }
+export interface MealEstimate { title: string; emoji: string; items: { name: string; kcal: number }[]; totalKcal: number; nutrients: Nutrients }
 
 const grams = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0);
 
 // Tolerates prose around the JSON, so take the outermost object.
 export function parseEstimate(content: string): MealEstimate | null {
   const json = content.slice(content.indexOf("{"), content.lastIndexOf("}") + 1);
-  let parsed: { is_food?: unknown; items?: unknown };
+  let parsed: { is_food?: unknown; title?: unknown; emoji?: unknown; items?: unknown };
   try { parsed = JSON.parse(json); } catch { return null; }
   if (parsed.is_food !== true || !Array.isArray(parsed.items)) return null;
   const valid = parsed.items
@@ -31,7 +32,9 @@ export function parseEstimate(content: string): MealEstimate | null {
   const totalKcal = items.reduce((sum, item) => sum + item.kcal, 0);
   const nutrients = Object.fromEntries(NUTRIENTS.map(name =>
     [name, Math.round(valid.reduce((sum, item) => sum + grams(item[`${name}_g`]), 0) * 10) / 10])) as Nutrients;
-  return items.length && totalKcal <= 10000 ? { items, totalKcal, nutrients } : null;
+  const title = typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim().slice(0, 60) : items.map(item => item.name).join(", ");
+  const emoji = typeof parsed.emoji === "string" && parsed.emoji.trim() && [...parsed.emoji.trim()].length <= 4 ? parsed.emoji.trim() : "🍽";
+  return items.length && totalKcal <= 10000 ? { title, emoji, items, totalKcal, nutrients } : null;
 }
 
 function languageName(tag: string) {
@@ -57,7 +60,7 @@ export async function estimateMeal(env: Env, text: string, image?: string, langu
   return parseEstimate(body.choices?.[0]?.message?.content ?? "");
 }
 
-export const describe = (estimate: MealEstimate) => estimate.items.map(item => item.name).join(", ");
+export const describe = (estimate: MealEstimate) => estimate.title;
 
 export async function addMeal(db: D1Database, userId: string, date: string, description: string, estimate: MealEstimate, telegramMessageId: number | null = null) {
   const { protein, carbs, fat, fibre, sugar } = estimate.nutrients;
@@ -73,11 +76,52 @@ export function correctMealKcal(db: D1Database, kcal: number, where: string, ...
   return db.prepare(`UPDATE meals SET ${scaled}, kcal = ?1 WHERE ${where}`).bind(kcal, ...params).run();
 }
 
-export const nutrientLine = ({ protein, carbs, fat, fibre, sugar }: Nutrients) =>
-  `P ${Math.round(protein)}g · C ${Math.round(carbs)}g · F ${Math.round(fat)}g · fibre ${Math.round(fibre)}g · sugar ${Math.round(sugar)}g`;
+const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const bar = (value: number, target: number) => { const filled = Math.round(Math.min(1, value / target) * 10); return "▰".repeat(filled) + "▱".repeat(10 - filled); };
 
-export const closeDay = (db: D1Database, userId: string, date: string) =>
-  db.prepare("INSERT OR IGNORE INTO meal_days (user_id, date) VALUES (?, ?)").bind(userId, date).run();
+export interface DayProgress { kcal: number; kcalTarget: number | null; protein: number; proteinTarget: number | null }
+
+// Telegram HTML: a plain list rather than <pre>, which would add a copy button.
+export function mealMessage(estimate: MealEstimate, today: DayProgress) {
+  const { protein, carbs, fat, fibre, sugar } = estimate.nutrients;
+  const lines = [
+    `${estimate.emoji} <b>${escapeHtml(estimate.title)}</b>`,
+    `<b>≈ ${estimate.totalKcal} kcal</b>`,
+    "",
+    `🥩 <b>${Math.round(protein)}g</b> protein  ·  🍚 <b>${Math.round(carbs)}g</b> carbs  ·  🧈 <b>${Math.round(fat)}g</b> fat`,
+    `<i>fibre ${Math.round(fibre)}g · sugar ${Math.round(sugar)}g</i>`,
+    "",
+    ...estimate.items.map(item => `• ${escapeHtml(item.name)} — ${item.kcal}`),
+  ];
+  if (today.kcalTarget || today.proteinTarget) {
+    lines.push("", "<b>Today</b>");
+    if (today.kcalTarget) lines.push(`Kcal ${bar(today.kcal, today.kcalTarget)} ${today.kcal} / ${today.kcalTarget}`);
+    if (today.proteinTarget) lines.push(`Protein ${bar(today.protein, today.proteinTarget)} ${Math.round(today.protein)} / ${today.proteinTarget}g`);
+  }
+  return lines.join("\n");
+}
+
+const DEFAULT_PROTEIN_PER_KG = 1.8;
+
+// Mirrors the Food card: planned intake from the active phase, protein as g/kg × the 7-day average weight.
+export async function dayProgress(db: D1Database, userId: string, date: string): Promise<DayProgress> {
+  const weekAgo = new Date(Date.parse(`${date}T00:00:00Z`) - 6 * 864e5).toISOString().slice(0, 10);
+  const [eaten, phase, weight] = await Promise.all([
+    db.prepare("SELECT COALESCE(SUM(kcal), 0) AS kcal, COALESCE(SUM(protein_g), 0) AS protein FROM meals WHERE user_id = ? AND date = ?").bind(userId, date).first<{ kcal: number; protein: number }>(),
+    db.prepare("SELECT intake_kcal, protein_g_per_kg FROM weight_phases WHERE user_id = ? AND start_date <= ? ORDER BY start_date DESC LIMIT 1").bind(userId, date).first<{ intake_kcal: number; protein_g_per_kg: number | null }>(),
+    db.prepare("SELECT AVG(weight_kg) AS kg FROM weight_entries WHERE user_id = ? AND date BETWEEN ? AND ?").bind(userId, weekAgo, date).first<{ kg: number | null }>(),
+  ]);
+  return {
+    kcal: eaten?.kcal ?? 0, protein: eaten?.protein ?? 0,
+    kcalTarget: phase?.intake_kcal ?? null,
+    proteinTarget: weight?.kg ? Math.round((phase?.protein_g_per_kg ?? DEFAULT_PROTEIN_PER_KG) * weight.kg) : null,
+  };
+}
+
+export const mealButtons = (mealId: string) => ({ inline_keyboard: [
+  [{ text: "✏️ Fix kcal", callback_data: `fix:${mealId}` }, { text: "↩️ Undo", callback_data: `undo:${mealId}` }],
+] });
+
 
 const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 const validKcal = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 10000;
@@ -106,13 +150,4 @@ export async function putMeal(c: Ctx) {
 export async function deleteMeal(c: Ctx) {
   await c.env.DB.prepare("DELETE FROM meals WHERE id = ? AND user_id = ?").bind(c.req.param("id") ?? "", c.get("userId")).run();
   return c.body(null, 204);
-}
-
-export async function putMealDay(c: Ctx) {
-  const date = c.req.param("date") ?? "";
-  const input = await c.req.json<Record<string, unknown>>().catch(() => null);
-  if (!isDate(date) || typeof input?.closed !== "boolean") return c.json({ error: "Invalid day" }, 400);
-  if (input.closed) await closeDay(c.env.DB, c.get("userId"), date);
-  else await c.env.DB.prepare("DELETE FROM meal_days WHERE user_id = ? AND date = ?").bind(c.get("userId"), date).run();
-  return c.json({ date, closed: input.closed });
 }

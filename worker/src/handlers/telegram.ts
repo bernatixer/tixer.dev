@@ -1,12 +1,16 @@
 import type { Context } from "hono";
 import type { Env, Variables } from "../types";
-import { addMeal, closeDay, correctMealKcal, describe, estimateMeal, nutrientLine } from "./meals";
+import { addMeal, correctMealKcal, dayProgress, describe, estimateMeal, mealButtons, mealMessage } from "./meals";
 import { saveWeight } from "./weight";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_TTL_MS = 15 * 60 * 1000;
+
+// Food days roll over at 02:00, so a late snack counts towards the evening it belongs to.
+export const MEAL_DAY_ROLLOVER_HOURS = 2;
+export const mealDate = (timeZone: string, now = new Date()) => localNow(timeZone, new Date(now.getTime() - MEAL_DAY_ROLLOVER_HOURS * 3600e3)).date;
 
 export function localNow(timeZone: string, now = new Date()) {
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
@@ -61,14 +65,16 @@ async function logMeal(env: Env, link: { user_id: string; time_zone: string }, c
   try {
     const estimate = await estimateMeal(env, text, photoId ? await downloadPhoto(env, photoId) : undefined, language);
     if (!estimate) {
-      await telegramCall(env, "sendMessage", { chat_id: chatId, text: "That doesn’t look like food. Send a meal (text or photo), your weight, or “done” to close the day." });
+      await telegramCall(env, "sendMessage", { chat_id: chatId, text: "That doesn’t look like food. Send a meal (text or photo), or your weight." });
       return;
     }
-    const lines = estimate.items.map(item => `• ${item.name} · ${item.kcal}`).join("\n");
+    // Saved first so the buttons can name the meal and Today includes it.
+    const date = mealDate(link.time_zone);
+    const meal = await addMeal(env.DB, link.user_id, date, describe(estimate), estimate);
     const sent = await telegramCall<{ message_id: number }>(env, "sendMessage", {
-      chat_id: chatId, text: `≈ ${estimate.totalKcal} kcal\n${nutrientLine(estimate.nutrients)}\n\n${lines}\n\nReply to this message with a number to correct it.`,
+      chat_id: chatId, parse_mode: "HTML", text: mealMessage(estimate, await dayProgress(env.DB, link.user_id, date)), reply_markup: mealButtons(meal.id),
     });
-    await addMeal(env.DB, link.user_id, localNow(link.time_zone).date, text || describe(estimate), estimate, sent?.message_id ?? null);
+    if (sent) await env.DB.prepare("UPDATE meals SET telegram_message_id = ? WHERE id = ?").bind(sent.message_id, meal.id).run();
   } catch (error) {
     console.error("meal estimate failed", error);
     await telegramCall(env, "sendMessage", { chat_id: chatId, text: "Couldn’t estimate that right now. Try again in a minute." }).catch(() => undefined);
@@ -76,6 +82,7 @@ async function logMeal(env: Env, link: { user_id: string; time_zone: string }, c
 }
 
 interface TelegramMessage {
+  message_id?: number;
   chat?: { id?: number };
   text?: string;
   caption?: string;
@@ -84,10 +91,46 @@ interface TelegramMessage {
   from?: { language_code?: string };
 }
 
+interface CallbackQuery { id: string; data?: string; message?: { message_id: number; chat: { id: number } } }
+
+const answer = (c: Ctx, callbackId: string, text: string) => c.json({ method: "answerCallbackQuery", callback_query_id: callbackId, text });
+
+// Buttons on a meal estimate. Each acts only on meals owned by the chat's linked user.
+async function handleButton(c: Ctx, query: CallbackQuery) {
+  const chatId = query.message?.chat.id;
+  const link = chatId === undefined ? null : await c.env.DB.prepare("SELECT user_id, time_zone FROM telegram_links WHERE chat_id = ?")
+    .bind(String(chatId)).first<{ user_id: string; time_zone: string }>();
+  if (!link || !query.message) return answer(c, query.id, "This chat isn’t linked to Focus.");
+  const [action, mealId] = (query.data ?? "").split(":");
+  const meal = mealId ? await c.env.DB.prepare("SELECT description, kcal FROM meals WHERE id = ? AND user_id = ?")
+    .bind(mealId, link.user_id).first<{ description: string; kcal: number }>() : null;
+  if (!meal) return answer(c, query.id, "That meal is already gone.");
+  if (action === "undo") {
+    await c.env.DB.prepare("DELETE FROM meals WHERE id = ? AND user_id = ?").bind(mealId, link.user_id).run();
+    c.executionCtx.waitUntil(telegramCall(c.env, "editMessageText", {
+      chat_id: chatId, message_id: query.message.message_id, parse_mode: "HTML",
+      text: `↩️ <s>${meal.description.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")} · ${meal.kcal} kcal</s>\nRemoved.`,
+    }).catch(() => undefined));
+    return answer(c, query.id, "Removed");
+  }
+  if (action === "fix") {
+    // The prompt's message id becomes the meal's reply target, so answering it corrects this meal.
+    c.executionCtx.waitUntil((async () => {
+      const prompt = await telegramCall<{ message_id: number }>(c.env, "sendMessage", {
+        chat_id: chatId, text: `How many kcal was “${meal.description}”? (now ${meal.kcal})`, reply_markup: { force_reply: true, input_field_placeholder: String(meal.kcal) },
+      });
+      if (prompt) await c.env.DB.prepare("UPDATE meals SET telegram_message_id = ? WHERE id = ?").bind(prompt.message_id, mealId).run();
+    })().catch(() => undefined));
+    return answer(c, query.id, "Send the new kcal");
+  }
+  return answer(c, query.id, "");
+}
+
 export async function telegramWebhook(c: Ctx) {
   const secret = c.env.TELEGRAM_WEBHOOK_SECRET;
   if (!secret || c.req.header("x-telegram-bot-api-secret-token") !== secret) return c.json({ error: "Forbidden" }, 403);
-  const update = await c.req.json<{ message?: TelegramMessage }>().catch(() => null);
+  const update = await c.req.json<{ message?: TelegramMessage; callback_query?: CallbackQuery }>().catch(() => null);
+  if (update?.callback_query) return handleButton(c, update.callback_query);
   const message = update?.message;
   const chatId = message?.chat?.id, text = (message?.text ?? message?.caption ?? "").trim();
   if (chatId === undefined) return c.body(null, 200);
@@ -106,10 +149,6 @@ export async function telegramWebhook(c: Ctx) {
 
   const today = localNow(link.time_zone).date;
   const photo = message?.photo?.at(-1)?.file_id;
-  if (!photo && /^\/?done\.?$/i.test(text)) {
-    await closeDay(c.env.DB, link.user_id, today);
-    return reply(c, chatId, "✓ Day closed");
-  }
   const repliedTo = message?.reply_to_message?.message_id;
   const kcal = /^\d{1,5}(?:\s*kcal)?$/i.test(text) ? parseInt(text, 10) : null;
   if (!photo && repliedTo !== undefined && kcal !== null && kcal <= 10000) {
@@ -163,31 +202,17 @@ export async function unlinkTelegram(c: Ctx) {
   return c.body(null, 204);
 }
 
-const CLOSEOUT_HOUR = 21;
-
-// Runs hourly. At each user's hour: ask for the weight if today is empty. At 21:00: if meals were
-// logged but the day is still open, ask once whether anything is missing.
+// Runs hourly; each user is asked once, at their hour, only if today is still empty.
 export async function sendReminders(env: Env, now = new Date(), send: typeof fetch = fetch) {
   if (!env.TELEGRAM_BOT_TOKEN) return;
   const { results } = await env.DB.prepare("SELECT user_id, chat_id, time_zone, remind_hour, last_reminded FROM telegram_links").all<{
     user_id: string; chat_id: string; time_zone: string; remind_hour: number; last_reminded: string | null;
   }>();
-  const message = (chatId: string, text: string) => telegramCall(env, "sendMessage", { chat_id: chatId, text }, send).catch(() => undefined);
   for (const link of results) {
     const local = localNow(link.time_zone, now);
-    if (local.hour === link.remind_hour && link.last_reminded !== local.date) {
-      const logged = await env.DB.prepare("SELECT 1 FROM weight_entries WHERE user_id = ? AND date = ?").bind(link.user_id, local.date).first();
-      await env.DB.prepare("UPDATE telegram_links SET last_reminded = ? WHERE user_id = ?").bind(local.date, link.user_id).run();
-      if (!logged) await message(link.chat_id, "⚖️ Morning! What do you weigh today?");
-    }
-    if (local.hour === CLOSEOUT_HOUR) {
-      const open = await env.DB.prepare(
-        "SELECT 1 FROM meals WHERE user_id = ? AND date = ? AND NOT EXISTS (SELECT 1 FROM meal_days WHERE user_id = ? AND date = ?) LIMIT 1",
-      ).bind(link.user_id, local.date, link.user_id, local.date).first();
-      if (!open) continue;
-      const fresh = await env.DB.prepare("INSERT OR IGNORE INTO telegram_nudges (user_id, date, kind) VALUES (?, ?, 'closeout')")
-        .bind(link.user_id, local.date).run();
-      if (fresh.meta.changes) await message(link.chat_id, "🍽 Anything else to log today? Send it, or reply “done” to close the day.");
-    }
+    if (local.hour !== link.remind_hour || link.last_reminded === local.date) continue;
+    const logged = await env.DB.prepare("SELECT 1 FROM weight_entries WHERE user_id = ? AND date = ?").bind(link.user_id, local.date).first();
+    await env.DB.prepare("UPDATE telegram_links SET last_reminded = ? WHERE user_id = ?").bind(local.date, link.user_id).run();
+    if (!logged) await telegramCall(env, "sendMessage", { chat_id: link.chat_id, text: "⚖️ Morning! What do you weigh today?" }, send).catch(() => undefined);
   }
 }
