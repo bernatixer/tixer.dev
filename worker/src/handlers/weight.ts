@@ -30,9 +30,9 @@ export async function getWeight(c: Ctx) {
     c.env.DB.prepare("SELECT date, weight_kg AS weightKg FROM weight_entries WHERE user_id = ? ORDER BY date")
       .bind(userId).all(),
     c.env.DB.prepare(
-      "SELECT start_date AS startDate, maintenance_kcal AS maintenanceKcal, intake_kcal AS intakeKcal FROM weight_phases WHERE user_id = ? ORDER BY start_date",
+      "SELECT start_date AS startDate, maintenance_kcal AS maintenanceKcal, intake_kcal AS intakeKcal, protein_g_per_kg AS proteinPerKg FROM weight_phases WHERE user_id = ? ORDER BY start_date",
     ).bind(userId).all(),
-    c.env.DB.prepare("SELECT id, date, description, kcal, created_at AS createdAt FROM meals WHERE user_id = ? AND date >= ? ORDER BY date, created_at")
+    c.env.DB.prepare("SELECT id, date, description, kcal, protein_g AS proteinG, carbs_g AS carbsG, fat_g AS fatG, fibre_g AS fibreG, sugar_g AS sugarG, created_at AS createdAt FROM meals WHERE user_id = ? AND date >= ? ORDER BY date, created_at")
       .bind(userId, since).all(),
     c.env.DB.prepare("SELECT date FROM meal_days WHERE user_id = ? AND date >= ? ORDER BY date").bind(userId, since).all<{ date: string }>(),
   ]);
@@ -56,13 +56,14 @@ export async function deleteWeightEntry(c: Ctx) {
 export async function putWeightPhase(c: Ctx) {
   const startDate = c.req.param("date") ?? "";
   const input = await body(c);
-  const maintenanceKcal = input?.maintenanceKcal, intakeKcal = input?.intakeKcal;
+  const maintenanceKcal = input?.maintenanceKcal, intakeKcal = input?.intakeKcal, proteinPerKg = input?.proteinPerKg ?? null;
   if (!isDate(startDate) || !inRange(maintenanceKcal, 500, 10000) || !inRange(intakeKcal, 0, 10000)
-    || !Number.isInteger(maintenanceKcal) || !Number.isInteger(intakeKcal)) return c.json({ error: "Invalid phase" }, 400);
+    || !Number.isInteger(maintenanceKcal) || !Number.isInteger(intakeKcal)
+    || (proteinPerKg !== null && !inRange(proteinPerKg, 0.5, 4))) return c.json({ error: "Invalid phase" }, 400);
   await c.env.DB.prepare(
-    "INSERT INTO weight_phases (user_id, start_date, maintenance_kcal, intake_kcal) VALUES (?, ?, ?, ?) ON CONFLICT (user_id, start_date) DO UPDATE SET maintenance_kcal = excluded.maintenance_kcal, intake_kcal = excluded.intake_kcal",
-  ).bind(c.get("userId"), startDate, maintenanceKcal, intakeKcal).run();
-  return c.json({ startDate, maintenanceKcal, intakeKcal });
+    "INSERT INTO weight_phases (user_id, start_date, maintenance_kcal, intake_kcal, protein_g_per_kg) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user_id, start_date) DO UPDATE SET maintenance_kcal = excluded.maintenance_kcal, intake_kcal = excluded.intake_kcal, protein_g_per_kg = excluded.protein_g_per_kg",
+  ).bind(c.get("userId"), startDate, maintenanceKcal, intakeKcal, proteinPerKg).run();
+  return c.json({ startDate, maintenanceKcal, intakeKcal, proteinPerKg });
 }
 
 export async function deleteWeightPhase(c: Ctx) {

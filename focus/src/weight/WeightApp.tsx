@@ -3,7 +3,7 @@ import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { useAuthSync } from '@/hooks/useAuthSync'
 import { ApiError, del, get, post, put } from '@/api/client'
-import { analyse, closedDayTotals, dateOf, last, phaseOn, streakBefore, type Meal, dayNumber, goalLine, KCAL_PER_KG, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
+import { analyse, closedDayTotals, dateOf, DEFAULT_PROTEIN_PER_KG, last, phaseOn, streakBefore, type Meal, dayNumber, goalLine, KCAL_PER_KG, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
 import '@/finance/finance.css'
 import './weight.css'
 
@@ -36,17 +36,18 @@ function Weight() {
   if (!data) return error ? <p role="alert" className="finance-notice">{error}</p> : <p className="finance-loading">Loading…</p>
   const { entries, phases, meals, closedDays } = data
   const eaten = closedDayTotals(meals, closedDays)
+  const bodyKg = entries.length ? last(movingAverage(entries)) : undefined
   return <>
     {error && <p role="alert" className="finance-notice">{error}</p>}
     {!entries.some(entry => entry.date === localToday()) && <TodayForm entries={entries} phases={phases} onSave={weightKg => run(put(`/weight/entries/${localToday()}`, { weightKg }))} />}
     <Stats entries={entries} phases={phases} eaten={eaten} />
     {entries.length > 0 && <Chart entries={entries} phases={phases} />}
     <div className="weight-columns">
-      <Food meals={meals.filter(meal => meal.date === localToday())} closed={closedDays.includes(localToday())} phase={phaseOn(phases, localToday())}
+      <Food meals={meals.filter(meal => meal.date === localToday())} closed={closedDays.includes(localToday())} phase={phaseOn(phases, localToday())} bodyKg={bodyKg}
         onAdd={(text, image) => post<object, Meal>('/meals', { text, image, date: localToday(), language: navigator.language }).then(load)}
         onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))}
         onClose={closed => run(put(`/meal-days/${localToday()}`, { closed }))} />
-      <Phases phases={phases} defaultStart={entries[0]?.date ?? localToday()} onSave={phase => run(put(`/weight/phases/${phase.startDate}`, { maintenanceKcal: phase.maintenanceKcal, intakeKcal: phase.intakeKcal }))}
+      <Phases phases={phases} bodyKg={bodyKg} defaultStart={entries[0]?.date ?? localToday()} onSave={phase => run(put(`/weight/phases/${phase.startDate}`, { maintenanceKcal: phase.maintenanceKcal, intakeKcal: phase.intakeKcal, proteinPerKg: phase.proteinPerKg }))}
         onDelete={date => run(del(`/weight/phases/${date}`))} />
     </div>
     <Drawer title="HISTORY" meta={entries.length ? `${entries.length} weigh-in${entries.length === 1 ? '' : 's'}` : 'Import from a spreadsheet'} open={!entries.length}>
@@ -212,16 +213,18 @@ function EnergyBar({ maintenance, intake }: { maintenance: number; intake: numbe
   </div>
 }
 
-function Phases({ phases, defaultStart, onSave, onDelete }: { phases: Phase[]; defaultStart: string; onSave: (phase: Phase) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
+function Phases({ phases, bodyKg, defaultStart, onSave, onDelete }: { phases: Phase[]; bodyKg?: number; defaultStart: string; onSave: (phase: Phase) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
   const today = localToday()
   const current = phaseOn(phases, today) ?? phases[0]
   const [editing, setEditing] = useState(!phases.length)
   const [startDate, setStartDate] = useState(phases.length ? today : defaultStart)
   const [maintenance, setMaintenance] = useState(current ? String(current.maintenanceKcal) : '')
   const [intake, setIntake] = useState(current ? String(current.intakeKcal) : '')
+  const [protein, setProtein] = useState(String(current?.proteinPerKg ?? DEFAULT_PROTEIN_PER_KG))
   const perWeek = (phase: Phase) => (phase.maintenanceKcal - phase.intakeKcal) * 7 / KCAL_PER_KG
-  const edit = (phase: Phase) => { setStartDate(phase.startDate); setMaintenance(String(phase.maintenanceKcal)); setIntake(String(phase.intakeKcal)); setEditing(true) }
-  const submit = (event: FormEvent) => { event.preventDefault(); void onSave({ startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake) }).then(() => setEditing(false)) }
+  const edit = (phase: Phase) => { setStartDate(phase.startDate); setMaintenance(String(phase.maintenanceKcal)); setIntake(String(phase.intakeKcal)); setProtein(String(phase.proteinPerKg ?? DEFAULT_PROTEIN_PER_KG)); setEditing(true) }
+  const submit = (event: FormEvent) => { event.preventDefault(); void onSave({ startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake), proteinPerKg: Number(protein) }).then(() => setEditing(false)) }
+  const perKg = current?.proteinPerKg ?? DEFAULT_PROTEIN_PER_KG
   const draft = { startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake) }
   const draftValid = maintenance !== '' && intake !== '' && draft.maintenanceKcal >= 500
   return <article className="finance-card weight-plan">
@@ -234,6 +237,7 @@ function Phases({ phases, defaultStart, onSave, onDelete }: { phases: Phase[]; d
         <div><dt>Per day</dt><dd className={perWeek(current) >= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(current.intakeKcal - current.maintenanceKcal, 0)} <small>kcal</small></dd></div>
         <div><dt>Per week</dt><dd className={perWeek(current) >= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(-perWeek(current))} <small>kg</small></dd></div>
         <div><dt>1 kg takes</dt><dd>{perWeek(current) > 0 ? Math.round(7 / perWeek(current)) : '∞'} <small>days</small></dd></div>
+        <div title={`${perKg} g per kg of body weight`}><dt>Protein</dt><dd>{bodyKg ? Math.round(perKg * bodyKg) : '—'} <small>g / day</small></dd></div>
       </dl>
     </div>}
     {editing && <form className="weight-plan__form" onSubmit={submit}>
@@ -242,6 +246,7 @@ function Phases({ phases, defaultStart, onSave, onDelete }: { phases: Phase[]; d
         <label className="finance-field">From<input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
         <label className="finance-field">Burn (maintenance)<input type="number" required min="500" max="10000" step="1" placeholder="2300" value={maintenance} onChange={e => setMaintenance(e.target.value)} /></label>
         <label className="finance-field">Eat (intake)<input type="number" required min="0" max="10000" step="1" placeholder="1800" value={intake} onChange={e => setIntake(e.target.value)} /></label>
+        <label className="finance-field">Protein (g per kg)<input type="number" required min="0.5" max="4" step="0.1" value={protein} onChange={e => setProtein(e.target.value)} /></label>
       </div>
       {draftValid && <><EnergyBar maintenance={draft.maintenanceKcal} intake={draft.intakeKcal} /><p className="weight-plan__preview">{signed(-perWeek(draft))} kg / week</p></>}
       <div className="weight-plan__actions">
@@ -286,7 +291,9 @@ function useCountUp(target: number, ms = 600) {
   return value
 }
 
-function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { meals: Meal[]; closed: boolean; phase?: Phase; onAdd: (text: string, image?: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onClose: (closed: boolean) => Promise<unknown> }) {
+const NUTRIENT_LABELS = [['carbsG', 'Carbs'], ['fatG', 'Fat'], ['fibreG', 'Fibre'], ['sugarG', 'Sugar']] as const
+
+function Food({ meals, closed, phase, bodyKg, onAdd, onUpdate, onDelete, onClose }: { meals: Meal[]; closed: boolean; phase?: Phase; bodyKg?: number; onAdd: (text: string, image?: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onClose: (closed: boolean) => Promise<unknown> }) {
   const [text, setText] = useState('')
   const [photo, setPhoto] = useState<string>()
   const [pending, setPending] = useState<{ text: string; photo?: string }>()
@@ -294,6 +301,8 @@ function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { me
   const busy = pending !== undefined
   const total = meals.reduce((sum, meal) => sum + meal.kcal, 0)
   const shownTotal = useCountUp(total)
+  const grams = (key: 'proteinG' | (typeof NUTRIENT_LABELS)[number][0]) => Math.round(meals.reduce((sum, meal) => sum + (meal[key] ?? 0), 0))
+  const proteinTarget = bodyKg ? Math.round((phase?.proteinPerKg ?? DEFAULT_PROTEIN_PER_KG) * bodyKg) : undefined
   // Meals that weren't in the last list flash for the length of the animation; the first list has nothing to compare against.
   const seen = useRef<Set<string> | null>(null)
   const [fresh, setFresh] = useState<Set<string>>(new Set())
@@ -315,9 +324,14 @@ function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { me
       {meals.length > 0 && <button type="button" className={closed ? undefined : 'finance-primary'} onClick={() => void onClose(!closed)}>{closed ? '✓ Day closed · reopen' : 'Close day'}</button>}</div>
     <div className="weight-food__total"><strong>{shownTotal}</strong> kcal{phase && <small> of {phase.intakeKcal} planned · {total <= phase.intakeKcal ? `${phase.intakeKcal - total} left` : <span className="weight-stat--bad">{total - phase.intakeKcal} over</span>}</small>}</div>
     {phase && <progress className={total > phase.intakeKcal ? 'is-over' : undefined} value={Math.min(total, phase.intakeKcal)} max={phase.intakeKcal} aria-label="Eaten of planned intake" />}
+    {meals.some(meal => meal.proteinG != null) && <dl className="weight-food__nutrients">
+      <div className="weight-food__protein"><dt>Protein</dt><dd>{grams('proteinG')}<small>{proteinTarget ? ` / ${proteinTarget} g` : ' g'}</small></dd>
+        {proteinTarget && <progress value={Math.min(grams('proteinG'), proteinTarget)} max={proteinTarget} aria-label="Protein of target" />}</div>
+      {NUTRIENT_LABELS.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{grams(key)}<small> g</small></dd></div>)}
+    </dl>}
     {(meals.length > 0 || pending) && <ul className="weight-food__meals">{meals.map(meal => <li key={meal.id} className={fresh.has(meal.id) ? 'is-new' : undefined}>
       <time>{new Date(meal.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })}</time>
-      <span>{meal.description}</span>
+      <span>{meal.description}{meal.proteinG != null && <small className="weight-food__macros">{Math.round(meal.proteinG)}P · {Math.round(meal.carbsG ?? 0)}C · {Math.round(meal.fatG ?? 0)}F</small>}</span>
       <label><input type="number" min="0" max="10000" step="1" defaultValue={meal.kcal} aria-label={`kcal for ${meal.description}`}
         onBlur={e => { const kcal = Number(e.target.value); if (Number.isInteger(kcal) && kcal >= 0 && kcal !== meal.kcal) void onUpdate(meal.id, kcal) }} /> kcal</label>
       <button type="button" className="finance-remove" aria-label={`Delete ${meal.description}`} onClick={() => void onDelete(meal.id)}>×</button>

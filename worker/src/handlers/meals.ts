@@ -7,13 +7,17 @@ const OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions";
 const MEAL_MODEL = "gpt-5.5";
 
 const SYSTEM_PROMPT =
-  "You estimate calories in meals for a food log.\n" +
-  "Given a description and/or a photo, list each food with a realistic portion-based kcal estimate.\n" +
+  "You estimate calories and nutrients in meals for a food log.\n" +
+  "Given a description and/or a photo, list each food with a realistic portion-based estimate of kcal and grams of protein, carbohydrate, fat, fibre and sugar.\n" +
   "Use amounts the user states; otherwise assume a typical adult portion and count cooking oil, sauces and drinks you can see or that are mentioned.\n" +
   "If the input is not food or drink, return is_food false.\n" +
-  "Return ONLY a JSON object: {\"is_food\": boolean, \"items\": [{\"name\": string, \"kcal\": integer}]}. Names are short and in the language given.";
+  "Return ONLY a JSON object: {\"is_food\": boolean, \"items\": [{\"name\": string, \"kcal\": integer, \"protein_g\": number, \"carbs_g\": number, \"fat_g\": number, \"fibre_g\": number, \"sugar_g\": number}]}. Names are short and in the language given.";
 
-export interface MealEstimate { items: { name: string; kcal: number }[]; totalKcal: number }
+export const NUTRIENTS = ["protein", "carbs", "fat", "fibre", "sugar"] as const;
+export type Nutrients = Record<(typeof NUTRIENTS)[number], number>;
+export interface MealEstimate { items: { name: string; kcal: number }[]; totalKcal: number; nutrients: Nutrients }
+
+const grams = (value: unknown) => (typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0);
 
 // Tolerates prose around the JSON, so take the outermost object.
 export function parseEstimate(content: string): MealEstimate | null {
@@ -21,11 +25,13 @@ export function parseEstimate(content: string): MealEstimate | null {
   let parsed: { is_food?: unknown; items?: unknown };
   try { parsed = JSON.parse(json); } catch { return null; }
   if (parsed.is_food !== true || !Array.isArray(parsed.items)) return null;
-  const items = parsed.items
-    .filter((item): item is { name: string; kcal: number } => typeof item?.name === "string" && Number.isFinite(item?.kcal) && item.kcal >= 0)
-    .map(item => ({ name: item.name.slice(0, 80), kcal: Math.round(item.kcal) }));
+  const valid = parsed.items
+    .filter((item): item is Record<string, unknown> & { name: string; kcal: number } => typeof item?.name === "string" && Number.isFinite(item?.kcal) && item.kcal >= 0);
+  const items = valid.map(item => ({ name: item.name.slice(0, 80), kcal: Math.round(item.kcal) }));
   const totalKcal = items.reduce((sum, item) => sum + item.kcal, 0);
-  return items.length && totalKcal <= 10000 ? { items, totalKcal } : null;
+  const nutrients = Object.fromEntries(NUTRIENTS.map(name =>
+    [name, Math.round(valid.reduce((sum, item) => sum + grams(item[`${name}_g`]), 0) * 10) / 10])) as Nutrients;
+  return items.length && totalKcal <= 10000 ? { items, totalKcal, nutrients } : null;
 }
 
 function languageName(tag: string) {
@@ -53,12 +59,22 @@ export async function estimateMeal(env: Env, text: string, image?: string, langu
 
 export const describe = (estimate: MealEstimate) => estimate.items.map(item => item.name).join(", ");
 
-export async function addMeal(db: D1Database, userId: string, date: string, description: string, kcal: number, telegramMessageId: number | null = null) {
-  const meal = { id: crypto.randomUUID(), date, description, kcal, createdAt: new Date().toISOString() };
-  await db.prepare("INSERT INTO meals (id, user_id, date, description, kcal, telegram_message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(meal.id, userId, date, description, kcal, telegramMessageId, meal.createdAt).run();
+export async function addMeal(db: D1Database, userId: string, date: string, description: string, estimate: MealEstimate, telegramMessageId: number | null = null) {
+  const { protein, carbs, fat, fibre, sugar } = estimate.nutrients;
+  const meal = { id: crypto.randomUUID(), date, description, kcal: estimate.totalKcal, proteinG: protein, carbsG: carbs, fatG: fat, fibreG: fibre, sugarG: sugar, createdAt: new Date().toISOString() };
+  await db.prepare("INSERT INTO meals (id, user_id, date, description, kcal, protein_g, carbs_g, fat_g, fibre_g, sugar_g, telegram_message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(meal.id, userId, date, description, meal.kcal, protein, carbs, fat, fibre, sugar, telegramMessageId, meal.createdAt).run();
   return meal;
 }
+
+// A corrected kcal scales the nutrients by the same ratio; SQLite evaluates the right-hand sides against the old row.
+export function correctMealKcal(db: D1Database, kcal: number, where: string, ...params: unknown[]) {
+  const scaled = NUTRIENTS.map(name => `${name}_g = CASE WHEN kcal > 0 THEN ROUND(${name}_g * ?1 / kcal, 1) ELSE ${name}_g END`).join(", ");
+  return db.prepare(`UPDATE meals SET ${scaled}, kcal = ?1 WHERE ${where}`).bind(kcal, ...params).run();
+}
+
+export const nutrientLine = ({ protein, carbs, fat, fibre, sugar }: Nutrients) =>
+  `P ${Math.round(protein)}g · C ${Math.round(carbs)}g · F ${Math.round(fat)}g · fibre ${Math.round(fibre)}g · sugar ${Math.round(sugar)}g`;
 
 export const closeDay = (db: D1Database, userId: string, date: string) =>
   db.prepare("INSERT OR IGNORE INTO meal_days (user_id, date) VALUES (?, ?)").bind(userId, date).run();
@@ -77,14 +93,13 @@ export async function postMeal(c: Ctx) {
   const estimate = await estimateMeal(c.env, text, image, language).catch(() => undefined);
   if (estimate === undefined) return c.json({ error: "Estimator unavailable" }, 502);
   if (!estimate) return c.json({ error: "That doesn't look like food" }, 422);
-  return c.json(await addMeal(c.env.DB, c.get("userId"), date, describe(estimate), estimate.totalKcal));
+  return c.json(await addMeal(c.env.DB, c.get("userId"), date, describe(estimate), estimate));
 }
 
 export async function putMeal(c: Ctx) {
   const input = await c.req.json<Record<string, unknown>>().catch(() => null);
   if (!validKcal(input?.kcal)) return c.json({ error: "Invalid kcal" }, 400);
-  const result = await c.env.DB.prepare("UPDATE meals SET kcal = ? WHERE id = ? AND user_id = ?")
-    .bind(input.kcal, c.req.param("id") ?? "", c.get("userId")).run();
+  const result = await correctMealKcal(c.env.DB, input.kcal, "id = ?2 AND user_id = ?3", c.req.param("id") ?? "", c.get("userId"));
   return result.meta.changes ? c.json({ kcal: input.kcal }) : c.json({ error: "Not found" }, 404);
 }
 

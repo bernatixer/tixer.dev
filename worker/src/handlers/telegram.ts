@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { Env, Variables } from "../types";
-import { addMeal, closeDay, describe, estimateMeal } from "./meals";
+import { addMeal, closeDay, correctMealKcal, describe, estimateMeal, nutrientLine } from "./meals";
 import { saveWeight } from "./weight";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
@@ -66,9 +66,9 @@ async function logMeal(env: Env, link: { user_id: string; time_zone: string }, c
     }
     const lines = estimate.items.map(item => `• ${item.name} · ${item.kcal}`).join("\n");
     const sent = await telegramCall<{ message_id: number }>(env, "sendMessage", {
-      chat_id: chatId, text: `≈ ${estimate.totalKcal} kcal\n${lines}\n\nReply to this message with a number to correct it.`,
+      chat_id: chatId, text: `≈ ${estimate.totalKcal} kcal\n${nutrientLine(estimate.nutrients)}\n\n${lines}\n\nReply to this message with a number to correct it.`,
     });
-    await addMeal(env.DB, link.user_id, localNow(link.time_zone).date, text || describe(estimate), estimate.totalKcal, sent?.message_id ?? null);
+    await addMeal(env.DB, link.user_id, localNow(link.time_zone).date, text || describe(estimate), estimate, sent?.message_id ?? null);
   } catch (error) {
     console.error("meal estimate failed", error);
     await telegramCall(env, "sendMessage", { chat_id: chatId, text: "Couldn’t estimate that right now. Try again in a minute." }).catch(() => undefined);
@@ -113,8 +113,7 @@ export async function telegramWebhook(c: Ctx) {
   const repliedTo = message?.reply_to_message?.message_id;
   const kcal = /^\d{1,5}(?:\s*kcal)?$/i.test(text) ? parseInt(text, 10) : null;
   if (!photo && repliedTo !== undefined && kcal !== null && kcal <= 10000) {
-    const result = await c.env.DB.prepare("UPDATE meals SET kcal = ? WHERE user_id = ? AND telegram_message_id = ?")
-      .bind(kcal, link.user_id, repliedTo).run();
+    const result = await correctMealKcal(c.env.DB, kcal, "user_id = ?2 AND telegram_message_id = ?3", link.user_id, repliedTo);
     if (result.meta.changes) return reply(c, chatId, `✓ Updated to ${kcal} kcal`);
   }
   const weightKg = photo ? null : parseWeight(text);

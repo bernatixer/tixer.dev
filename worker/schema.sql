@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS weight_phases (
     start_date TEXT NOT NULL,
     maintenance_kcal INTEGER NOT NULL,
     intake_kcal INTEGER NOT NULL,
+    protein_g_per_kg REAL,
     PRIMARY KEY (user_id, start_date)
 );
 
@@ -101,6 +102,11 @@ CREATE TABLE IF NOT EXISTS meals (
     date TEXT NOT NULL,
     description TEXT NOT NULL,
     kcal INTEGER NOT NULL,
+    protein_g REAL,
+    carbs_g REAL,
+    fat_g REAL,
+    fibre_g REAL,
+    sugar_g REAL,
     telegram_message_id INTEGER,
     created_at TEXT NOT NULL
 );

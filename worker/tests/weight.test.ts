@@ -22,10 +22,11 @@ test('weight entries and phases upsert, list per user, and delete', async () => 
   assert.equal((await call('a', 'PUT', '/entries/2026-10-14', { weightKg: 80.9 })).status, 200);
   assert.equal((await call('a', 'PUT', '/entries/2026-10-13', { weightKg: 81.2 })).status, 200);
   assert.equal((await call('a', 'PUT', '/phases/2026-10-14', { maintenanceKcal: 2300, intakeKcal: 1800 })).status, 200);
+  assert.equal((await call('a', 'PUT', '/phases/2026-10-01', { maintenanceKcal: 2300, intakeKcal: 1800, proteinPerKg: 9 })).status, 400);
   assert.equal((await call('b', 'PUT', '/entries/2026-10-14', { weightKg: 60 })).status, 200);
   assert.deepEqual((await call('a', 'GET', '')).json, {
     entries: [{ date: '2026-10-13', weightKg: 81.2 }, { date: '2026-10-14', weightKg: 80.9 }],
-    phases: [{ startDate: '2026-10-14', maintenanceKcal: 2300, intakeKcal: 1800 }],
+    phases: [{ startDate: '2026-10-14', maintenanceKcal: 2300, intakeKcal: 1800, proteinPerKg: null }],
     meals: [], closedDays: [],
   });
   assert.equal((await call('a', 'DELETE', '/entries/2026-10-13')).status, 204);

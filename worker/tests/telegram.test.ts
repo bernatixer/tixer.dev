@@ -14,7 +14,7 @@ const token = (sub: string) => new SignJWT({ sub }).setProtectedHeader({ alg: 'R
 
 // Outbound calls (Telegram, OpenAI) are recorded and answered from `estimate` / canned Telegram results.
 const calls: { url: string; body: any }[] = [];
-let estimate = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180}, {"name": "toast", "kcal": 90}]}';
+let estimate = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180, "protein_g": 12, "fat_g": 12}, {"name": "toast", "kcal": 90, "protein_g": 3, "carbs_g": 16, "fibre_g": 2}]}';
 globalThis.fetch = (async (input: string, init?: RequestInit) => {
   const url = String(input), body = init?.body ? JSON.parse(String(init.body)) : null;
   calls.push({ url, body });
@@ -68,8 +68,9 @@ test('a bot code links the chat, and replies log weight for that user', async ()
 });
 
 test('meal estimates parse from wrapped JSON and reject non-food', () => {
-  assert.deepEqual(parseEstimate('ok {"is_food": true, "items": [{"name": "salad", "kcal": 580.4}, {"name": "coke", "kcal": 140}]} done'),
-    { items: [{ name: 'salad', kcal: 580 }, { name: 'coke', kcal: 140 }], totalKcal: 720 });
+  assert.deepEqual(parseEstimate('ok {"is_food": true, "items": [{"name": "salad", "kcal": 580.4, "protein_g": 30, "carbs_g": 20.25, "fat_g": 42, "fibre_g": 5, "sugar_g": 4}, {"name": "coke", "kcal": 140, "carbs_g": 35, "sugar_g": "lots"}]} done'),
+    { items: [{ name: 'salad', kcal: 580 }, { name: 'coke', kcal: 140 }], totalKcal: 720,
+      nutrients: { protein: 30, carbs: 55.3, fat: 42, fibre: 5, sugar: 4 } }, 'missing or malformed grams count as zero');
   assert.equal(parseEstimate('{"is_food": false, "items": []}'), null);
   assert.equal(parseEstimate('no json here'), null);
 });
@@ -79,12 +80,12 @@ test('meals log from text and photos, correct by reply, and days close with done
   db.sqlite.exec("INSERT INTO telegram_links (user_id, chat_id, time_zone, remind_hour) VALUES ('m', '7', 'Europe/Madrid', 8)");
   calls.length = 0;
   assert.equal((await telegram(7, '2 eggs and toast')).body!.action, 'typing');
-  assert.match(calls.at(-1)!.body.text, /≈ 270 kcal\n• eggs · 180\n• toast · 90/);
-  assert.deepEqual(db.sqlite.prepare("SELECT description, kcal, telegram_message_id AS mid FROM meals WHERE user_id = 'm'").all().map(row => ({ ...row })),
-    [{ description: '2 eggs and toast', kcal: 270, mid: 55 }]);
+  assert.match(calls.at(-1)!.body.text, /≈ 270 kcal\nP 15g · C 16g · F 12g · fibre 2g · sugar 0g\n\n• eggs · 180\n• toast · 90/);
+  assert.deepEqual(db.sqlite.prepare("SELECT description, kcal, protein_g AS p, carbs_g AS c, telegram_message_id AS mid FROM meals WHERE user_id = 'm'").all().map(row => ({ ...row })),
+    [{ description: '2 eggs and toast', kcal: 270, p: 15, c: 16, mid: 55 }]);
 
   assert.equal((await telegram(7, '320', 'hook-secret', { reply_to_message: { message_id: 55 } })).body!.text, '✓ Updated to 320 kcal');
-  assert.equal(db.sqlite.prepare("SELECT kcal FROM meals WHERE user_id = 'm'").get()!.kcal, 320);
+  assert.deepEqual({ ...db.sqlite.prepare("SELECT kcal, protein_g AS p, fat_g AS f FROM meals WHERE user_id = 'm'").get() }, { kcal: 320, p: 17.8, f: 14.2 }, 'nutrients scale with the correction');
 
   calls.length = 0;
   await telegram(7, '', 'hook-secret', { photo: [{ file_id: 'small' }, { file_id: 'big' }] });
@@ -97,7 +98,7 @@ test('meals log from text and photos, correct by reply, and days close with done
   estimate = '{"is_food": false, "items": []}';
   await telegram(7, 'what is the weather');
   assert.match(calls.at(-1)!.body.text, /doesn’t look like food/);
-  estimate = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180}, {"name": "toast", "kcal": 90}]}';
+  estimate = '{"is_food": true, "items": [{"name": "eggs", "kcal": 180, "protein_g": 12, "fat_g": 12}, {"name": "toast", "kcal": 90, "protein_g": 3, "carbs_g": 16, "fibre_g": 2}]}';
 
   assert.equal((await telegram(7, 'Done')).body!.text, '✓ Day closed');
   assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM meal_days WHERE user_id = 'm'").get()!.n, 1);
