@@ -1,5 +1,6 @@
 export interface WeightEntry { date: string; weightKg: number }
 export interface Phase { startDate: string; maintenanceKcal: number; intakeKcal: number }
+export interface Meal { id: string; date: string; description: string; kcal: number; createdAt: string }
 
 // Energy in a kg of mixed body-weight loss; the /9 kcal-per-gram figure assumes pure fat and overstates the pace.
 export const KCAL_PER_KG = 7700
@@ -43,9 +44,11 @@ export interface Analysis {
   kgPerWeek: number | null
   plannedKgPerWeek: number | null
   maintenanceKcal: number | null
+  loggedDays: number
 }
 
-export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21): Analysis | null {
+// `eaten` holds totals for closed days only; other days fall back to the planned intake.
+export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21, eaten = new Map<string, number>()): Analysis | null {
   if (!entries.length) return null
   const latest = last(entries)!
   const trendKg = last(movingAverage(entries))!
@@ -60,10 +63,14 @@ export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21
     kgPerDay = xs.reduce((sum, x, i) => sum + (x - mx) * (window[i].weightKg - my), 0) / xs.reduce((sum, x) => sum + (x - mx) ** 2, 0)
   }
   // Real maintenance = what you ate + the energy the scale says you burned off; needs two weeks to beat water noise.
-  let maintenanceKcal: number | null = null
+  let maintenanceKcal: number | null = null, loggedDays = 0
   if (kgPerDay !== null && span >= 14) {
     const intakes: number[] = []
-    for (let day = dayNumber(window[0].date); day < dayNumber(latest.date); day++) intakes.push(phaseOn(phases, dateOf(day))?.intakeKcal ?? NaN)
+    for (let day = dayNumber(window[0].date); day < dayNumber(latest.date); day++) {
+      const date = dateOf(day), logged = eaten.get(date)
+      if (logged !== undefined) loggedDays++
+      intakes.push(logged ?? phaseOn(phases, date)?.intakeKcal ?? NaN)
+    }
     const intake = intakes.reduce((a, b) => a + b, 0) / intakes.length
     if (!Number.isNaN(intake)) maintenanceKcal = Math.round(intake - kgPerDay * KCAL_PER_KG)
   }
@@ -74,7 +81,14 @@ export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21
     kgPerWeek: kgPerDay === null ? null : kgPerDay * 7,
     plannedKgPerWeek: current ? -(current.maintenanceKcal - current.intakeKcal) * 7 / KCAL_PER_KG : null,
     maintenanceKcal,
+    loggedDays,
   }
+}
+
+export function closedDayTotals(meals: Meal[], closedDays: string[]): Map<string, number> {
+  const closed = new Set(closedDays), totals = new Map<string, number>()
+  for (const meal of meals) if (closed.has(meal.date)) totals.set(meal.date, (totals.get(meal.date) ?? 0) + meal.kcal)
+  return totals
 }
 
 // Consecutive logged days ending the day before `date`.

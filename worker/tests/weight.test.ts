@@ -26,10 +26,11 @@ test('weight entries and phases upsert, list per user, and delete', async () => 
   assert.deepEqual((await call('a', 'GET', '')).json, {
     entries: [{ date: '2026-10-13', weightKg: 81.2 }, { date: '2026-10-14', weightKg: 80.9 }],
     phases: [{ startDate: '2026-10-14', maintenanceKcal: 2300, intakeKcal: 1800 }],
+    meals: [], closedDays: [],
   });
   assert.equal((await call('a', 'DELETE', '/entries/2026-10-13')).status, 204);
   assert.equal((await call('a', 'DELETE', '/phases/2026-10-14')).status, 204);
-  assert.deepEqual((await call('a', 'GET', '')).json, { entries: [{ date: '2026-10-14', weightKg: 80.9 }], phases: [] });
+  assert.deepEqual((await call('a', 'GET', '')).json, { entries: [{ date: '2026-10-14', weightKg: 80.9 }], phases: [], meals: [], closedDays: [] });
 });
 
 test('weight rejects malformed input', async () => {
@@ -38,4 +39,17 @@ test('weight rejects malformed input', async () => {
     ['/entries/2026-10-14', { weightKg: '80' }], ['/entries/2026-10-14', { weightKg: 1000 }],
     ['/phases/2026-10-14', { maintenanceKcal: 2300.5, intakeKcal: 1800 }], ['/phases/2026-10-14', { maintenanceKcal: 2300 }],
   ] as const) assert.equal((await call('a', 'PUT', path, body)).status, 400, path + JSON.stringify(body));
+});
+
+test('meal kcal corrections and day closing are per user', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  db.sqlite.exec(`INSERT INTO meals (id, user_id, date, description, kcal, created_at) VALUES ('meal-a', 'a', '${today}', 'pasta', 700, '${today}T12:00:00Z')`);
+  assert.equal((await call('b', 'PUT', '/../meals/meal-a', { kcal: 1 })).status, 404);
+  assert.equal((await call('a', 'PUT', '/../meals/meal-a', { kcal: 650.5 })).status, 400);
+  assert.equal((await call('a', 'PUT', '/../meals/meal-a', { kcal: 650 })).status, 200);
+  assert.equal((await call('a', 'PUT', `/../meal-days/${today}`, { closed: true })).status, 200);
+  const data = (await call('a', 'GET', '')).json as { meals: { kcal: number }[]; closedDays: string[] };
+  assert.deepEqual([data.meals.map(meal => meal.kcal), data.closedDays], [[650], [today]]);
+  assert.equal((await call('b', 'DELETE', '/../meals/meal-a')).status, 204);
+  assert.equal(((await call('a', 'GET', '')).json as { meals: unknown[] }).meals.length, 1, 'another user cannot delete it');
 });

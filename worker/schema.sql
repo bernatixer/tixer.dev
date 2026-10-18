@@ -93,3 +93,31 @@ CREATE TABLE IF NOT EXISTS telegram_codes (
     chat_id TEXT NOT NULL,
     expires_at TEXT NOT NULL
 );
+
+-- Meals estimated from a description or photo; kcal can be corrected by hand.
+CREATE TABLE IF NOT EXISTS meals (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    description TEXT NOT NULL,
+    kcal INTEGER NOT NULL,
+    telegram_message_id INTEGER,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_meals_user_date ON meals(user_id, date);
+
+-- A closed day's meals are complete, so its total can stand in for planned intake.
+CREATE TABLE IF NOT EXISTS meal_days (
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    PRIMARY KEY (user_id, date)
+);
+
+-- One row per nudge sent, so each kind goes out at most once a day.
+CREATE TABLE IF NOT EXISTS telegram_nudges (
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    PRIMARY KEY (user_id, date, kind)
+);

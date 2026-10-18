@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyse, goalLine, streakBefore, movingAverage, parseSheetRows } from '../src/weight/model.ts';
+import { analyse, closedDayTotals, goalLine, streakBefore, movingAverage, parseSheetRows } from '../src/weight/model.ts';
 
 const sheet = 'DATE\tWEIGHT\tGOAL\n14/10/2026\t81\t81,00\n15/10/2026\t80,55\t80,94\n16/10/2026\t81,05\t80,89\n17/10/2026\t80,75\t80,83\n18/10/2026\t\t80,78';
 const phases = [{ startDate: '2026-10-14', maintenanceKcal: 2300, intakeKcal: 1800 }];
@@ -38,4 +38,15 @@ test('streak counts consecutive days up to yesterday', () => {
   const entries = parseSheetRows(sheet);
   assert.equal(streakBefore(entries, '2026-10-18'), 4);
   assert.equal(streakBefore(entries, '2026-10-19'), 0);
+});
+
+test('closed days with logged meals replace the planned intake', () => {
+  const entries = Array.from({ length: 21 }, (_, i) => ({ date: `2026-10-${String(i + 1).padStart(2, '0')}`, weightKg: 85 - i * 0.1 }));
+  const plan = [{ startDate: '2026-10-01', maintenanceKcal: 2300, intakeKcal: 1800 }];
+  // Eating 2100 on every closed day (all 20 intervals) lifts the estimate by 300.
+  const meals = entries.slice(0, 20).flatMap(({ date }) => [{ id: `${date}a`, date, description: '', kcal: 1000, createdAt: '' }, { id: `${date}b`, date, description: '', kcal: 1100, createdAt: '' }]);
+  const result = analyse(entries, plan, 21, closedDayTotals(meals, entries.slice(0, 20).map(entry => entry.date)))!;
+  assert.equal(result.maintenanceKcal, 2870);
+  assert.equal(result.loggedDays, 20);
+  assert.equal(closedDayTotals(meals, []).size, 0, 'open days are ignored');
 });

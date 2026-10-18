@@ -24,14 +24,19 @@ export function saveWeight(db: D1Database, userId: string, date: string, weightK
 
 export async function getWeight(c: Ctx) {
   const userId = c.get("userId");
-  const [entries, phases] = await Promise.all([
+  // Meals only feed the 3-week maintenance window and today's card; 35 days covers both with slack.
+  const since = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10);
+  const [entries, phases, meals, closedDays] = await Promise.all([
     c.env.DB.prepare("SELECT date, weight_kg AS weightKg FROM weight_entries WHERE user_id = ? ORDER BY date")
       .bind(userId).all(),
     c.env.DB.prepare(
       "SELECT start_date AS startDate, maintenance_kcal AS maintenanceKcal, intake_kcal AS intakeKcal FROM weight_phases WHERE user_id = ? ORDER BY start_date",
     ).bind(userId).all(),
+    c.env.DB.prepare("SELECT id, date, description, kcal, created_at AS createdAt FROM meals WHERE user_id = ? AND date >= ? ORDER BY date, created_at")
+      .bind(userId, since).all(),
+    c.env.DB.prepare("SELECT date FROM meal_days WHERE user_id = ? AND date >= ? ORDER BY date").bind(userId, since).all<{ date: string }>(),
   ]);
-  return c.json({ entries: entries.results, phases: phases.results });
+  return c.json({ entries: entries.results, phases: phases.results, meals: meals.results, closedDays: closedDays.results.map(row => row.date) });
 }
 
 export async function putWeightEntry(c: Ctx) {

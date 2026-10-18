@@ -3,7 +3,7 @@ import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { useAuthSync } from '@/hooks/useAuthSync'
 import { ApiError, del, get, post, put } from '@/api/client'
-import { analyse, dateOf, last, phaseOn, streakBefore, dayNumber, goalLine, KCAL_PER_KG, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
+import { analyse, closedDayTotals, dateOf, last, phaseOn, streakBefore, type Meal, dayNumber, goalLine, KCAL_PER_KG, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
 import '@/finance/finance.css'
 import './weight.css'
 
@@ -27,19 +27,24 @@ export function WeightPage({ isReady, account }: { isReady: boolean; account: Re
 }
 
 function Weight() {
-  const [data, setData] = useState<{ entries: WeightEntry[]; phases: Phase[] } | null>(null)
+  const [data, setData] = useState<WeightData | null>(null)
   const [error, setError] = useState('')
-  const load = useCallback(() => get<{ entries: WeightEntry[]; phases: Phase[] }>('/weight').then(setData, () => setError('Could not load your weight log.')), [])
+  const load = useCallback(() => get<WeightData>('/weight').then(setData, () => setError('Could not load your weight log.')), [])
   useEffect(() => { void load() }, [load])
   const run = (action: Promise<unknown>) => { setError(''); return action.then(load, () => setError('Could not save. Try again.')) }
 
   if (!data) return error ? <p role="alert" className="finance-notice">{error}</p> : <p className="finance-loading">Loading…</p>
-  const { entries, phases } = data
+  const { entries, phases, meals, closedDays } = data
+  const eaten = closedDayTotals(meals, closedDays)
   return <>
     {error && <p role="alert" className="finance-notice">{error}</p>}
     {!entries.some(entry => entry.date === localToday()) && <TodayForm entries={entries} phases={phases} onSave={weightKg => run(put(`/weight/entries/${localToday()}`, { weightKg }))} />}
-    <Stats entries={entries} phases={phases} />
+    <Stats entries={entries} phases={phases} eaten={eaten} />
     {entries.length > 0 && <Chart entries={entries} phases={phases} />}
+    <Food meals={meals.filter(meal => meal.date === localToday())} closed={closedDays.includes(localToday())} phase={phaseOn(phases, localToday())}
+      onAdd={text => post<object, Meal>('/meals', { text, date: localToday() }).then(load)}
+      onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))}
+      onClose={closed => run(put(`/meal-days/${localToday()}`, { closed }))} />
     <div className="weight-columns">
       <Log entries={entries} phases={phases}
         onImport={rows => run(Promise.all(rows.map(entry => put(`/weight/entries/${entry.date}`, { weightKg: entry.weightKg }))))}
@@ -51,8 +56,10 @@ function Weight() {
   </>
 }
 
-function Stats({ entries, phases }: { entries: WeightEntry[]; phases: Phase[] }) {
-  const result = analyse(entries, phases)
+type WeightData = { entries: WeightEntry[]; phases: Phase[]; meals: Meal[]; closedDays: string[] }
+
+function Stats({ entries, phases, eaten }: { entries: WeightEntry[]; phases: Phase[]; eaten: Map<string, number> }) {
+  const result = analyse(entries, phases, 21, eaten)
   if (!result) return null
   const current = phaseOn(phases, last(entries)!.date)
   const tiles: [string, string, string, string?][] = [
@@ -60,7 +67,7 @@ function Stats({ entries, phases }: { entries: WeightEntry[]; phases: Phase[] })
     ['Since start', `${signed(result.changeKg)} kg`, `From ${kg(entries[0].weightKg)} on ${shortDate(entries[0].date)}`, result.changeKg <= 0 ? 'good' : 'bad'],
     ['Vs goal', result.vsGoalKg === null ? '—' : `${signed(result.vsGoalKg)} kg`, result.vsGoalKg === null ? 'Add a kcal phase' : result.vsGoalKg <= 0 ? 'Ahead of plan' : 'Behind plan', result.vsGoalKg === null ? undefined : result.vsGoalKg <= 0 ? 'good' : 'bad'],
     ['Pace / week', result.kgPerWeek === null ? '—' : `${signed(result.kgPerWeek)} kg`, result.kgPerWeek === null ? 'Needs a week of data' : result.plannedKgPerWeek === null ? 'Actual, last 3 weeks' : `Planned ${signed(result.plannedKgPerWeek)} kg`],
-    ['Real maintenance', result.maintenanceKcal === null ? '—' : `${result.maintenanceKcal} kcal`, result.maintenanceKcal === null ? 'Needs two weeks of data' : current ? `You set ${current.maintenanceKcal} kcal` : 'Estimated from your trend'],
+    ['Real maintenance', result.maintenanceKcal === null ? '—' : `${result.maintenanceKcal} kcal`, result.maintenanceKcal === null ? 'Needs two weeks of data' : `${result.loggedDays ? `${result.loggedDays} logged days` : 'From your plan'}${current ? ` · you set ${current.maintenanceKcal}` : ''}`],
   ]
   return <section className="weight-stats">{tiles.map(([label, value, note, tone]) => <div key={label} className="finance-card weight-stat">
     <span className="finance-eyebrow">{label}</span><strong className={tone ? `weight-stat--${tone}` : undefined}>{value}</strong><small>{note}</small>
@@ -242,6 +249,36 @@ function Phases({ phases, defaultStart, onSave, onDelete }: { phases: Phase[]; d
   </article>
 }
 
+function Food({ meals, closed, phase, onAdd, onUpdate, onDelete, onClose }: { meals: Meal[]; closed: boolean; phase?: Phase; onAdd: (text: string) => Promise<unknown>; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; onClose: (closed: boolean) => Promise<unknown> }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const total = meals.reduce((sum, meal) => sum + meal.kcal, 0)
+  const add = (event: FormEvent) => {
+    event.preventDefault(); setBusy(true); setError('')
+    void onAdd(text).then(() => setText(''), failure => setError(failure instanceof ApiError && failure.status === 422 ? 'That doesn’t look like food.' : 'Couldn’t estimate that right now. Try again in a minute.')).finally(() => setBusy(false))
+  }
+  return <article className="finance-card weight-food">
+    <div className="finance-card-heading"><span className="finance-eyebrow">FOOD · TODAY</span>
+      {meals.length > 0 && <button type="button" className={closed ? undefined : 'finance-primary'} onClick={() => void onClose(!closed)}>{closed ? '✓ Day closed · reopen' : 'Close day'}</button>}</div>
+    <div className="weight-food__total"><strong>{total}</strong> kcal{phase && <small> of {phase.intakeKcal} planned · {total <= phase.intakeKcal ? `${phase.intakeKcal - total} left` : <span className="weight-stat--bad">{total - phase.intakeKcal} over</span>}</small>}</div>
+    {phase && <progress className={total > phase.intakeKcal ? 'is-over' : undefined} value={Math.min(total, phase.intakeKcal)} max={phase.intakeKcal} aria-label="Eaten of planned intake" />}
+    {meals.length > 0 && <ul className="weight-food__meals">{meals.map(meal => <li key={meal.id}>
+      <time>{new Date(meal.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</time>
+      <span>{meal.description}</span>
+      <label><input type="number" min="0" max="10000" step="1" defaultValue={meal.kcal} aria-label={`kcal for ${meal.description}`}
+        onBlur={e => { const kcal = Number(e.target.value); if (Number.isInteger(kcal) && kcal >= 0 && kcal !== meal.kcal) void onUpdate(meal.id, kcal) }} /> kcal</label>
+      <button type="button" className="finance-remove" aria-label={`Delete ${meal.description}`} onClick={() => void onDelete(meal.id)}>×</button>
+    </li>)}</ul>}
+    <form className="weight-food__add" onSubmit={add}>
+      <input value={text} onChange={e => setText(e.target.value)} placeholder="What did you eat? e.g. 2 eggs, toast and a coffee with milk" maxLength={500} required disabled={busy} />
+      <button type="submit" className="finance-primary" disabled={busy || !text.trim()}>{busy ? 'Estimating…' : 'Add'}</button>
+    </form>
+    {error && <p role="alert" className="finance-danger">{error}</p>}
+    <p className="finance-muted weight-food__hint">Estimates are rough; fix any number by editing it. Close the day once everything’s in, so it counts towards your real maintenance. In Telegram, send a meal or a photo, and “done” to close.</p>
+  </article>
+}
+
 const BOT = 'focustixer_bot'
 type TelegramState = { linked: false } | { linked: true; timeZone: string; remindHour: number }
 const hours = Array.from({ length: 24 }, (_, hour) => hour)
@@ -274,7 +311,7 @@ function TelegramCard() {
     <form onSubmit={connect}>
       <ol className="weight-telegram__steps">
         <li>Open <a href={`https://t.me/${BOT}`} target="_blank" rel="noreferrer">@{BOT}</a> and press <strong>Start</strong>.</li>
-        <li>Enter the code it sends you. Each day it’ll ask for your weight; reply with the number to log it.</li>
+        <li>Enter the code it sends you. Each day it’ll ask for your weight; reply with the number to log it. Send meals as text or photos to log food.</li>
       </ol>
       <div className="finance-fields">
         <label className="finance-field">Code<input required value={code} onChange={e => setCode(e.target.value.toUpperCase())} placeholder="ABC234" maxLength={6} autoComplete="off" spellCheck={false} className="weight-telegram__code" /></label>
