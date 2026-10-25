@@ -4,6 +4,45 @@
 .weight-stat small { color: var(--text-secondary); font-size: .72rem; }
 .weight-app .weight-stat--good { color: var(--acid); }
 .weight-app .weight-stat--bad { color: var(--priority-urgent); }
+.weight-goal__body { display: grid; grid-template-columns: 1fr 1.6fr; gap: 28px; margin-top: 20px; }
+.weight-goal__target { font: 500 2.8rem var(--font-mono, monospace); color: var(--acid); }
+.weight-goal__target small { font-size: 1rem; color: var(--text-secondary); }
+.weight-goal__empty { font-size: 1.3rem; font-weight: 500; }
+.weight-goal__body p { margin: 6px 0; }
+.weight-goal__body small { font-size: .72rem; }
+.weight-goal__estimates { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 0; }
+.weight-app .weight-goal__estimates > div { display: block; padding: 0; }
+.weight-goal__estimates dt { color: var(--text-secondary); font: .68rem var(--font-mono, monospace); text-transform: uppercase; }
+.weight-app .weight-goal__estimates dd { margin: 8px 0; text-align: left; font: 500 1rem var(--font-mono, monospace); }
+.weight-goal__estimates small { color: var(--text-secondary); }
+.weight-form, .weight-food-editor { display: grid; gap: 16px; padding: 0; margin: 20px 0; border: 0; min-width: 0; }
+.weight-form .finance-field { max-width: none; }
+.weight-form > button { justify-self: start; }
+.weight-day .weight-food { padding: 16px 0; border: 0; background: transparent; }
+.weight-day .weight-food__meals li { gap: 8px; }
+.weight-day .weight-food__nutrients { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.weight-day .weight-food__add { flex-wrap: wrap; }
+.weight-day .weight-food__add > input { flex-basis: 200px; }
+.weight-day h3 { margin: 0 0 12px; font-size: 1rem; font-weight: 500; }
+.weight-manual, .weight-day__review { border-top: 1px solid var(--border-default); padding-top: 20px; margin-top: 24px; }
+.weight-proposal { padding: 18px; border: 1px solid var(--border-default); background: rgba(var(--acid-rgb), .035); }
+.weight-proposal > strong { color: var(--acid); font: 500 1.7rem var(--font-mono, monospace); }
+.weight-proposal p { font-size: .85rem; }
+.weight-proposal small { color: var(--text-secondary); font-size: .75rem; }
+.weight-review ul { padding: 0; list-style: none; max-height: 280px; overflow-y: auto; }
+.weight-review li { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--border-default); padding: 8px 0; font-size: .75rem; }
+.weight-history__open { display: flex; align-items: end; gap: 12px; }
+.weight-history__scroll { overflow-x: auto; }
+.weight-app button.weight-history__date, .weight-app button.weight-history__food { border: 0; padding: 8px 0; min-height: 40px; text-align: inherit; background: transparent; white-space: nowrap; font: inherit; }
+.weight-history__date:hover, .weight-history__food:hover { color: var(--acid); }
+.weight-history__food small { display: block; color: var(--text-secondary); font-size: .58rem; }
+.weight-food-today { border: 1px solid var(--border-default); }
+.weight-food-today > .finance-card { margin: 0; border: 0; }
+.weight-app button.weight-food-today__open { margin: 0 20px 20px; }
+.weight-chart__forecast { stroke: var(--acid); stroke-width: 1.5; stroke-dasharray: 3 6; opacity: .6; }
+.weight-key--forecast { background: var(--acid); opacity: .5; }
+@media(max-width: 760px) { .weight-goal__body { grid-template-columns: 1fr; gap: 24px; } }
+@media(max-width: 450px) { .weight-goal__estimates { grid-template-columns: 1fr; gap: 18px; } .weight-history__open { flex-wrap: wrap; } .weight-day .weight-food__meals li { grid-template-columns: 1fr auto auto; } .weight-day .weight-food__meals time { grid-column: 1 / -1; } }
 .weight-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
 .weight-columns > .finance-card { margin: 0; }
 

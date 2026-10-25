@@ -27,8 +27,12 @@ import {
   deleteWeightEntry,
   deleteWeightPhase,
   getWeight,
+  getWeightDay,
+  putDayReviews,
   putWeightEntry,
+  putWeightGoal,
   putWeightPhase,
+  putWeightProfile,
 } from "./handlers/weight";
 import {
   getTelegram,
@@ -100,6 +104,10 @@ protectedApp.put("/weekly-goals/:id", updateWeeklyGoal);
 protectedApp.delete("/weekly-goals/:id", deleteWeeklyGoal);
 protectedApp.post("/ai/daily-standup", dailyStandup);
 protectedApp.get("/weight", getWeight);
+protectedApp.get("/weight/days/:date", getWeightDay);
+protectedApp.put("/weight/profile", putWeightProfile);
+protectedApp.put("/weight/goals/:date", putWeightGoal);
+protectedApp.put("/weight/day-reviews", putDayReviews);
 protectedApp.put("/weight/entries/:date", putWeightEntry);
 protectedApp.delete("/weight/entries/:date", deleteWeightEntry);
 protectedApp.put("/weight/phases/:date", putWeightPhase);

@@ -1,6 +1,7 @@
 import type { Context } from "hono";
 import { captureAIGeneration } from "../ai-observability";
 import type { Env, Variables } from "../types";
+import { isDate } from "./food-days";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -111,18 +112,40 @@ export async function claimEstimate(db: D1Database, userId: string, now = new Da
 
 export const limitMessage = (limit: number) => `You’ve used today’s ${limit} meal estimates. More tomorrow.`;
 
-export async function addMeal(db: D1Database, userId: string, date: string, description: string, estimate: MealEstimate, telegramMessageId: number | null = null) {
-  const { protein, carbs, fat, saturated, fibre, sugar } = estimate.nutrients;
+function invalidateMealDays(db: D1Database, where: string, ...params: unknown[]) {
+  return db.prepare(`INSERT INTO food_day_reviews (user_id, date, revision, confirmed_revision)
+    SELECT user_id, date, 1, NULL FROM meals WHERE ${where} GROUP BY user_id, date
+    ON CONFLICT (user_id, date) DO UPDATE SET revision = revision + 1, confirmed_revision = NULL`).bind(...params);
+}
+
+export async function addMeal(db: D1Database, userId: string, date: string, description: string, estimate: Pick<MealEstimate, "totalKcal"> & { nutrients?: Nutrients }, telegramMessageId: number | null = null) {
+  const protein = estimate.nutrients?.protein ?? null, carbs = estimate.nutrients?.carbs ?? null, fat = estimate.nutrients?.fat ?? null;
+  const saturated = estimate.nutrients?.saturated ?? null, fibre = estimate.nutrients?.fibre ?? null, sugar = estimate.nutrients?.sugar ?? null;
   const meal = { id: crypto.randomUUID(), date, description, kcal: estimate.totalKcal, proteinG: protein, carbsG: carbs, fatG: fat, saturatedG: saturated, fibreG: fibre, sugarG: sugar, createdAt: new Date().toISOString() };
-  await db.prepare("INSERT INTO meals (id, user_id, date, description, kcal, protein_g, carbs_g, fat_g, saturated_g, fibre_g, sugar_g, telegram_message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(meal.id, userId, date, description, meal.kcal, protein, carbs, fat, saturated, fibre, sugar, telegramMessageId, meal.createdAt).run();
+  // boffin: kept meal edits and their review invalidation in the same database transaction.
+  await db.batch([
+    db.prepare("INSERT INTO meals (id, user_id, date, description, kcal, protein_g, carbs_g, fat_g, saturated_g, fibre_g, sugar_g, telegram_message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+      .bind(meal.id, userId, date, description, meal.kcal, protein, carbs, fat, saturated, fibre, sugar, telegramMessageId, meal.createdAt),
+    invalidateMealDays(db, "id = ? AND user_id = ?", meal.id, userId),
+  ]);
   return meal;
 }
 
 // A corrected kcal scales the nutrients by the same ratio; SQLite evaluates the right-hand sides against the old row.
-export function correctMealKcal(db: D1Database, kcal: number, where: string, ...params: unknown[]) {
+export async function correctMealKcal(db: D1Database, kcal: number, where: string, ...params: unknown[]) {
   const scaled = NUTRIENTS.map(name => `${name}_g = CASE WHEN kcal > 0 THEN ROUND(${name}_g * ?1 / kcal, 1) ELSE ${name}_g END`).join(", ");
-  return db.prepare(`UPDATE meals SET ${scaled}, kcal = ?1 WHERE ${where}`).bind(kcal, ...params).run();
+  const results = await db.batch([
+    invalidateMealDays(db, `(${where}) AND ?1 IS NOT NULL`, kcal, ...params),
+    db.prepare(`UPDATE meals SET ${scaled}, kcal = ?1 WHERE ${where}`).bind(kcal, ...params),
+  ]);
+  return results[1];
+}
+
+export async function removeMeal(db: D1Database, userId: string, mealId: string) {
+  await db.batch([
+    invalidateMealDays(db, "id = ? AND user_id = ?", mealId, userId),
+    db.prepare("DELETE FROM meals WHERE id = ? AND user_id = ?").bind(mealId, userId),
+  ]);
 }
 
 const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -172,13 +195,17 @@ export const mealButtons = (mealId: string) => ({ inline_keyboard: [
 ] });
 
 
-const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(value));
 const validKcal = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 10000;
 
 export async function postMeal(c: Ctx) {
   const input = await c.req.json<Record<string, unknown>>().catch(() => null);
   const text = typeof input?.text === "string" ? input.text.trim().slice(0, 500) : "";
   const date = typeof input?.date === "string" ? input.date : "";
+  if (input?.kcal !== undefined || input?.description !== undefined) {
+    const description = typeof input.description === "string" ? input.description.trim() : "";
+    if (!description || description.length > 500 || !validKcal(input.kcal) || !isDate(date)) return c.json({ error: "Invalid meal" }, 400);
+    return c.json(await addMeal(c.env.DB, c.get("userId"), date, description, { totalKcal: input.kcal }));
+  }
   // Browsers downscale before upload; the cap only stops oversized payloads reaching the model.
   const image = typeof input?.image === "string" && /^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(input.image) && input.image.length <= 3_000_000 ? input.image : undefined;
   if ((!text && !image) || (input?.image !== undefined && !image) || !isDate(date)) return c.json({ error: "Invalid meal" }, 400);
@@ -199,6 +226,6 @@ export async function putMeal(c: Ctx) {
 }
 
 export async function deleteMeal(c: Ctx) {
-  await c.env.DB.prepare("DELETE FROM meals WHERE id = ? AND user_id = ?").bind(c.req.param("id") ?? "", c.get("userId")).run();
+  await removeMeal(c.env.DB, c.get("userId"), c.req.param("id") ?? "");
   return c.body(null, 204);
 }

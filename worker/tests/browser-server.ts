@@ -7,7 +7,7 @@ import { database } from './sqlite.ts';
 
 const { publicKey, privateKey } = await generateKeyPair('RS256');
 const issuer = 'https://finance-test.clerk.accounts.dev';
-const db = database();
+const db = database(process.env.FOCUS_PREVIEW_DB);
 const env = { DB: db, CLERK_PEM_PUBLIC_KEY: await exportSPKI(publicKey),
   CLERK_ISSUER_URL: issuer, CLERK_AUTHORIZED_PARTIES: 'http://localhost:3000',
   TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET, ZAI_API_KEY: '', OPENAI_API_KEY: process.env.OPENAI_API_KEY };
@@ -106,5 +106,5 @@ if (process.argv.includes('--self-check')) {
     console.log('Finance browser API self-check passed.');
   } finally { close(); }
 } else {
-  console.log(`Finance test API listening at http://127.0.0.1:${port}`);
+  console.log(`Local test API listening at http://127.0.0.1:${port}`);
 }

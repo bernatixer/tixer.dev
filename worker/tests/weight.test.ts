@@ -14,7 +14,7 @@ async function call(user: string, method: string, path: string, body?: unknown) 
   const response = await app.request(`/api/weight${path}`, { method,
     headers: { authorization: `Bearer ${await token(user)}`, 'content-type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }) }, env as never);
-  return { status: response.status, json: response.status === 204 ? null : await response.json() };
+  return { status: response.status, json: response.status === 204 ? null : response.headers.get('content-type')?.includes('application/json') ? await response.json() : await response.text() };
 }
 
 test('weight entries and phases upsert, list per user, and delete', async () => {
@@ -24,14 +24,16 @@ test('weight entries and phases upsert, list per user, and delete', async () => 
   assert.equal((await call('a', 'PUT', '/phases/2026-10-14', { maintenanceKcal: 2300, intakeKcal: 1800 })).status, 200);
   assert.equal((await call('a', 'PUT', '/phases/2026-10-01', { maintenanceKcal: 2300, intakeKcal: 1800, proteinPerKg: 9 })).status, 400);
   assert.equal((await call('b', 'PUT', '/entries/2026-10-14', { weightKg: 60 })).status, 200);
-  assert.deepEqual((await call('a', 'GET', '')).json, {
+  const { entries, phases, meals } = (await call('a', 'GET', '')).json as Record<string, unknown>;
+  assert.deepEqual({ entries, phases, meals }, {
     entries: [{ date: '2026-10-13', weightKg: 81.2 }, { date: '2026-10-14', weightKg: 80.9 }],
     phases: [{ startDate: '2026-10-14', maintenanceKcal: 2300, intakeKcal: 1800, proteinPerKg: null }],
     meals: [],
   });
   assert.equal((await call('a', 'DELETE', '/entries/2026-10-13')).status, 204);
   assert.equal((await call('a', 'DELETE', '/phases/2026-10-14')).status, 204);
-  assert.deepEqual((await call('a', 'GET', '')).json, { entries: [{ date: '2026-10-14', weightKg: 80.9 }], phases: [], meals: [] });
+  const data = (await call('a', 'GET', '')).json as Record<string, unknown>;
+  assert.deepEqual({ entries: data.entries, phases: data.phases, meals: data.meals }, { entries: [{ date: '2026-10-14', weightKg: 80.9 }], phases: [], meals: [] });
 });
 
 test('weight rejects malformed input', async () => {
@@ -60,4 +62,122 @@ test('meal photos must be inline images', async () => {
     assert.equal((await call('a', 'POST', '/../meals', { text: '', image, date: today })).status, 400, image.slice(0, 40));
   }
   assert.equal((await call('a', 'POST', '/../meals', { text: '', date: today })).status, 400, 'needs text or a photo');
+});
+
+test('saved profiles remain private and reject invalid equation inputs', async () => {
+  assert.deepEqual((await call('profile', 'GET', '')).json, { entries: [], phases: [], meals: [], profile: null, goals: [], days: [] });
+  const profile = { age: 35, heightCm: 180, sex: 'male', activityFactor: 1.6 };
+  assert.deepEqual(await call('profile', 'PUT', '/profile', profile), { status: 200, json: profile });
+  assert.deepEqual(((await call('profile', 'GET', '')).json as any).profile, profile);
+  assert.equal(((await call('other-profile', 'GET', '')).json as any).profile, null);
+  for (const change of [{ age: 0 }, { age: 35.5 }, { heightCm: 0 }, { sex: 'other' }, { activityFactor: 0 }, { heightCm: '180' }]) {
+    assert.equal((await call('profile', 'PUT', '/profile', { ...profile, ...change })).status, 400);
+  }
+});
+
+test('goal versions save the starting average and preserve it after corrected readings', async () => {
+  for (const [date, weightKg] of [['2026-10-01', 82], ['2026-10-05', 80], ['2026-10-07', 79], ['2026-10-08', 77]] as const) {
+    await call('goal', 'PUT', `/entries/${date}`, { weightKg });
+  }
+  const first = { startDate: '2026-10-07', startWeightKg: 241 / 3, targetDate: '2026-12-01', targetWeightKg: 75 };
+  assert.deepEqual(await call('goal', 'PUT', '/goals/2026-10-07', { targetDate: '2026-12-01', targetWeightKg: 75 }), { status: 200, json: first });
+  await call('goal', 'PUT', '/entries/2026-10-05', { weightKg: 90 });
+  assert.deepEqual(((await call('goal', 'GET', '')).json as any).goals, [first]);
+  assert.equal((await call('goal', 'PUT', '/goals/2026-10-08', { targetDate: '2027-01-01', targetWeightKg: 74 })).status, 200);
+  assert.equal(((await call('goal', 'GET', '')).json as any).goals.length, 2);
+  assert.deepEqual(((await call('other-goal', 'GET', '')).json as any).goals, []);
+  assert.equal((await call('other-goal', 'PUT', '/goals/2026-10-08', { targetDate: '2027-01-01', targetWeightKg: 74 })).status, 400, 'a starting weigh-in is required');
+  for (const [date, targetDate, targetWeightKg] of [['2026-02-30', '2026-12-01', 75], ['2026-10-07', '2027-02-30', 75], ['2026-10-07', '2026-10-07', 75], ['2026-10-07', '2026-12-01', 100]] as const) {
+    assert.equal((await call('goal', 'PUT', `/goals/${date}`, { targetDate, targetWeightKg })).status, 400);
+  }
+});
+
+test('manual historical meals bypass AI allowance and keep unknown nutrients', async () => {
+  db.sqlite.exec("INSERT INTO meal_estimate_limits (user_id, per_day) VALUES ('manual', 0)");
+  const response = await call('manual', 'POST', '/../meals', { date: '2020-01-01', description: 'Known lunch', kcal: 640 });
+  assert.equal(response.status, 200);
+  assert.deepEqual({ ...(response.json as any), id: undefined, createdAt: undefined }, {
+    id: undefined, date: '2020-01-01', description: 'Known lunch', kcal: 640,
+    proteinG: null, carbsG: null, fatG: null, saturatedG: null, fibreG: null, sugarG: null, createdAt: undefined,
+  });
+  assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM meal_estimate_usage WHERE user_id = 'manual'").get()!.n, 0);
+  const overview = (await call('manual', 'GET', '')).json as any;
+  assert.deepEqual(overview.meals, [], 'old meal descriptions are loaded on demand');
+  assert.deepEqual(overview.days, [{ date: '2020-01-01', kcal: 640, mealCount: 1, revision: 1, confirmedRevision: null }]);
+  const detail = (await call('manual', 'GET', '/days/2020-01-01')).json as any;
+  assert.deepEqual(detail, { date: '2020-01-01', meals: [response.json], revision: 1, confirmedRevision: null });
+  assert.deepEqual((await call('other-manual', 'GET', '/days/2020-01-01')).json, { date: '2020-01-01', meals: [], revision: 0, confirmedRevision: null });
+  for (const input of [{ date: '2020-02-30', description: 'x', kcal: 1 }, { date: '2020-01-01', description: '', kcal: 1 }, { date: '2020-01-01', description: 'x', kcal: -1 }]) {
+    assert.equal((await call('manual', 'POST', '/../meals', input)).status, 400);
+  }
+});
+
+test('range food reviews are atomic, allow true zero, and reject current days', async () => {
+  await call('review', 'POST', '/../meals', { date: '2020-01-01', description: 'lunch', kcal: 400 });
+  assert.equal((await call('review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 1 }, { date: '2020-01-02', revision: 0 }], complete: true, timeZone: 'Europe/Madrid' })).status, 200);
+  assert.deepEqual(((await call('review', 'GET', '')).json as any).days, [
+    { date: '2020-01-01', kcal: 400, mealCount: 1, revision: 1, confirmedRevision: 1 },
+    { date: '2020-01-02', kcal: 0, mealCount: 0, revision: 0, confirmedRevision: 0 },
+  ]);
+  await call('review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 1 }, { date: '2020-01-02', revision: 0 }], complete: false });
+  const stale = await call('review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 0 }, { date: '2020-01-02', revision: 0 }, { date: '2020-01-03', revision: 0 }], complete: true });
+  assert.equal(stale.status, 409);
+  assert.deepEqual(((await call('review', 'GET', '')).json as any).days.map((day: any) => [day.date, day.confirmedRevision, day.kcal]), [['2020-01-01', null, 400], ['2020-01-02', null, null]]);
+  assert.equal((await call('review', 'PUT', '/day-reviews', { days: [{ date: '2999-01-01', revision: 0 }], complete: true })).status, 400);
+  assert.equal((await call('review', 'PUT', '/day-reviews', { days: [{ date: new Date().toISOString().slice(0, 10), revision: 0 }], complete: true, timeZone: 'UTC' })).status, 400);
+  assert.equal((await call('review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-02', revision: 0 }], complete: true, timeZone: 'invalid' })).status, 400);
+});
+
+test('web additions, corrections and deletes invalidate reviewed food atomically', async () => {
+  const create = () => call('invalidate', 'POST', '/../meals', { date: '2020-01-01', description: 'food', kcal: 100 });
+  const confirm = (revision: number) => call('invalidate', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision }], complete: true });
+  const state = async () => ((await call('invalidate', 'GET', '/days/2020-01-01')).json as any);
+  const meal = (await create()).json as any;
+  await confirm(1);
+  await call('invalidate', 'PUT', `/../meals/${meal.id}`, { kcal: 200 });
+  assert.deepEqual([(await state()).revision, (await state()).confirmedRevision], [2, null]);
+  await confirm(2);
+  await create();
+  assert.deepEqual([(await state()).revision, (await state()).confirmedRevision], [3, null]);
+  await confirm(3);
+  await call('other-invalidate', 'DELETE', `/../meals/${meal.id}`);
+  assert.equal((await state()).confirmedRevision, 3);
+  await call('invalidate', 'DELETE', `/../meals/${meal.id}`);
+  assert.deepEqual([(await state()).revision, (await state()).confirmedRevision], [4, null]);
+});
+
+test('failed meal mutations roll back food review invalidation', async (t) => {
+  const meal = (await call('rollback', 'POST', '/../meals', { date: '2020-01-01', description: 'food', kcal: 100 })).json as any;
+  assert.ok(meal.id, 'manual entry was saved');
+  await call('rollback', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 1 }], complete: true });
+  db.sqlite.exec("CREATE TRIGGER fail_meal_update BEFORE UPDATE OF kcal ON meals WHEN NEW.user_id = 'rollback' BEGIN SELECT RAISE(ABORT, 'simulated storage failure'); END");
+  const log = t.mock.method(console, 'error', () => {});
+  try { assert.equal((await call('rollback', 'PUT', `/../meals/${meal.id}`, { kcal: 200 })).status, 500); }
+  finally { log.mock.restore(); }
+  db.sqlite.exec('DROP TRIGGER fail_meal_update');
+  const detail = (await call('rollback', 'GET', '/days/2020-01-01')).json as any;
+  assert.deepEqual([detail.meals[0].kcal, detail.revision, detail.confirmedRevision], [100, 1, 1]);
+});
+
+test('day details cannot combine old meals with a newer review revision', async () => {
+  await call('snapshot', 'POST', '/../meals', { date: '2020-01-01', description: 'first', kcal: 100 });
+  const prepare = db.prepare;
+  let changed = false;
+  db.prepare = (sql: string) => {
+    const statement = prepare(sql);
+    const all = statement.all.bind(statement);
+    statement.all = () => {
+      const result = all();
+      if (!changed) {
+        changed = true;
+        db.sqlite.exec("BEGIN; INSERT INTO meals (id, user_id, date, description, kcal, created_at) VALUES ('snapshot-second', 'snapshot', '2020-01-01', 'second', 200, '2020-01-01T12:00:00Z'); UPDATE food_day_reviews SET revision = revision + 1, confirmed_revision = NULL WHERE user_id = 'snapshot'; COMMIT");
+      }
+      return result;
+    };
+    return statement;
+  };
+  try {
+    const detail = (await call('snapshot', 'GET', '/days/2020-01-01')).json as any;
+    assert.deepEqual([detail.meals.length, detail.revision], [1, 1]);
+  } finally { db.prepare = prepare; }
 });

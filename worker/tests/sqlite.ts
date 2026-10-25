@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { chmodSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
-export function database() {
-  const sqlite = new DatabaseSync(':memory:');
+// boffin: Kept file storage opt-in so test fixtures remain isolated.
+export function database(path = ':memory:') {
+  const sqlite = new DatabaseSync(path);
+  if (path !== ':memory:') chmodSync(path, 0o600);
   sqlite.exec(readFileSync('schema.sql', 'utf8'));
   return {
     sqlite,

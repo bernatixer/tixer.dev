@@ -7,7 +7,7 @@ const require = createRequire(import.meta.url);
 const { build } = createRequire(require.resolve('wrangler/package.json'))('esbuild');
 const directory = await mkdtemp(new URL('./.finance-test-', import.meta.url).pathname);
 try {
-  const names = ['finance', 'weight', 'telegram'];
+  const names = ['finance', 'weight', 'telegram', 'preview'];
   const outfiles = names.map(name => join(directory, `${name}.test.mjs`));
   await build({ entryPoints: names.map(name => new URL(`./${name}.test.ts`, import.meta.url).pathname), outdir: directory,
     outExtension: { '.js': '.mjs' }, entryNames: '[name]', bundle: true, platform: 'node', format: 'esm', packages: 'external', logLevel: 'error' });

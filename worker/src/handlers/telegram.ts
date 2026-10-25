@@ -1,29 +1,16 @@
 import type { Context } from "hono";
 import { getPostHog } from "../posthog";
 import type { Env, Variables } from "../types";
-import { addMeal, claimEstimate, correctMealKcal, dayProgress, describe, estimateMeal, limitMessage, mealButtons, mealMessage } from "./meals";
+import { addMeal, claimEstimate, correctMealKcal, dayProgress, describe, estimateMeal, limitMessage, mealButtons, mealMessage, removeMeal } from "./meals";
 import { saveWeight } from "./weight";
+import { localNow, mealDate, validTimeZone } from "./food-days";
+export { localNow, mealDate, MEAL_DAY_ROLLOVER_HOURS } from "./food-days";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const CODE_TTL_MS = 15 * 60 * 1000;
 
-// Food days roll over at 02:00, so a late snack counts towards the evening it belongs to.
-export const MEAL_DAY_ROLLOVER_HOURS = 2;
-export const mealDate = (timeZone: string, now = new Date()) => localNow(timeZone, new Date(now.getTime() - MEAL_DAY_ROLLOVER_HOURS * 3600e3)).date;
-
-export function localNow(timeZone: string, now = new Date()) {
-  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", hourCycle: "h23",
-  }).formatToParts(now).map(part => [part.type, part.value]));
-  return { date: `${parts.year}-${parts.month}-${parts.day}`, hour: Number(parts.hour) };
-}
-
-const validTimeZone = (value: unknown): value is string => {
-  if (typeof value !== "string" || !value) return false;
-  try { new Intl.DateTimeFormat("en", { timeZone: value }); return true; } catch { return false; }
-};
 const validHour = (value: unknown): value is number => Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 23;
 
 // "80.6", "80,6" or "80.6 kg"; anything else is not a weigh-in.
@@ -115,7 +102,7 @@ async function handleButton(c: Ctx, query: CallbackQuery) {
     .bind(mealId, link.user_id).first<{ description: string; kcal: number }>() : null;
   if (!meal) return answer(c, query.id, "That meal is already gone.");
   if (action === "undo") {
-    await c.env.DB.prepare("DELETE FROM meals WHERE id = ? AND user_id = ?").bind(mealId, link.user_id).run();
+    await removeMeal(c.env.DB, link.user_id, mealId);
     c.executionCtx.waitUntil(telegramCall(c.env, "editMessageText", {
       chat_id: chatId, message_id: query.message.message_id, parse_mode: "HTML",
       text: `↩️ <s>${meal.description.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")} · ${meal.kcal} kcal</s>\nRemoved.`,

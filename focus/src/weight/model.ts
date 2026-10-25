@@ -1,5 +1,8 @@
 export interface WeightEntry { date: string; weightKg: number }
 export interface Phase { startDate: string; maintenanceKcal: number; intakeKcal: number; proteinPerKg?: number | null }
+export interface WeightProfile { age: number; heightCm: number; sex: 'male' | 'female'; activityFactor: number }
+export interface WeightGoal { startDate: string; startWeightKg: number; targetDate: string; targetWeightKg: number }
+export interface FoodDay { date: string; kcal: number | null; mealCount: number; revision: number; confirmedRevision: number | null }
 // Nutrient grams are null on meals logged before they were estimated.
 export interface Meal { id: string; date: string; description: string; kcal: number; proteinG?: number | null; carbsG?: number | null; fatG?: number | null; saturatedG?: number | null; fibreG?: number | null; sugarG?: number | null; createdAt: string }
 
@@ -28,36 +31,17 @@ export function movingAverage(entries: WeightEntry[], days = 7): number[] {
   })
 }
 
-// Starts at the first weigh-in; each day's planned deficit shows up on the next day's goal.
-export function goalLine(entries: WeightEntry[], phases: Phase[], until: string): WeightEntry[] {
-  if (!entries.length) return []
-  const points: WeightEntry[] = []
-  let weightKg = entries[0].weightKg
-  for (let day = dayNumber(entries[0].date); day <= dayNumber(until); day++) {
-    const date = dateOf(day)
-    points.push({ date, weightKg })
-    weightKg -= deficitOn(phases, date) / KCAL_PER_KG
-  }
-  return points
-}
-
 export interface Analysis {
   trendKg: number
   changeKg: number
-  vsGoalKg: number | null
   kgPerWeek: number | null
-  plannedKgPerWeek: number | null
-  maintenanceKcal: number | null
-  loggedDays: number
 }
 
-// `eaten` holds totals for days with complete-looking food logs; other days fall back to the planned intake.
-export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21, eaten = new Map<string, number>()): Analysis | null {
+// boffin: kept weight trends independent of goals, phases and food estimates.
+export function analyse(entries: WeightEntry[], windowDays = 21): Analysis | null {
   if (!entries.length) return null
   const latest = last(entries)!
   const trendKg = last(movingAverage(entries))!
-  const goal = last(goalLine(entries, phases, latest.date))!
-  const current = phaseOn(phases, latest.date)
   const window = entries.filter(entry => dayNumber(entry.date) > dayNumber(latest.date) - windowDays)
   const span = dayNumber(latest.date) - dayNumber(window[0].date)
   let kgPerDay: number | null = null
@@ -66,46 +50,15 @@ export function analyse(entries: WeightEntry[], phases: Phase[], windowDays = 21
     const my = window.reduce((sum, entry) => sum + entry.weightKg, 0) / window.length
     kgPerDay = xs.reduce((sum, x, i) => sum + (x - mx) * (window[i].weightKg - my), 0) / xs.reduce((sum, x) => sum + (x - mx) ** 2, 0)
   }
-  // Real maintenance = what you ate + the energy the scale says you burned off; needs two weeks to beat water noise.
-  let maintenanceKcal: number | null = null, loggedDays = 0
-  if (kgPerDay !== null && span >= 14) {
-    const intakes: number[] = []
-    for (let day = dayNumber(window[0].date); day < dayNumber(latest.date); day++) {
-      const date = dateOf(day), logged = eaten.get(date)
-      if (logged !== undefined) loggedDays++
-      intakes.push(logged ?? phaseOn(phases, date)?.intakeKcal ?? NaN)
-    }
-    const intake = intakes.reduce((a, b) => a + b, 0) / intakes.length
-    if (!Number.isNaN(intake)) maintenanceKcal = Math.round(intake - kgPerDay * KCAL_PER_KG)
-  }
   return {
     trendKg,
     changeKg: trendKg - entries[0].weightKg,
-    vsGoalKg: phases.length ? trendKg - goal.weightKg : null,
     kgPerWeek: kgPerDay === null ? null : kgPerDay * 7,
-    plannedKgPerWeek: current ? -(current.maintenanceKcal - current.intakeKcal) * 7 / KCAL_PER_KG : null,
-    maintenanceKcal,
-    loggedDays,
   }
 }
 
 // Food days roll over at 02:00 (matches the worker), so a late snack counts towards the evening before.
 export const mealDay = (now = new Date()) => { const shifted = new Date(now.getTime() - 2 * 3600e3); return dateOf(Math.floor((shifted.getTime() - shifted.getTimezoneOffset() * 60000) / DAY_MS)) }
-
-// ponytail: a day logged below half its planned intake is assumed to be missing meals and falls back to the plan;
-// a per-day "complete" flag would be exact if this guess turns out wrong too often.
-export const MIN_LOGGED_SHARE = 0.5
-
-// Totals for finished food days that look complete; today is still in progress, so it never counts.
-export function loggedDayTotals(meals: Meal[], phases: Phase[], today: string): Map<string, number> {
-  const totals = new Map<string, number>()
-  for (const meal of meals) if (meal.date < today) totals.set(meal.date, (totals.get(meal.date) ?? 0) + meal.kcal)
-  for (const [date, kcal] of totals) {
-    const planned = phaseOn(phases, date)?.intakeKcal
-    if (planned && kcal < planned * MIN_LOGGED_SHARE) totals.delete(date)
-  }
-  return totals
-}
 
 // Consecutive logged days ending the day before `date`.
 export function streakBefore(entries: WeightEntry[], date: string): number {

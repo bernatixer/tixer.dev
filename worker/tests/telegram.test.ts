@@ -157,3 +157,23 @@ test('meal estimates are capped per user per day, with database overrides', asyn
   const response = await api('capped', 'POST', '/../meals', { text: 'toast', date: '2026-10-18' });
   assert.equal(response.status, 429, 'the web card shares the same allowance');
 });
+
+test('Telegram meal additions, corrections and undo invalidate food reviews', async () => {
+  assert.deepEqual(((await api('review-bot', 'GET', '/../weight')).json as any).days, []);
+  db.sqlite.exec("INSERT INTO telegram_links (user_id, chat_id, time_zone, remind_hour) VALUES ('review-bot', '10', 'Europe/Madrid', 8)");
+  const date = mealDate('Europe/Madrid');
+  await telegram(10, 'toast');
+  const meal = db.sqlite.prepare("SELECT id FROM meals WHERE user_id = 'review-bot'").get()!;
+  const review = () => ({ ...db.sqlite.prepare("SELECT revision, confirmed_revision AS confirmedRevision FROM food_day_reviews WHERE user_id = 'review-bot' AND date = ?").get(date)! });
+  const confirm = () => db.sqlite.prepare("UPDATE food_day_reviews SET confirmed_revision = revision WHERE user_id = 'review-bot' AND date = ?").run(date);
+  assert.deepEqual(review(), { revision: 1, confirmedRevision: null });
+  confirm();
+  await telegram(10, 'more toast');
+  assert.deepEqual(review(), { revision: 2, confirmedRevision: null });
+  confirm();
+  await telegram(10, '300 kcal', 'hook-secret', { reply_to_message: { message_id: 55 } });
+  assert.deepEqual(review(), { revision: 3, confirmedRevision: null });
+  confirm();
+  await telegram(10, '', 'hook-secret', {}, { callback_query: { id: 'review-undo', data: `undo:${meal.id}`, message: { message_id: 55, chat: { id: 10 } } } });
+  assert.deepEqual(review(), { revision: 4, confirmedRevision: null });
+});
