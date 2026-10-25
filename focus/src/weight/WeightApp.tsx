@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState, type FormEvent, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent, type ReactNode } from 'react'
 import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { useAuthSync } from '@/hooks/useAuthSync'
 import { ApiError, del, get, post, put } from '@/api/client'
-import { analyse, dateOf, DEFAULT_PROTEIN_PER_KG, last, mealDay, phaseOn, streakBefore, type Meal, dayNumber, KCAL_PER_KG, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
+import { analyse, dateOf, last, mealDay, phaseOn, streakBefore, type Meal, dayNumber, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
 import '@/finance/finance.css'
 import './weight.css'
 import { Food } from './Food'
+import { useMealEstimates } from './useMealEstimates'
 import { WeightPlan } from './WeightPlan'
 import { DayDrawer } from './DayDrawer'
 import { forecast, goalOn, goalProgress, goalReference, observedExpenditure } from './goals'
@@ -35,8 +36,15 @@ function Weight() {
   const [data, setData] = useState<WeightData | null>(null)
   const [error, setError] = useState('')
   const [selectedDay, setSelectedDay] = useState<string | null>(null)
-  const load = useCallback(async () => { setData(await get<WeightData>('/weight')) }, [])
+  const loadSequence = useRef(0)
+  const load = useCallback(async () => { const sequence = ++loadSequence.current; const next = await get<WeightData>('/weight'); if (sequence === loadSequence.current) setData(next) }, [])
+  const estimates = useMealEstimates(load)
   useEffect(() => { void load().catch(() => setError('Could not load your weight log.')) }, [load])
+  useEffect(() => {
+    let date = `${localToday()}/${mealDay()}`
+    const timer = window.setInterval(() => { const next = `${localToday()}/${mealDay()}`; if (next !== date) { date = next; void load().catch(() => setError('Could not refresh the new day.')) } }, 60000)
+    return () => window.clearInterval(timer)
+  }, [load])
   // boffin: failed saves reject so an editor keeps its draft instead of closing as if it saved.
   const run = async (action: Promise<unknown>) => {
     setError('')
@@ -56,20 +64,16 @@ function Weight() {
     <WeightPlan entries={entries} phases={phases} profile={profile} goals={goals} days={days}
       onGoal={(date, goal) => run(put(`/weight/goals/${date}`, goal))} onProfile={value => run(put('/weight/profile', value))}
       onPhase={phase => run(put(`/weight/phases/${phase.startDate}`, phase))}
-      onReview={value => run(put('/weight/day-reviews', { days: value, complete: true, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }))} />
-    <div className="weight-columns">
-      <div className="weight-food-today"><Food meals={meals.filter(meal => meal.date === foodDay)} phase={phaseOn(phases, foodDay)} bodyKg={bodyKg}
-        onAdd={(text, image) => run(post<object, Meal>('/meals', { text, image, date: foodDay, language: navigator.language }))}
-        onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))} /><button type="button" className="weight-food-today__open" onClick={() => setSelectedDay(foodDay)}>View and edit this day</button></div>
-      <Phases phases={phases} bodyKg={bodyKg} defaultStart={entries[0]?.date ?? localToday()} onSave={phase => run(put(`/weight/phases/${phase.startDate}`, { maintenanceKcal: phase.maintenanceKcal, intakeKcal: phase.intakeKcal, proteinPerKg: phase.proteinPerKg }))}
-        onDelete={date => run(del(`/weight/phases/${date}`))} />
-    </div>
+      onDeletePhase={date => run(del(`/weight/phases/${date}`))} />
+    <Food meals={meals.filter(meal => meal.date === foodDay)} phase={phaseOn(phases, foodDay)} bodyKg={bodyKg}
+      jobs={estimates.jobs.filter(job => job.date === foodDay)} onAdd={(text, image) => estimates.add(foodDay, text, image)} onRetry={estimates.retry} onDismiss={estimates.dismiss}
+      onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))} />
     <Drawer title="HISTORY" meta={`${entries.length} weigh-ins · ${days.length} days logged`} open={!entries.length}>
       <Log entries={entries} goals={goals} days={days} onOpen={setSelectedDay}
         onImport={rows => run(Promise.all(rows.map(entry => put(`/weight/entries/${entry.date}`, { weightKg: entry.weightKg }))))}
         onDelete={date => run(del(`/weight/entries/${date}`))} />
     </Drawer>
-    {selectedDay && <DayDrawer key={selectedDay} date={selectedDay} entries={entries} phases={phases} onChange={load} onClose={() => setSelectedDay(null)} />}
+    {selectedDay && <DayDrawer key={selectedDay} date={selectedDay} entries={entries} phases={phases} onChange={load} jobs={estimates.jobs.filter(job => job.date === selectedDay)} onAdd={(text, image) => estimates.add(selectedDay, text, image)} onRetry={estimates.retry} onDismiss={estimates.dismiss} refreshKey={`${days.find(day => day.date === selectedDay)?.kcal}/${days.find(day => day.date === selectedDay)?.mealCount}/${estimates.jobs.filter(job => job.date === selectedDay).map(job => `${job.id}:${job.status}`).join(',')}`} onClose={() => setSelectedDay(null)} />}
     <TelegramCard />
   </>
 }
@@ -88,7 +92,7 @@ function Stats({ entries, goals, days }: { entries: WeightEntry[]; goals: Weight
     ['Since start', `${signed(result.changeKg)} kg`, `From ${kg(entries[0].weightKg)} on ${shortDate(entries[0].date)}`, result.changeKg <= 0 ? 'good' : 'bad'],
     ['Vs target', target ? `${signed(result.trendKg - target.weightKg)} kg` : '—', target ? progress?.reached ? 'Target average reached' : 'Seven-day average vs target' : goal ? 'See your goal and deadline below' : 'Set a target weight and date', target ? result.trendKg <= target.weightKg ? 'good' : 'bad' : undefined],
     ['Pace / week', result.kgPerWeek === null ? '—' : `${signed(result.kgPerWeek)} kg`, result.kgPerWeek === null ? 'Needs a week of data' : 'Observed, last three weeks'],
-    ['Observed daily burn', observed ? `${observed.kcal} kcal` : '—', observed ? `${observed.foodDays} reviewed days · ${observed.weighIns} weigh-ins` : 'Needs 28 complete food days'],
+    ['Observed daily burn', observed ? `${observed.kcal} kcal` : '—', observed ? `${observed.foodDays} logged days${observed.provisional ? ' · early estimate' : ''}` : 'Starts after 7 days of food + weight'],
   ]
   return <section className="weight-stats">{tiles.map(([label, value, note, tone]) => <div key={label} className="finance-card weight-stat"><span className="finance-eyebrow">{label}</span><strong className={tone ? `weight-stat--${tone}` : undefined}>{value}</strong><small>{note}</small></div>)}</section>
 }
@@ -196,18 +200,17 @@ function TodayForm({ entries, goals, onSave }: { entries: WeightEntry[]; goals: 
 }
 
 function Log({ entries, goals, days, onOpen, onImport, onDelete }: { entries: WeightEntry[]; goals: WeightGoal[]; days: FoodDay[]; onOpen: (date: string) => void; onImport: (rows: WeightEntry[]) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
-  const [paste, setPaste] = useState(''), [selectedDate, setSelectedDate] = useState(localToday())
+  const [paste, setPaste] = useState('')
   const trend = movingAverage(entries)
   const averages = new Map(entries.map((entry, index) => [entry.date, trend[index]]))
   const dates = [...new Set([...entries.map(entry => entry.date), ...days.map(day => day.date)])].sort().reverse()
   const targets = new Map(goalReference(goals, dates[0] ?? localToday()).map(point => [point.date, point.weightKg]))
   const parsed = parseSheetRows(paste)
   return <>
-    <form className="weight-history__open" onSubmit={event => { event.preventDefault(); onOpen(selectedDate) }}><label className="finance-field">Open a day<input type="date" required max={localToday()} value={selectedDate} onChange={event => setSelectedDate(event.target.value)} /></label><button type="submit">Open day</button></form>
     {!entries.length && <><p className="finance-muted">Copy your DATE and WEIGHT columns from a spreadsheet to import.</p><textarea className="weight-paste" rows={4} value={paste} onChange={event => setPaste(event.target.value)} placeholder={'14/10/2026\t81\n15/10/2026\t80,55'} /><button type="button" disabled={!parsed.length} onClick={() => void onImport(parsed).then(() => setPaste('')).catch(() => undefined)}>Import {parsed.length || ''} entries</button></>}
     <div className="weight-history__scroll"><table className="weight-table"><thead><tr><th>Date</th><th>Weight</th><th>7-day avg</th><th>Target</th><th>Vs target</th><th>Eaten</th><th /></tr></thead><tbody>{dates.map(date => {
       const entry = entries.find(value => value.date === date), avg = averages.get(date), target = targets.get(date), food = days.find(value => value.date === date)
-      return <tr key={date}><td><button type="button" className="weight-history__date" aria-label={`Open ${date}`} onClick={() => onOpen(date)}>{shortDate(date)}</button></td><td>{entry?.weightKg.toFixed(2) ?? '—'}</td><td>{avg?.toFixed(2) ?? '—'}</td><td>{target?.toFixed(2) ?? '—'}</td><td className={avg !== undefined && target !== undefined ? avg <= target ? 'weight-stat--good' : 'weight-stat--bad' : undefined}>{avg !== undefined && target !== undefined ? signed(avg - target) : '—'}</td><td><button type="button" className="weight-history__food" aria-label={`Food for ${date}`} onClick={() => onOpen(date)}>{food?.kcal === null || food?.kcal === undefined ? '—' : `${food.kcal} kcal`}{food && <small>{food.confirmedRevision === food.revision ? 'Reviewed' : 'Unreviewed'}</small>}</button></td><td>{entry && <button type="button" className="finance-remove" aria-label={`Delete ${date}`} onClick={() => { if (window.confirm(`Delete ${shortDate(date)}?`)) void onDelete(date).catch(() => undefined) }}>×</button>}</td></tr>
+      return <tr key={date}><td><button type="button" className="weight-history__date" aria-label={`Open ${date}`} onClick={() => onOpen(date)}>{shortDate(date)}</button></td><td>{entry?.weightKg.toFixed(2) ?? '—'}</td><td>{avg?.toFixed(2) ?? '—'}</td><td>{target?.toFixed(2) ?? '—'}</td><td className={avg !== undefined && target !== undefined ? avg <= target ? 'weight-stat--good' : 'weight-stat--bad' : undefined}>{avg !== undefined && target !== undefined ? signed(avg - target) : '—'}</td><td><button type="button" className="weight-history__food" aria-label={`Food for ${date}`} onClick={() => onOpen(date)}>{food?.kcal === null || food?.kcal === undefined ? '—' : <><span>{food.kcal}</span><small>kcal</small></>}</button></td><td>{entry && <button type="button" className="finance-remove" aria-label={`Delete ${date}`} onClick={() => { if (window.confirm(`Delete ${shortDate(date)}?`)) void onDelete(date).catch(() => undefined) }}>×</button>}</td></tr>
     })}</tbody></table></div>
   </>
 }
@@ -218,68 +221,6 @@ function Drawer({ title, meta, open, children }: { title: string; meta: ReactNod
     <summary><span className="finance-eyebrow">{title}</span><span className="weight-drawer__meta">{meta}</span></summary>
     <div className="weight-drawer__body">{children}</div>
   </details>
-}
-
-function EnergyBar({ maintenance, intake }: { maintenance: number; intake: number }) {
-  const scale = Math.max(maintenance, intake, 1)
-  const gap = maintenance - intake
-  return <div className="weight-energy" role="img" aria-label={`Eating ${intake} of ${maintenance} kcal`}>
-    <div className="weight-energy__intake" style={{ width: `${Math.min(intake, maintenance) / scale * 100}%` }}><span>{intake} in</span></div>
-    {gap !== 0 && <div className={`weight-energy__gap weight-energy__gap--${gap > 0 ? 'deficit' : 'surplus'}`} style={{ width: `${Math.abs(gap) / scale * 100}%` }}><span>{gap > 0 ? '−' : '+'}{Math.abs(gap)}</span></div>}
-    <i className="weight-energy__marker" style={{ left: `${maintenance / scale * 100}%` }}><span>{maintenance} burn</span></i>
-  </div>
-}
-
-function Phases({ phases, bodyKg, defaultStart, onSave, onDelete }: { phases: Phase[]; bodyKg?: number; defaultStart: string; onSave: (phase: Phase) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
-  const today = localToday()
-  const current = phaseOn(phases, today) ?? phases[0]
-  const [saveError, setSaveError] = useState(''), [saving, setSaving] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [startDate, setStartDate] = useState(phases.length ? today : defaultStart)
-  const [maintenance, setMaintenance] = useState(current ? String(current.maintenanceKcal) : '')
-  const [intake, setIntake] = useState(current ? String(current.intakeKcal) : '')
-  const [protein, setProtein] = useState(String(current?.proteinPerKg ?? DEFAULT_PROTEIN_PER_KG))
-  const perWeek = (phase: Phase) => (phase.maintenanceKcal - phase.intakeKcal) * 7 / KCAL_PER_KG
-  const edit = (phase: Phase) => { setStartDate(phase.startDate); setMaintenance(String(phase.maintenanceKcal)); setIntake(String(phase.intakeKcal)); setProtein(String(phase.proteinPerKg ?? DEFAULT_PROTEIN_PER_KG)); setEditing(true) }
-  const submit = async (event: FormEvent) => { event.preventDefault(); setSaving(true); setSaveError(''); try { await onSave({ startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake), proteinPerKg: Number(protein) }); setEditing(false) } catch { setSaveError('Could not save this phase. Your draft is still here.') } finally { setSaving(false) } }
-  const perKg = current?.proteinPerKg ?? DEFAULT_PROTEIN_PER_KG
-  const draft = { startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake) }
-  const draftValid = maintenance !== '' && intake !== '' && draft.maintenanceKcal >= 500
-  return <article className="finance-card weight-plan">
-    <div className="finance-card-heading"><span className="finance-eyebrow">KCAL PLAN</span>
-      {!editing && <button type="button" onClick={() => { setStartDate(today); setEditing(true) }}>+ New phase</button>}</div>
-    {current && !editing && <div className="weight-plan__now">
-      <small>{current.startDate <= today ? 'Now' : 'Starts'} · since {shortDate(current.startDate)}</small>
-      <EnergyBar maintenance={current.maintenanceKcal} intake={current.intakeKcal} />
-      <dl className="weight-plan__figures">
-        <div><dt>Per day</dt><dd className={perWeek(current) >= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(current.intakeKcal - current.maintenanceKcal, 0)} <small>kcal</small></dd></div>
-        <div><dt>Per week</dt><dd className={perWeek(current) >= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(-perWeek(current))} <small>kg</small></dd></div>
-        <div><dt>1 kg takes</dt><dd>{perWeek(current) > 0 ? Math.round(7 / perWeek(current)) : '∞'} <small>days</small></dd></div>
-        <div title={`${perKg} g per kg of body weight`}><dt>Protein</dt><dd>{bodyKg ? Math.round(perKg * bodyKg) : '—'} <small>g / day</small></dd></div>
-      </dl>
-    </div>}
-    {editing && <form className="weight-plan__form" onSubmit={submit}><fieldset disabled={saving} className="weight-form">
-      {!phases.length && <p className="finance-muted">Set a manual daily burn and intake, or use Recalculate above for your target weight and date.</p>}
-      <div className="finance-fields">
-        <label className="finance-field">From<input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
-        <label className="finance-field">Burn (maintenance)<input type="number" required min="500" max="10000" step="1" placeholder="2300" value={maintenance} onChange={e => setMaintenance(e.target.value)} /></label>
-        <label className="finance-field">Eat (intake)<input type="number" required min="0" max="10000" step="1" placeholder="1800" value={intake} onChange={e => setIntake(e.target.value)} /></label>
-        <label className="finance-field">Protein (g per kg)<input type="number" required min="0.5" max="4" step="0.1" value={protein} onChange={e => setProtein(e.target.value)} /></label>
-      </div>
-      {draftValid && <><EnergyBar maintenance={draft.maintenanceKcal} intake={draft.intakeKcal} /><p className="weight-plan__preview">{signed(-perWeek(draft))} kg / week</p></>}
-      {saveError && <p role="alert" className="finance-danger">{saveError}</p>}
-      <div className="weight-plan__actions">
-        <button type="submit" disabled={saving} className="finance-primary">{phases.some(phase => phase.startDate === startDate) ? 'Save phase' : 'Add phase'}</button>
-        {phases.length > 0 && <button type="button" onClick={() => setEditing(false)}>Cancel</button>}
-      </div>
-    </fieldset></form>}
-    {phases.length > 0 && <ol className="weight-plan__timeline">{[...phases].reverse().map(phase => <li key={phase.startDate} className={phase === current ? 'is-current' : undefined}>
-      <button type="button" disabled={saving} className="weight-plan__phase" onClick={() => edit(phase)} aria-label={`Edit phase from ${shortDate(phase.startDate)}`}>
-        <time>{shortDate(phase.startDate)}</time><span>{phase.intakeKcal} / {phase.maintenanceKcal} kcal</span><strong>{signed(-perWeek(phase))} kg/wk</strong>
-      </button>
-      <button type="button" disabled={saving} className="finance-remove" aria-label={`Delete phase from ${phase.startDate}`} onClick={() => { if (window.confirm(`Delete the phase starting ${shortDate(phase.startDate)}?`)) void onDelete(phase.startDate).catch(() => undefined) }}>×</button>
-    </li>)}</ol>}
-  </article>
 }
 
 const BOT = 'focustixer_bot'

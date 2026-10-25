@@ -112,40 +112,23 @@ export async function claimEstimate(db: D1Database, userId: string, now = new Da
 
 export const limitMessage = (limit: number) => `You’ve used today’s ${limit} meal estimates. More tomorrow.`;
 
-function invalidateMealDays(db: D1Database, where: string, ...params: unknown[]) {
-  return db.prepare(`INSERT INTO food_day_reviews (user_id, date, revision, confirmed_revision)
-    SELECT user_id, date, 1, NULL FROM meals WHERE ${where} GROUP BY user_id, date
-    ON CONFLICT (user_id, date) DO UPDATE SET revision = revision + 1, confirmed_revision = NULL`).bind(...params);
-}
-
 export async function addMeal(db: D1Database, userId: string, date: string, description: string, estimate: Pick<MealEstimate, "totalKcal"> & { nutrients?: Nutrients }, telegramMessageId: number | null = null) {
   const protein = estimate.nutrients?.protein ?? null, carbs = estimate.nutrients?.carbs ?? null, fat = estimate.nutrients?.fat ?? null;
   const saturated = estimate.nutrients?.saturated ?? null, fibre = estimate.nutrients?.fibre ?? null, sugar = estimate.nutrients?.sugar ?? null;
   const meal = { id: crypto.randomUUID(), date, description, kcal: estimate.totalKcal, proteinG: protein, carbsG: carbs, fatG: fat, saturatedG: saturated, fibreG: fibre, sugarG: sugar, createdAt: new Date().toISOString() };
-  // boffin: kept meal edits and their review invalidation in the same database transaction.
-  await db.batch([
-    db.prepare("INSERT INTO meals (id, user_id, date, description, kcal, protein_g, carbs_g, fat_g, saturated_g, fibre_g, sugar_g, telegram_message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
-      .bind(meal.id, userId, date, description, meal.kcal, protein, carbs, fat, saturated, fibre, sugar, telegramMessageId, meal.createdAt),
-    invalidateMealDays(db, "id = ? AND user_id = ?", meal.id, userId),
-  ]);
+  await db.prepare("INSERT INTO meals (id, user_id, date, description, kcal, protein_g, carbs_g, fat_g, saturated_g, fibre_g, sugar_g, telegram_message_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(meal.id, userId, date, description, meal.kcal, protein, carbs, fat, saturated, fibre, sugar, telegramMessageId, meal.createdAt).run();
   return meal;
 }
 
 // A corrected kcal scales the nutrients by the same ratio; SQLite evaluates the right-hand sides against the old row.
 export async function correctMealKcal(db: D1Database, kcal: number, where: string, ...params: unknown[]) {
   const scaled = NUTRIENTS.map(name => `${name}_g = CASE WHEN kcal > 0 THEN ROUND(${name}_g * ?1 / kcal, 1) ELSE ${name}_g END`).join(", ");
-  const results = await db.batch([
-    invalidateMealDays(db, `(${where}) AND ?1 IS NOT NULL`, kcal, ...params),
-    db.prepare(`UPDATE meals SET ${scaled}, kcal = ?1 WHERE ${where}`).bind(kcal, ...params),
-  ]);
-  return results[1];
+  return db.prepare(`UPDATE meals SET ${scaled}, kcal = ?1 WHERE ${where}`).bind(kcal, ...params).run();
 }
 
 export async function removeMeal(db: D1Database, userId: string, mealId: string) {
-  await db.batch([
-    invalidateMealDays(db, "id = ? AND user_id = ?", mealId, userId),
-    db.prepare("DELETE FROM meals WHERE id = ? AND user_id = ?").bind(mealId, userId),
-  ]);
+  await db.prepare("DELETE FROM meals WHERE id = ? AND user_id = ?").bind(mealId, userId).run();
 }
 
 const escapeHtml = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -173,20 +156,20 @@ export function mealMessage(estimate: MealEstimate, today: DayProgress) {
   return lines.join("\n");
 }
 
-const DEFAULT_PROTEIN_PER_KG = 1.8;
+const PROTEIN_PER_KG = 1.5;
 
 // Mirrors the Food card: planned intake from the active phase, protein as g/kg × the 7-day average weight.
 export async function dayProgress(db: D1Database, userId: string, date: string): Promise<DayProgress> {
   const weekAgo = new Date(Date.parse(`${date}T00:00:00Z`) - 6 * 864e5).toISOString().slice(0, 10);
   const [eaten, phase, weight] = await Promise.all([
     db.prepare("SELECT COALESCE(SUM(kcal), 0) AS kcal, COALESCE(SUM(protein_g), 0) AS protein FROM meals WHERE user_id = ? AND date = ?").bind(userId, date).first<{ kcal: number; protein: number }>(),
-    db.prepare("SELECT intake_kcal, protein_g_per_kg FROM weight_phases WHERE user_id = ? AND start_date <= ? ORDER BY start_date DESC LIMIT 1").bind(userId, date).first<{ intake_kcal: number; protein_g_per_kg: number | null }>(),
+    db.prepare("SELECT intake_kcal FROM weight_phases WHERE user_id = ? AND start_date <= ? ORDER BY start_date DESC LIMIT 1").bind(userId, date).first<{ intake_kcal: number }>(),
     db.prepare("SELECT AVG(weight_kg) AS kg FROM weight_entries WHERE user_id = ? AND date BETWEEN ? AND ?").bind(userId, weekAgo, date).first<{ kg: number | null }>(),
   ]);
   return {
     kcal: eaten?.kcal ?? 0, protein: eaten?.protein ?? 0,
     kcalTarget: phase?.intake_kcal ?? null,
-    proteinTarget: weight?.kg ? Math.round((phase?.protein_g_per_kg ?? DEFAULT_PROTEIN_PER_KG) * weight.kg) : null,
+    proteinTarget: weight?.kg ? Math.round(PROTEIN_PER_KG * weight.kg) : null,
   };
 }
 

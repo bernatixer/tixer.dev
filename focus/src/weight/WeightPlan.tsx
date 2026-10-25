@@ -1,40 +1,65 @@
 import { useState, type FormEvent } from 'react'
-import { ApiError } from '@/api/client'
-import { dateOf, dayNumber, last, localToday, mealDay, movingAverage, phaseOn, type FoodDay, type Phase, type WeightEntry, type WeightGoal, type WeightProfile } from './model'
+import { dateOf, dayNumber, DEFAULT_PROTEIN_PER_KG, KCAL_PER_KG, last, localToday, mealDay, movingAverage, phaseOn, type FoodDay, type Phase, type WeightEntry, type WeightGoal, type WeightProfile } from './model'
 import { goalOn, goalProgress, observedExpenditure, profileExpenditure, suggestPhase } from './goals'
 import { WeightDialog } from './WeightDialog'
 
+const signed = (value: number, digits = 2) => `${value > 0 ? '+' : value < 0 ? '−' : '±'}${Math.abs(value).toFixed(digits)}`
+const shortDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' })
 type Props = {
   entries: WeightEntry[]; phases: Phase[]; goals: WeightGoal[]; profile: WeightProfile | null; days: FoodDay[]
   onGoal: (date: string, goal: { targetWeightKg: number; targetDate: string }) => Promise<unknown>
   onProfile: (profile: WeightProfile) => Promise<unknown>
   onPhase: (phase: Phase) => Promise<unknown>
-  onReview: (days: { date: string; revision: number }[]) => Promise<unknown>
+  onDeletePhase: (date: string) => Promise<unknown>
 }
 
 export function WeightPlan(props: Props) {
-  const [panel, setPanel] = useState<'goal' | 'profile' | 'recalculate' | null>(null)
-  const today = localToday(), goal = goalOn(props.goals, today)
-  const observed = observedExpenditure(props.entries, props.days, mealDay())
+  const [panel, setPanel] = useState<'goal' | 'profile' | null>(null)
+  const [preferActivity, setPreferActivity] = useState(false), [saving, setSaving] = useState(false), [error, setError] = useState('')
+  const today = localToday(), foodToday = mealDay(), goal = goalOn(props.goals, today), current = phaseOn(props.phases, today)
+  const observed = observedExpenditure(props.entries, props.days, foodToday)
   const bodyKg = last(movingAverage(props.entries))
   const estimated = props.profile && bodyKg ? profileExpenditure(props.profile, bodyKg) : null
+  const burn = preferActivity && estimated ? estimated.totalKcal : observed?.kcal ?? estimated?.totalKcal ?? current?.maintenanceKcal
+  const usableBurn = burn !== undefined && Number.isFinite(burn) && burn >= 500 && burn <= 10000
+  const proposal = goal && props.profile && burn !== undefined ? suggestPhase(props.entries, props.phases, goal, props.profile, burn, today) : null
+  const displayed = proposal?.ok ? proposal.phase : current ? usableBurn ? { ...current, maintenanceKcal: Math.round(burn!) } : current : null
+  const changed = proposal?.ok && (!current || current.intakeKcal !== proposal.phase.intakeKcal || current.maintenanceKcal !== proposal.phase.maintenanceKcal)
   const expired = !!goal && goal.targetDate < today
   const progress = goal ? goalProgress(props.entries, goal, expired ? goal.targetDate : today) : null
   const deadlineMeasured = !!goal && !!progress && progress.readings >= 4 && props.entries.some(entry => entry.date === goal.targetDate)
   const status = expired ? deadlineMeasured ? progress?.reached ? 'Target reached by deadline' : 'Above target at deadline' : 'Insufficient weigh-ins at deadline' : progress?.reached ? 'Target reached' : goal ? `${Math.max(0, dayNumber(goal.targetDate) - dayNumber(today))} days remaining` : ''
-  return <article className="finance-card weight-goal">
-    <div className="finance-card-heading"><span className="finance-eyebrow">WEIGHT GOAL</span><button type="button" onClick={() => setPanel('goal')} disabled={!props.entries.length}>{goal ? 'Change goal' : 'Set goal'}</button></div>
+  const apply = async () => {
+    if (!proposal?.ok || saving) return
+    if (props.phases.some(phase => phase.startDate === today) && !window.confirm('Replace today’s saved phase with this updated plan?')) return
+    setSaving(true); setError('')
+    try { await props.onPhase(proposal.phase) } catch { setError('Could not save this plan. Your saved phase is still active.') } finally { setSaving(false) }
+  }
+  const loggedFoodDays = props.days.filter(day => day.date < foodToday && day.kcal !== null).length
+  const needsRecentWeight = loggedFoodDays >= 7 && !!last(props.entries) && last(props.entries)!.date < foodToday
+  return <article className="finance-card weight-goal weight-plan">
+    <div className="finance-card-heading"><span className="finance-eyebrow">WEIGHT PLAN</span><button type="button" onClick={() => setPanel('goal')} disabled={!props.entries.length}>{goal ? 'Change goal' : 'Set goal'}</button></div>
     <div className="weight-goal__body">
-      <div>{goal ? <><strong className="weight-goal__target">{goal.targetWeightKg.toFixed(1)} <small>kg</small></strong><p>Seven-day average by <time>{goal.targetDate}</time></p><small className={progress?.reached ? 'weight-stat--good' : 'finance-muted'}>{status}</small>{expired && <p className="finance-muted">Set a new goal to calculate your next phase.</p>}</> : <><strong className="weight-goal__empty">A weight. A date. A plan.</strong><p className="finance-muted">{props.entries.length ? 'Choose where you want your seven-day average to be.' : 'Log your first weight to set a goal.'}</p></>}</div>
+      <div>{goal ? <><strong className="weight-goal__target">{goal.targetWeightKg.toFixed(1)} <small>kg</small></strong><p>Seven-day average by <time>{goal.targetDate}</time></p><small className={progress?.reached ? 'weight-stat--good' : 'finance-muted'}>{status}</small></> : <><strong className="weight-goal__empty">Choose a target weight and date</strong><p className="finance-muted">{props.entries.length ? 'Your metabolism and activity set the daily plan.' : 'Log your first weight to begin.'}</p></>}</div>
       <dl className="weight-goal__estimates">
-        <div><dt>Profile estimate</dt><dd>{estimated ? `${Math.round(estimated.totalKcal)} kcal/day` : 'Not set'}</dd><small>{estimated ? `${Math.round(estimated.restingKcal)} resting × ${props.profile!.activityFactor} activity` : 'A starting point from your measurements'}</small></div>
-        <div><dt>Observed daily burn</dt><dd>{observed ? `${observed.kcal} kcal/day` : 'Not enough reviewed data'}</dd><small>{observed ? `${observed.startDate} – ${observed.endDate} · ${observed.foodDays} food days · ${observed.weighIns} weigh-ins` : 'Needs 28 complete food days and aligned weigh-ins'}</small></div>
+        <div><dt>Resting metabolism</dt><dd>{estimated ? `${Math.round(estimated.restingKcal)} kcal/day` : 'Not set'}</dd><small>{estimated ? 'Before movement and food digestion' : 'Add your measurements below'}</small></div>
+        <div><dt>Daily burn estimate</dt><dd>{burn !== undefined ? `${Math.round(burn)} kcal/day` : 'Not set'}</dd><small>{observed && !preferActivity ? `${observed.foodDays} days of food + weight${observed.provisional ? ' · early estimate' : ''}` : estimated ? estimated.legacyActivity ? 'Previous activity estimate · update your steps and sport' : 'Resting + daily movement + sport' : 'From your saved phase'}</small></div>
       </dl>
     </div>
-    <div className="weight-plan__actions"><button type="button" onClick={() => setPanel('profile')} disabled={!props.entries.length}>{props.profile ? 'Edit burn estimate' : 'Estimate daily burn'}</button><button type="button" className="finance-primary" disabled={!goal} onClick={() => setPanel('recalculate')}>Recalculate</button></div>
+    {observed ? <p className="finance-muted weight-plan__evidence">Food-based burn: {observed.kcal} kcal/day · {observed.foodDays}-day window · {observed.weighIns} weigh-ins.{observed.provisional ? ' Early estimate; daily weight fluctuations have more influence.' : ' Uses the latest available food and weight window.'} Based on the food logged.</p> : <p className="finance-muted weight-plan__evidence">{needsRecentWeight ? 'Add a recent weigh-in to calculate burn from your food logs.' : 'Food-based burn starts with 7 days of overlapping food and weight data, then builds up to 28 days automatically.'}</p>}
+    {observed && estimated && <label className="finance-field weight-plan__source">Plan based on<select value={preferActivity ? 'activity' : 'observed'} onChange={event => setPreferActivity(event.target.value === 'activity')}><option value="observed">Food and weight trend{observed.provisional ? ' · early estimate' : ''}</option><option value="activity">Steps and sport estimate</option></select></label>}
+    {burn !== undefined && !usableBurn && <p className="finance-muted">This estimate is outside the planning range. Check for missing food or allow more weight data; your saved phase stays active.</p>}
+    {displayed && <div className="weight-plan__now"><small>{proposal?.ok ? changed ? 'Updated recommendation' : 'Current plan' : usableBurn ? 'Current intake against this burn estimate' : 'Saved plan'}</small>
+      <EnergyBar maintenance={displayed.maintenanceKcal} intake={displayed.intakeKcal} />
+      <dl className="weight-plan__figures"><div><dt>Daily intake</dt><dd>{displayed.intakeKcal} <small>kcal</small></dd></div><div><dt>Deficit</dt><dd>{signed(displayed.intakeKcal - displayed.maintenanceKcal, 0)} <small>kcal/day</small></dd></div><div><dt>Per week</dt><dd>{signed((displayed.intakeKcal - displayed.maintenanceKcal) * 7 / KCAL_PER_KG)} <small>kg</small></dd></div><div><dt>Protein</dt><dd>{bodyKg ? Math.round(bodyKg * DEFAULT_PROTEIN_PER_KG) : '—'} <small>g/day · 1.5 g/kg</small></dd></div></dl>
+    </div>}
+    {proposal && !proposal.ok && <p className="finance-notice">{proposal.error}</p>}
+    {changed && current && <p className="finance-muted">Saved intake: {current.intakeKcal} kcal/day. Apply the recommendation to update your plan.</p>}
+    {error && <p role="alert" className="finance-danger">{error}</p>}
+    <div className="weight-plan__actions"><button type="button" onClick={() => setPanel('profile')} disabled={!props.entries.length}>{props.profile ? 'Edit metabolism and activity' : 'Estimate daily burn'}</button>{proposal?.ok && (changed ? <button type="button" disabled={saving} className="finance-primary" onClick={() => void apply()}>{saving ? 'Saving…' : 'Apply updated plan'}</button> : <span className="weight-plan__saved">Plan is up to date</span>)}</div>
+    <details className="weight-plan__past"><summary>Plan history · {props.phases.length} saved {props.phases.length === 1 ? 'phase' : 'phases'}</summary><PhaseHistory phases={props.phases} defaultStart={props.entries[0]?.date ?? today} onSave={props.onPhase} onDelete={props.onDeletePhase} /></details>
     {panel === 'goal' && <GoalEditor entries={props.entries} goal={goal} onSave={props.onGoal} onClose={() => setPanel(null)} />}
     {panel === 'profile' && <ProfileEditor profile={props.profile} weightKg={bodyKg!} onSave={props.onProfile} onClose={() => setPanel(null)} />}
-    {panel === 'recalculate' && <Recalculate {...props} onClose={() => setPanel(null)} />}
   </article>
 }
 
@@ -61,67 +86,75 @@ function GoalEditor({ entries, goal, onSave, onClose }: { entries: WeightEntry[]
 
 function ProfileEditor({ profile, weightKg, onSave, onClose }: { profile: WeightProfile | null; weightKg: number; onSave: Props['onProfile']; onClose: () => void }) {
   const [age, setAge] = useState(profile ? String(profile.age) : ''), [height, setHeight] = useState(profile ? String(profile.heightCm) : '')
-  const [sex, setSex] = useState<'male' | 'female'>(profile?.sex ?? 'male'), [factor, setFactor] = useState(profile?.activityFactor ?? 1.4)
+  const [sex, setSex] = useState<'male' | 'female'>(profile?.sex ?? 'male'), [steps, setSteps] = useState(profile?.stepsPerDay == null ? '' : String(profile.stepsPerDay))
+  const [sport, setSport] = useState<NonNullable<WeightProfile['sport']>>(profile?.sport ?? 'none'), [minutes, setMinutes] = useState(String(profile?.sportMinutes ?? 45)), [sessions, setSessions] = useState(String(profile?.sportDaysPerWeek ?? 3))
   const [dirty, setDirty] = useState(false), [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const draft = { age: Number(age), heightCm: Number(height), sex, activityFactor: factor }
-  const estimate = age && height ? profileExpenditure(draft, weightKg) : null
+  const draft: WeightProfile = { age: Number(age), heightCm: Number(height), sex, activityFactor: 1.2, stepsPerDay: Number(steps), sport, sportMinutes: sport === 'none' ? 0 : Number(minutes), sportDaysPerWeek: sport === 'none' ? 0 : Number(sessions) }
+  const estimate = age && height && steps !== '' ? profileExpenditure(draft, weightKg) : null
   const submit = async (event: FormEvent) => {
     event.preventDefault(); setBusy(true); setError('')
     try { await onSave(draft); onClose() } catch { setError('Could not save your estimate. Check the measurements and try again.') } finally { setBusy(false) }
   }
-  return <WeightDialog title="Estimate daily burn" closeLabel="Close estimate" dirty={dirty} busy={busy} onClose={onClose}>
-    <p className="finance-muted">Mifflin–St Jeor estimates resting energy from your measurements. Activity adds the rest. Food logs and weight trends can improve the total over time.</p>
+  return <WeightDialog title="Metabolism and daily activity" closeLabel="Close estimate" dirty={dirty} busy={busy} onClose={onClose}>
+    <p className="finance-muted">Your measurements estimate resting metabolism. Steps and sport add movement, averaged across your week.</p>
     <form onSubmit={submit} onChange={() => setDirty(true)}><fieldset disabled={busy} className="weight-form">
       <p>Using your current trend: <strong>{weightKg.toFixed(2)} kg</strong></p>
       <div className="finance-fields"><label className="finance-field">Age<input type="number" required min="20" max="120" step="1" value={age} onChange={event => setAge(event.target.value)} /></label><label className="finance-field">Height (cm)<input type="number" required min="100" max="250" step="0.1" value={height} onChange={event => setHeight(event.target.value)} /></label></div>
       <label className="finance-field">Equation sex<select value={sex} onChange={event => setSex(event.target.value as 'male' | 'female')}><option value="male">Male</option><option value="female">Female</option></select></label>
-      <label className="finance-field">Usual activity<select value={factor} onChange={event => setFactor(Number(event.target.value))}><option value="1.4">Mostly sitting · 1.4</option><option value="1.6">Light activity · 1.6</option><option value="1.8">Active most days · 1.8</option><option value="2">Very active · 2.0</option><option value="2.2">Physical work and training · 2.2</option></select></label>
-      {estimate && <div className="weight-proposal"><strong>{Math.round(estimate.totalKcal)} kcal / day</strong><p>{Math.round(estimate.restingKcal)} resting × {factor} activity</p><small>A starting estimate of total expenditure, not a measurement.</small></div>}
+      <label className="finance-field">Steps per day<input type="number" required min="0" max="100000" step="1" value={steps} onChange={event => setSteps(event.target.value)} placeholder="Your usual daily average" /></label>
+      <label className="finance-field">Sport<select value={sport} onChange={event => setSport(event.target.value as NonNullable<WeightProfile['sport']>)}><option value="none">No regular sport</option><option value="strength">Strength training</option><option value="cycling">Cycling</option><option value="running">Running / jogging</option><option value="swimming">Swimming</option></select></label>
+      {sport !== 'none' && <div className="finance-fields"><label className="finance-field">Minutes per session<input type="number" required min="1" max="600" step="1" value={minutes} onChange={event => setMinutes(event.target.value)} /></label><label className="finance-field">Sessions per week<input type="number" required min="0" max="14" step="0.5" value={sessions} onChange={event => setSessions(event.target.value)} /></label></div>}
+      {estimate && <div className="weight-proposal"><strong>{Math.round(estimate.totalKcal)} kcal / day</strong><dl className="weight-activity__breakdown"><div><dt>Resting</dt><dd>{Math.round(estimate.restingKcal)}</dd></div><div><dt>Background</dt><dd>{Math.round(estimate.backgroundKcal)}</dd></div><div><dt>Steps</dt><dd>{Math.round(estimate.stepsKcal)}</dd></div><div><dt>Sport average</dt><dd>{Math.round(estimate.sportKcal)}</dd></div></dl><small>A starting estimate. Food and weight data refine the picture over time.</small></div>}
       {error && <p role="alert" className="finance-danger">{error}</p>}<button className="finance-primary">{busy ? 'Saving…' : 'Save estimate'}</button>
     </fieldset></form>
   </WeightDialog>
 }
 
-function Recalculate({ entries, phases, profile, goals, days, onPhase, onReview, onClose }: Props & { onClose: () => void }) {
-  const today = localToday(), foodToday = mealDay(), current = phaseOn(phases, today), goal = goalOn(goals, today)
-  const observed = observedExpenditure(entries, days, foodToday)
-  const weightKg = last(movingAverage(entries))
-  const estimated = profile && weightKg ? profileExpenditure(profile, weightKg) : null
-  const [source, setSource] = useState(observed ? 'observed' : estimated ? 'profile' : 'manual')
-  const [start, setStart] = useState(today), [busy, setBusy] = useState(false), [error, setError] = useState('')
-  const [reviewing, setReviewing] = useState(false)
-  const [reviewStart, setReviewStart] = useState(dateOf(Math.max(dayNumber(foodToday) - 28, dayNumber(days[0]?.date ?? foodToday) )))
-  const [reviewEnd, setReviewEnd] = useState(dateOf(dayNumber(foodToday) - 1))
-  const burn = source === 'observed' ? observed?.kcal : source === 'profile' ? estimated?.totalKcal : current?.maintenanceKcal
-  const proposal = goal && profile && burn ? suggestPhase(entries, phases, goal, profile, burn, start) : null
-  const range = dayNumber(reviewEnd) >= dayNumber(reviewStart) && dayNumber(reviewEnd) - dayNumber(reviewStart) < 366 ? Array.from({ length: dayNumber(reviewEnd) - dayNumber(reviewStart) + 1 }, (_, index) => {
-    const date = dateOf(dayNumber(reviewStart) + index)
-    return days.find(day => day.date === date) ?? { date, kcal: null, mealCount: 0, revision: 0, confirmedRevision: null }
-  }) : []
-  const accept = async () => {
-    if (!proposal?.ok) return
-    if (phases.some(phase => phase.startDate === start) && !window.confirm(`Replace the phase starting ${start}? Earlier phases will stay as they are.`)) return
-    setBusy(true); setError('')
-    try { await onPhase(proposal.phase); onClose() } catch { setError('Could not save this phase. Your previous plan is still active.') } finally { setBusy(false) }
-  }
-  const review = async () => {
-    setBusy(true); setError('')
-    try { await onReview(range.map(({ date, revision }) => ({ date, revision }))) }
-    catch (cause) { setError(cause instanceof ApiError && cause.status === 409 ? 'A meal changed while you were reviewing. Reopen this panel and check the latest totals.' : 'Could not confirm these days. Check the date range and try again.') }
-    finally { setBusy(false) }
-  }
-  return <WeightDialog title="Recalculate your plan" closeLabel="Close recalculation" busy={busy} onClose={onClose}>
-    <p className="finance-muted">Review the numbers, then accept a phase. Your goal and earlier phases stay fixed.</p>
-    <fieldset disabled={busy} className="weight-form">
-      <label className="finance-field">Daily burn source<select value={source} onChange={event => setSource(event.target.value)}><option value="observed" disabled={!observed}>Observed · {observed ? `${observed.kcal} kcal/day` : 'needs 28 reviewed days'}</option><option value="profile" disabled={!estimated}>Profile · {estimated ? `${Math.round(estimated.totalKcal)} kcal/day` : 'add your measurements first'}</option><option value="manual" disabled={!current}>Current phase · {current ? `${current.maintenanceKcal} kcal/day` : 'not set'}</option></select></label>
-      {source === 'observed' && observed && <small className="finance-muted">{observed.startDate} through {observed.endDate} (food end excluded), {observed.weighIns} weigh-ins. Approximate total expenditure.</small>}
-      <label className="finance-field">Phase starts<input type="date" min={today} max={goal ? dateOf(dayNumber(goal.targetDate) - 1) : undefined} value={start} onChange={event => setStart(event.target.value)} /></label>
-      {!profile && <p>Add your profile with Estimate daily burn before calculating a suggested intake.</p>}
-      {proposal?.ok ? <div className="weight-proposal"><strong>{proposal.phase.intakeKcal} <small>kcal / day</small></strong><p>Estimated burn {proposal.phase.maintenanceKcal} · deficit {proposal.phase.maintenanceKcal - proposal.phase.intakeKcal} kcal/day</p><p>{current ? `Current intake ${current.intakeKcal} kcal/day` : 'Your first calorie phase'} · starts {start}</p><small>Projected seven-day average: {proposal.projectedAverageKg.toFixed(2)} kg on {goal?.targetDate}. Approximate forecast; burn is held constant within each phase.</small></div> : proposal && <p className="finance-notice">{proposal.error}</p>}
-      {error && <p role="alert" className="finance-danger">{error}</p>}
-      <button type="button" className="finance-primary" disabled={!proposal?.ok} onClick={() => void accept()}>{busy ? 'Saving…' : phases.some(phase => phase.startDate === start) ? 'Accept replacement phase' : 'Accept new phase'}</button>
-      <button type="button" onClick={() => setReviewing(!reviewing)}>{reviewing ? 'Hide food review' : 'Review food logs'}</button>
-      {reviewing && <section className="weight-review"><h3>Review food coverage</h3><p className="finance-muted">Confirm only days where all food is recorded. An empty day counts as zero only when you confirm it.</p><div className="finance-fields"><label className="finance-field">Review from<input type="date" max={reviewEnd} value={reviewStart} onChange={event => setReviewStart(event.target.value)} /></label><label className="finance-field">Review through<input type="date" min={reviewStart} max={dateOf(dayNumber(foodToday) - 1)} value={reviewEnd} onChange={event => setReviewEnd(event.target.value)} /></label></div><ul>{range.map(day => <li key={day.date}><time>{day.date}</time><span>{day.kcal === null ? 'No food logged' : `${day.kcal} kcal`}</span><small>{day.confirmedRevision === day.revision ? 'Reviewed' : 'Unreviewed'}</small></li>)}</ul><button type="button" disabled={!range.length || reviewEnd >= foodToday} onClick={() => void review()}>Confirm these {range.length} days</button></section>}
-    </fieldset>
-  </WeightDialog>
+function EnergyBar({ maintenance, intake }: { maintenance: number; intake: number }) {
+  const scale = Math.max(maintenance, intake, 1)
+  const gap = maintenance - intake
+  return <div className="weight-energy" role="img" aria-label={`Eating ${intake} of ${maintenance} kcal`}>
+    <div className="weight-energy__intake" style={{ width: `${Math.min(intake, maintenance) / scale * 100}%` }}><span>{intake} in</span></div>
+    {gap !== 0 && <div className={`weight-energy__gap weight-energy__gap--${gap > 0 ? 'deficit' : 'surplus'}`} style={{ width: `${Math.abs(gap) / scale * 100}%` }}><span>{gap > 0 ? '−' : '+'}{Math.abs(gap)}</span></div>}
+    <i className="weight-energy__marker" style={{ left: `${maintenance / scale * 100}%` }}><span>{maintenance} burn</span></i>
+  </div>
+}
+
+function PhaseHistory({ phases, defaultStart, onSave, onDelete }: { phases: Phase[]; defaultStart: string; onSave: (phase: Phase) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
+  const today = localToday()
+  const current = phaseOn(phases, today) ?? phases[0]
+  const [saveError, setSaveError] = useState(''), [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [startDate, setStartDate] = useState(phases.length ? today : defaultStart)
+  const [maintenance, setMaintenance] = useState(current ? String(current.maintenanceKcal) : '')
+  const [intake, setIntake] = useState(current ? String(current.intakeKcal) : '')
+  const perWeek = (phase: Phase) => (phase.maintenanceKcal - phase.intakeKcal) * 7 / KCAL_PER_KG
+  const edit = (phase: Phase) => { setStartDate(phase.startDate); setMaintenance(String(phase.maintenanceKcal)); setIntake(String(phase.intakeKcal)); setEditing(true) }
+  const submit = async (event: FormEvent) => { event.preventDefault(); setSaving(true); setSaveError(''); try { await onSave({ startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake), proteinPerKg: DEFAULT_PROTEIN_PER_KG }); setEditing(false) } catch { setSaveError('Could not save this phase. Your draft is still here.') } finally { setSaving(false) } }
+  const draft = { startDate, maintenanceKcal: Number(maintenance), intakeKcal: Number(intake) }
+  const draftValid = maintenance !== '' && intake !== '' && draft.maintenanceKcal >= 500
+  return <section className="weight-plan__history">
+    <div className="finance-card-heading"><span className="finance-eyebrow">Saved phases</span>
+      {!editing && <button type="button" onClick={() => { setStartDate(today); setEditing(true) }}>Set manually</button>}</div>
+    {editing && <form className="weight-plan__form" onSubmit={submit}><fieldset disabled={saving} className="weight-form">
+      {!phases.length && <p className="finance-muted">Set your daily burn and intake manually.</p>}
+      <div className="finance-fields">
+        <label className="finance-field">From<input type="date" required value={startDate} onChange={e => setStartDate(e.target.value)} /></label>
+        <label className="finance-field">Burn (maintenance)<input type="number" required min="500" max="10000" step="1" placeholder="2300" value={maintenance} onChange={e => setMaintenance(e.target.value)} /></label>
+        <label className="finance-field">Eat (intake)<input type="number" required min="0" max="10000" step="1" placeholder="1800" value={intake} onChange={e => setIntake(e.target.value)} /></label>
+      </div>
+      {draftValid && <><EnergyBar maintenance={draft.maintenanceKcal} intake={draft.intakeKcal} /><p className="weight-plan__preview">{signed(-perWeek(draft))} kg / week</p></>}
+      {saveError && <p role="alert" className="finance-danger">{saveError}</p>}
+      <div className="weight-plan__actions">
+        <button type="submit" disabled={saving} className="finance-primary">{phases.some(phase => phase.startDate === startDate) ? 'Save phase' : 'Add phase'}</button>
+        {phases.length > 0 && <button type="button" onClick={() => setEditing(false)}>Cancel</button>}
+      </div>
+    </fieldset></form>}
+    {phases.length > 0 && <ol className="weight-plan__timeline">{[...phases].reverse().map(phase => <li key={phase.startDate} className={phase === current ? 'is-current' : undefined}>
+      <button type="button" disabled={saving} className="weight-plan__phase" onClick={() => edit(phase)} aria-label={`Edit phase from ${shortDate(phase.startDate)}`}>
+        <time>{shortDate(phase.startDate)}</time><span>{phase.intakeKcal} / {phase.maintenanceKcal} kcal</span><strong>{signed(-perWeek(phase))} kg/wk</strong>
+      </button>
+      <button type="button" disabled={saving} className="finance-remove" aria-label={`Delete phase from ${phase.startDate}`} onClick={() => { if (window.confirm(`Delete the phase starting ${shortDate(phase.startDate)}?`)) void onDelete(phase.startDate).catch(() => undefined) }}>×</button>
+    </li>)}</ol>}
+  </section>
 }

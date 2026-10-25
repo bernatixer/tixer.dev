@@ -5,14 +5,58 @@ import { forecast, goalOn, goalProgress, goalReference, observedExpenditure, pro
 
 const profile: WeightProfile = { age: 40, heightCm: 180, sex: 'male', activityFactor: 1.6 };
 const entriesFrom = (date: string, count: number, first = 80, dailyChange = 0): WeightEntry[] => Array.from({ length: count }, (_, i) => ({ date: dateOf(dayNumber(date) + i), weightKg: first + i * dailyChange }));
-const completeDays = (date: string, count: number, kcal = 2100): FoodDay[] => Array.from({ length: count }, (_, i) => ({ date: dateOf(dayNumber(date) + i), kcal, mealCount: kcal ? 2 : 0, revision: 1, confirmedRevision: 1 }));
+const loggedDays = (date: string, count: number, kcal = 2100): FoodDay[] => Array.from({ length: count }, (_, i) => ({ date: dateOf(dayNumber(date) + i), kcal, mealCount: 2 }));
 const goal: WeightGoal = { startDate: '2090-01-07', startWeightKg: 80, targetDate: '2090-01-17', targetWeightKg: 79 };
 const entries = entriesFrom('2090-01-01', 7);
 const phases: Phase[] = [{ startDate: '2090-01-01', maintenanceKcal: 2500, intakeKcal: 2000, proteinPerKg: 2 }];
 
-test('profile expenditure applies the equation sex parameter and explicit activity factor', () => {
-  assert.deepEqual(profileExpenditure(profile, 80), { restingKcal: 1730, totalKcal: 2768 });
-  assert.deepEqual(profileExpenditure({ ...profile, sex: 'female', activityFactor: 1.4 }, 80), { restingKcal: 1564, totalKcal: 2189.6 });
+test('legacy profile expenditure preserves the saved multiplier until new activity is supplied', () => {
+  const expected = { restingKcal: 1730, totalKcal: 2768, backgroundKcal: 1038, stepsKcal: 0, sportKcal: 0, legacyActivity: true };
+  assert.deepEqual(profileExpenditure(profile, 80), expected);
+  assert.deepEqual(profileExpenditure({ ...profile, stepsPerDay: null, sport: null, sportMinutes: null, sportDaysPerWeek: null }, 80), expected);
+  const female = profileExpenditure({ ...profile, sex: 'female', activityFactor: 1.4 }, 80);
+  assert.equal(female.restingKcal, 1564);
+  assert.equal(female.totalKcal, 2189.6);
+});
+
+test('explicit zero steps switches from the legacy multiplier to the sedentary background', () => {
+  assert.deepEqual(profileExpenditure({ ...profile, stepsPerDay: 0 }, 80), { restingKcal: 1730, totalKcal: 2076, backgroundKcal: 346, stepsKcal: 0, sportKcal: 0, legacyActivity: false });
+});
+
+test('walking adds net expenditure from daily steps rather than another activity multiplier', () => {
+  const result = profileExpenditure({ ...profile, stepsPerDay: 10000, sport: 'none', sportMinutes: 100, sportDaysPerWeek: 7 }, 80);
+  assert.deepEqual(result, { restingKcal: 1730, totalKcal: 2356, backgroundKcal: 346, stepsKcal: 280, sportKcal: 0, legacyActivity: false });
+});
+
+test('sport calories use net METs and spread sessions over all seven days', () => {
+  const cases = [
+    { sport: 'strength' as const, kcal: 35 },
+    { sport: 'cycling' as const, kcal: 81.2 },
+    { sport: 'running' as const, kcal: 91 },
+    { sport: 'swimming' as const, kcal: 67.2 },
+  ];
+  for (const { sport, kcal } of cases) {
+    const result = profileExpenditure({ ...profile, stepsPerDay: 0, sport, sportMinutes: 70, sportDaysPerWeek: 1 }, 80);
+    assert.ok(Math.abs(result.sportKcal - kcal) < 1e-9, sport);
+    assert.ok(Math.abs(result.totalKcal - (2076 + kcal)) < 1e-9, sport);
+  }
+});
+
+test('running steps are removed from walking while cycling leaves walking unchanged', () => {
+  const activity = { ...profile, stepsPerDay: 10000, sportMinutes: 70, sportDaysPerWeek: 1 };
+  const running = profileExpenditure({ ...activity, sport: 'running' }, 80);
+  assert.ok(Math.abs(running.stepsKcal - 235.2) < 1e-9);
+  assert.ok(Math.abs(running.totalKcal - 2402.2) < 1e-9);
+  const cycling = profileExpenditure({ ...activity, sport: 'cycling' }, 80);
+  assert.equal(cycling.stepsKcal, 280);
+  assert.ok(Math.abs(cycling.totalKcal - 2437.2) < 1e-9);
+});
+
+test('running can exhaust the recorded steps without subtracting from sport expenditure', () => {
+  const result = profileExpenditure({ ...profile, stepsPerDay: 1000, sport: 'running', sportMinutes: 70, sportDaysPerWeek: 1 }, 80);
+  assert.equal(result.stepsKcal, 0);
+  assert.equal(result.sportKcal, 91);
+  assert.equal(result.totalKcal, 2167);
 });
 
 test('goal versions preserve saved baselines and end each reference at its deadline', () => {
@@ -50,60 +94,106 @@ test('one low weigh-in cannot hide a seven-day average above the goal', () => {
   assert.equal(goalProgress(readings, { ...goal, startDate: '2026-10-01', targetWeightKg: 80 }, '2026-10-07')!.reached, false);
 });
 
-test('observed expenditure aligns 28 reviewed food days with both weight boundaries', () => {
-  const readings = entriesFrom('2026-10-01', 29, 85, -0.1);
-  const result = observedExpenditure(readings, completeDays('2026-10-01', 28), '2026-10-29');
-  assert.deepEqual(result, { kcal: 2850, startDate: '2026-10-01', endDate: '2026-10-29', foodDays: 28, weighIns: 29 });
+test('observed expenditure starts automatically after seven aligned logged food days', () => {
+  const readings = entriesFrom('2026-10-01', 8, 85, -0.1);
+  assert.deepEqual(observedExpenditure(readings, loggedDays('2026-10-01', 7), '2026-10-08'), { kcal: 2850, startDate: '2026-10-01', endDate: '2026-10-08', foodDays: 7, weighIns: 8, provisional: true });
+  assert.equal(observedExpenditure(readings.slice(0, 7), loggedDays('2026-10-01', 6), '2026-10-07'), null);
 });
 
-test('observed expenditure uses food before the last boundary and ignores later food and weights', () => {
-  const readings = entriesFrom('2026-10-01', 29, 85, -0.1);
-  const days = [...completeDays('2026-10-01', 28), ...completeDays('2026-10-29', 3, 10000)];
-  assert.equal(observedExpenditure([...readings, { date: '2026-10-30', weightKg: 60 }], days, '2026-10-29')!.kcal, 2850);
-});
-
-test('reviewed zero intake remains zero while an absent total is unknown', () => {
-  const readings = entriesFrom('2026-10-01', 29, 85, -0.1);
-  const days = completeDays('2026-10-01', 28, 0);
-  assert.equal(observedExpenditure(readings, days, '2026-10-29')!.kcal, 750);
-  assert.equal(observedExpenditure(readings, days.map(day => ({ ...day, kcal: null })), '2026-10-29'), null);
-});
-
-test('incomplete, stale or missing food never falls back to a calorie plan', () => {
-  const readings = entriesFrom('2026-10-01', 29, 85, -0.1);
-  const days = completeDays('2026-10-01', 28);
-  for (const replacement of [undefined, { ...days[10], confirmedRevision: null }, { ...days[10], revision: 2 }]) {
-    const changed = days.filter((_, i) => i !== 10);
-    if (replacement) changed.push(replacement);
-    assert.equal(observedExpenditure(readings, changed, '2026-10-29'), null);
+test('calibration grows toward 28 days and remains provisional below 21 days', () => {
+  const cases = [
+    { count: 14, start: '2026-10-01', end: '2026-10-15', days: 14, provisional: true },
+    { count: 20, start: '2026-10-01', end: '2026-10-21', days: 20, provisional: true },
+    { count: 21, start: '2026-10-01', end: '2026-10-22', days: 21, provisional: false },
+    { count: 28, start: '2026-10-01', end: '2026-10-29', days: 28, provisional: false },
+    { count: 35, start: '2026-10-08', end: '2026-11-05', days: 28, provisional: false },
+  ];
+  for (const expected of cases) {
+    const result = observedExpenditure(entriesFrom('2026-10-01', expected.count + 1, 85, -0.1), loggedDays('2026-10-01', expected.count), expected.end);
+    assert.deepEqual(result, { kcal: 2850, startDate: expected.start, endDate: expected.end, foodDays: expected.days, weighIns: expected.days + 1, provisional: expected.provisional });
   }
 });
 
-test('calibration selects the newest eligible interval ending in the seven finished food days', () => {
-  const readings = entriesFrom('2026-10-01', 35, 85, -0.1);
-  const days = completeDays('2026-10-01', 34);
-  const newest = observedExpenditure(readings, days, '2026-11-04')!;
-  assert.equal(newest.startDate, '2026-10-07');
-  assert.equal(newest.endDate, '2026-11-04');
-  assert.equal(observedExpenditure(readings.slice(0, 29), days.slice(0, 28), '2026-11-04')!.endDate, '2026-10-29');
-  assert.equal(observedExpenditure(readings.slice(0, 29), days.slice(0, 28), '2026-11-05'), null);
+test('calibration prefers the newest eligible endpoint over a longer older interval', () => {
+  const readings = entriesFrom('2026-10-01', 30, 85, -0.1).filter(entry => entry.date !== '2026-10-02');
+  const result = observedExpenditure(readings, loggedDays('2026-10-01', 29), '2026-10-30')!;
+  assert.equal(result.endDate, '2026-10-30');
+  assert.equal(result.startDate, '2026-10-03');
+  assert.equal(result.foodDays, 27);
 });
 
-test('calibration requires 14 distinct weigh-ins and both boundaries', () => {
-  const all = entriesFrom('2026-10-01', 29, 85, -0.1);
-  const sparse = all.filter((_, i) => i % 2 === 0);
-  const days = completeDays('2026-10-01', 28);
-  assert.equal(observedExpenditure(sparse, days, '2026-10-29')!.weighIns, 15);
-  const fourteen = sparse.filter((_, i) => i !== 1);
-  assert.equal(observedExpenditure(fourteen, days, '2026-10-29')!.weighIns, 14);
-  assert.equal(observedExpenditure([...fourteen.slice(0, 12), fourteen.at(-1)!, fourteen[0]], days, '2026-10-29'), null, 'duplicate dates cannot meet the minimum');
-  assert.equal(observedExpenditure([...sparse.slice(0, 11), sparse[14]], days, '2026-10-29'), null);
-  assert.equal(observedExpenditure(sparse.slice(1), days, '2026-10-29'), null);
-  assert.equal(observedExpenditure(sparse.slice(0, -1), days, '2026-10-29'), null);
+test('observed expenditure excludes food on its last weight boundary and all later observations', () => {
+  const readings = entriesFrom('2026-10-01', 8, 85, -0.1);
+  const days = [...loggedDays('2026-10-01', 7), ...loggedDays('2026-10-08', 3, 10000)];
+  assert.equal(observedExpenditure([...readings, { date: '2026-10-09', weightKg: 60 }], days, '2026-10-08')!.kcal, 2850);
+});
+
+test('logged zero stays zero while missing food and empty days remain unknown', () => {
+  const readings = entriesFrom('2026-10-01', 8, 85, -0.1);
+  const days = loggedDays('2026-10-01', 7, 0);
+  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 750);
+  assert.equal(observedExpenditure(readings, days.map(day => ({ ...day, kcal: null })), '2026-10-08'), null);
+  assert.equal(observedExpenditure(readings, days.map(day => ({ ...day, mealCount: 0 })), '2026-10-08'), null);
+});
+
+test('missing food breaks the interval rather than falling back to a calorie plan', () => {
+  const readings = entriesFrom('2026-10-01', 8, 85, -0.1);
+  const days = loggedDays('2026-10-01', 7);
+  for (const replacement of [undefined, { ...days[3], kcal: null }, { ...days[3], mealCount: 0 }]) {
+    const changed = days.filter((_, i) => i !== 3);
+    if (replacement) changed.push(replacement);
+    assert.equal(observedExpenditure(readings, changed, '2026-10-08'), null);
+  }
+  assert.equal(observedExpenditure(readings, loggedDays('2026-10-01', 7, 600), '2026-10-08')!.kcal, 1350);
+});
+
+test('a food gap restarts the longest contiguous interval after that day', () => {
+  const readings = entriesFrom('2026-10-01', 29, 85, -0.1);
+  const days = loggedDays('2026-10-01', 28).filter(day => day.date !== '2026-10-11');
+  const result = observedExpenditure(readings, days, '2026-10-29')!;
+  assert.equal(result.startDate, '2026-10-12');
+  assert.equal(result.foodDays, 17);
+  assert.equal(result.provisional, true);
+});
+
+test('editing a logged food total immediately changes the aligned estimate', () => {
+  const readings = entriesFrom('2026-10-01', 8, 85, -0.1);
+  const days = loggedDays('2026-10-01', 7);
+  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 2850);
+  days[3].kcal = 2800;
+  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 2950);
+});
+
+test('calibration expires after the seventh finished food day without an eligible endpoint', () => {
+  const readings = entriesFrom('2026-10-01', 29, 85, -0.1);
+  const days = loggedDays('2026-10-01', 28);
+  assert.equal(observedExpenditure(readings, days, '2026-11-04')!.endDate, '2026-10-29');
+  assert.equal(observedExpenditure(readings, days, '2026-11-05'), null);
+});
+
+test('seven-day calibration requires four distinct weigh-ins and both boundaries', () => {
+  const all = entriesFrom('2026-10-01', 8, 85, -0.1);
+  const sparse = [all[0], all[2], all[5], all[7]];
+  const days = loggedDays('2026-10-01', 7);
+  assert.equal(observedExpenditure(sparse, days, '2026-10-08')!.weighIns, 4);
+  assert.equal(observedExpenditure([all[0], all[2], all[7], all[2]], days, '2026-10-08'), null);
+  assert.equal(observedExpenditure(sparse.slice(1), days, '2026-10-08'), null);
+  assert.equal(observedExpenditure(sparse.slice(0, -1), days, '2026-10-08'), null);
+});
+
+test('longer calibration needs weight readings on at least half its days', () => {
+  const all = entriesFrom('2026-10-01', 15, 85, -0.1);
+  const readings = [all[0], all[1], all[2], all[3], all[14]];
+  assert.equal(observedExpenditure(readings, loggedDays('2026-10-01', 14), '2026-10-15'), null);
+  const full = entriesFrom('2026-10-01', 29, 85, -0.1);
+  const fourteen = full.filter((_, i) => i % 2 === 0).filter((_, i) => i !== 1);
+  const result = observedExpenditure(fourteen, loggedDays('2026-10-01', 28), '2026-10-29')!;
+  assert.equal(result.weighIns, 14);
+  assert.equal(result.foodDays, 28);
 });
 
 test('gaining weight puts observed expenditure below the aligned intake', () => {
-  assert.equal(observedExpenditure(entriesFrom('2026-10-01', 29, 80, 0.1), completeDays('2026-10-01', 28), '2026-10-29')!.kcal, 1350);
+  assert.equal(observedExpenditure(entriesFrom('2026-10-01', 8, 80, 0.1), loggedDays('2026-10-01', 7), '2026-10-08')!.kcal, 1350);
 });
 
 test('forecast returns future raw weights and applies phase changes to the following day', () => {
@@ -128,7 +218,7 @@ test('suggested intake reaches the deadline average rather than only its final r
   if (!result.ok) return;
   assert.equal(result.phase.intakeKcal, 1400);
   assert.equal(result.phase.maintenanceKcal, 2500);
-  assert.equal(result.phase.proteinPerKg, 2);
+  assert.equal(result.phase.proteinPerKg, 1.5);
   assert.ok(Math.abs(result.projectedAverageKg - 79) < 1e-9);
   const raw = forecast(entries, [result.phase], goal.targetDate);
   assert.ok(raw.at(-1)!.weightKg < 78.6, 'the raw deadline weight must be below the target average');
@@ -167,20 +257,21 @@ test('a proposal ends at the next scheduled phase and preserves that accepted ph
   assert.deepEqual(accepted, [...phases, scheduled]);
 });
 
-test('missing protein settings use the existing phase default', () => {
+test('new proposals use the fixed protein target when there is no existing phase', () => {
   const result = suggestPhase(entries, [], goal, profile, 2500, '2090-01-07');
   assert.equal(result.ok, true);
-  if (result.ok) assert.equal(result.phase.proteinPerKg, 1.8);
+  if (result.ok) assert.equal(result.phase.proteinPerKg, 1.5);
 });
 
-test('a proposal can replace the phase on its start date while retaining that protein setting', () => {
+test('a replacement proposal uses the fixed protein target without rewriting stored history', () => {
   const current = { startDate: '2090-01-07', maintenanceKcal: 3000, intakeKcal: 2000, proteinPerKg: 2.2 };
   const result = suggestPhase(entries, [current], goal, profile, 2500, '2090-01-07');
   assert.equal(result.ok, true);
   if (!result.ok) return;
   assert.equal(result.phase.intakeKcal, 1400);
-  assert.equal(result.phase.proteinPerKg, 2.2);
+  assert.equal(result.phase.proteinPerKg, 1.5);
   assert.equal(current.maintenanceKcal, 3000);
+  assert.equal(current.proteinPerKg, 2.2);
 });
 
 test('the exact minimum intake is permitted and a lower required intake is rejected', () => {

@@ -87,6 +87,14 @@ CREATE TABLE IF NOT EXISTS weight_profiles (
     activity_factor REAL NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS weight_activity (
+    user_id TEXT PRIMARY KEY,
+    steps_per_day INTEGER NOT NULL CHECK (steps_per_day BETWEEN 0 AND 100000),
+    sport TEXT NOT NULL CHECK (sport IN ('none', 'strength', 'cycling', 'running', 'swimming')),
+    sport_minutes REAL NOT NULL CHECK (sport_minutes BETWEEN 0 AND 600),
+    sport_days_per_week REAL NOT NULL CHECK (sport_days_per_week BETWEEN 0 AND 14)
+);
+
 CREATE TABLE IF NOT EXISTS weight_goals (
     user_id TEXT NOT NULL,
     start_date TEXT NOT NULL,
@@ -94,15 +102,6 @@ CREATE TABLE IF NOT EXISTS weight_goals (
     target_date TEXT NOT NULL,
     target_weight_kg REAL NOT NULL,
     PRIMARY KEY (user_id, start_date)
-);
-
-CREATE TABLE IF NOT EXISTS food_day_reviews (
-    user_id TEXT NOT NULL,
-    date TEXT NOT NULL,
-    revision INTEGER NOT NULL DEFAULT 0 CHECK (revision >= 0),
-    confirmed_revision INTEGER,
-    PRIMARY KEY (user_id, date),
-    CHECK (confirmed_revision IS NULL OR confirmed_revision = revision)
 );
 
 -- One Telegram chat per user; reminders fire at remind_hour in time_zone.

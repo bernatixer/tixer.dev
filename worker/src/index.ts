@@ -28,7 +28,6 @@ import {
   deleteWeightPhase,
   getWeight,
   getWeightDay,
-  putDayReviews,
   putWeightEntry,
   putWeightGoal,
   putWeightPhase,
@@ -107,7 +106,6 @@ protectedApp.get("/weight", getWeight);
 protectedApp.get("/weight/days/:date", getWeightDay);
 protectedApp.put("/weight/profile", putWeightProfile);
 protectedApp.put("/weight/goals/:date", putWeightGoal);
-protectedApp.put("/weight/day-reviews", putDayReviews);
 protectedApp.put("/weight/entries/:date", putWeightEntry);
 protectedApp.delete("/weight/entries/:date", deleteWeightEntry);
 protectedApp.put("/weight/phases/:date", putWeightPhase);

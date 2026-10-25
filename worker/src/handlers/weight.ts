@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import type { Env, Variables } from "../types";
-import { isDate, mealDate, validTimeZone } from "./food-days";
+import { isDate } from "./food-days";
 
 type Ctx = Context<{ Bindings: Env; Variables: Variables }>;
 
@@ -34,7 +34,9 @@ export async function getWeight(c: Ctx) {
     ).bind(userId).all(),
     c.env.DB.prepare("SELECT id, date, description, kcal, protein_g AS proteinG, carbs_g AS carbsG, fat_g AS fatG, saturated_g AS saturatedG, fibre_g AS fibreG, sugar_g AS sugarG, created_at AS createdAt FROM meals WHERE user_id = ? AND date >= ? ORDER BY date, created_at")
       .bind(userId, since).all(),
-    c.env.DB.prepare("SELECT age, height_cm AS heightCm, sex, activity_factor AS activityFactor FROM weight_profiles WHERE user_id = ?").bind(userId).first(),
+    c.env.DB.prepare(`SELECT age, height_cm AS heightCm, sex, activity_factor AS activityFactor,
+      steps_per_day AS stepsPerDay, sport, sport_minutes AS sportMinutes, sport_days_per_week AS sportDaysPerWeek
+      FROM weight_profiles profile LEFT JOIN weight_activity activity ON activity.user_id = profile.user_id WHERE profile.user_id = ?`).bind(userId).first(),
     c.env.DB.prepare("SELECT start_date AS startDate, start_weight_kg AS startWeightKg, target_date AS targetDate, target_weight_kg AS targetWeightKg FROM weight_goals WHERE user_id = ? ORDER BY start_date").bind(userId).all(),
     foodDays(c.env.DB, userId),
   ]);
@@ -46,16 +48,11 @@ async function foodDays(db: D1Database, userId: string) {
     WITH dates AS (
       SELECT date FROM weight_entries WHERE user_id = ?1
       UNION SELECT date FROM meals WHERE user_id = ?1
-      UNION SELECT date FROM food_day_reviews WHERE user_id = ?1
     ), totals AS (
       SELECT date, SUM(kcal) AS kcal, COUNT(*) AS mealCount FROM meals WHERE user_id = ?1 GROUP BY date
     )
-    SELECT dates.date, CASE WHEN totals.mealCount > 0 THEN totals.kcal
-      WHEN reviews.confirmed_revision = reviews.revision THEN 0 ELSE NULL END AS kcal,
-      COALESCE(totals.mealCount, 0) AS mealCount, COALESCE(reviews.revision, 0) AS revision,
-      reviews.confirmed_revision AS confirmedRevision
-    FROM dates LEFT JOIN totals ON totals.date = dates.date
-    LEFT JOIN food_day_reviews reviews ON reviews.user_id = ?1 AND reviews.date = dates.date ORDER BY dates.date
+    SELECT dates.date, totals.kcal, COALESCE(totals.mealCount, 0) AS mealCount
+    FROM dates LEFT JOIN totals ON totals.date = dates.date ORDER BY dates.date
   `).bind(userId).all();
   return result.results;
 }
@@ -64,28 +61,34 @@ export async function getWeightDay(c: Ctx) {
   const date = c.req.param("date") ?? "";
   if (!isDate(date)) return c.json({ error: "Invalid date" }, 400);
   const userId = c.get("userId");
-  // One statement keeps meals and the reviewed revision on the same database snapshot.
-  const { results } = await c.env.DB.prepare(`
-    SELECT meals.id, meals.date, description, kcal, protein_g AS proteinG, carbs_g AS carbsG, fat_g AS fatG,
-      saturated_g AS saturatedG, fibre_g AS fibreG, sugar_g AS sugarG, created_at AS createdAt,
-      COALESCE(reviews.revision, 0) AS revision, reviews.confirmed_revision AS confirmedRevision
-    FROM (SELECT ?1 AS user_id, ?2 AS date) day
-    LEFT JOIN meals ON meals.user_id = day.user_id AND meals.date = day.date
-    LEFT JOIN food_day_reviews reviews ON reviews.user_id = day.user_id AND reviews.date = day.date
-    ORDER BY created_at, meals.id
-  `).bind(userId, date).all<{ id: string | null; revision: number; confirmedRevision: number | null; [key: string]: unknown }>();
-  const { revision, confirmedRevision } = results[0];
-  const meals = results.filter(row => row.id !== null).map(({ revision: _revision, confirmedRevision: _confirmed, ...meal }) => meal);
-  return c.json({ date, meals, revision, confirmedRevision });
+  const meals = await c.env.DB.prepare(`SELECT id, date, description, kcal, protein_g AS proteinG, carbs_g AS carbsG, fat_g AS fatG,
+    saturated_g AS saturatedG, fibre_g AS fibreG, sugar_g AS sugarG, created_at AS createdAt
+    FROM meals WHERE user_id = ? AND date = ? ORDER BY created_at, id`).bind(userId, date).all();
+  return c.json({ date, meals: meals.results });
 }
 
 export async function putWeightProfile(c: Ctx) {
   const input = await body(c);
+  const activityFactor = input?.activityFactor === undefined ? 1.2 : input.activityFactor;
   if (!inRange(input?.age, 1, 120) || !Number.isInteger(input.age) || !inRange(input?.heightCm, 50, 250)
-    || (input?.sex !== "male" && input?.sex !== "female") || !inRange(input?.activityFactor, 1, 3)) return c.json({ error: "Invalid profile" }, 400);
-  const profile = { age: input.age, heightCm: input.heightCm, sex: input.sex, activityFactor: input.activityFactor };
-  await c.env.DB.prepare("INSERT INTO weight_profiles (user_id, age, height_cm, sex, activity_factor) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET age = excluded.age, height_cm = excluded.height_cm, sex = excluded.sex, activity_factor = excluded.activity_factor")
-    .bind(c.get("userId"), profile.age, profile.heightCm, profile.sex, profile.activityFactor).run();
+    || (input?.sex !== "male" && input?.sex !== "female") || !inRange(activityFactor, 1, 3)) return c.json({ error: "Invalid profile" }, 400);
+  const hasActivity = [input.stepsPerDay, input.sport, input.sportMinutes, input.sportDaysPerWeek].some(value => value != null);
+  if (hasActivity && (!inRange(input.stepsPerDay, 0, 100000) || !Number.isInteger(input.stepsPerDay)
+    || typeof input.sport !== "string" || !["none", "strength", "cycling", "running", "swimming"].includes(input.sport)
+    || !inRange(input.sportMinutes, 0, 600) || !inRange(input.sportDaysPerWeek, 0, 14))) return c.json({ error: "Invalid activity" }, 400);
+  const profile = { age: input.age, heightCm: input.heightCm, sex: input.sex, activityFactor,
+    stepsPerDay: hasActivity ? input.stepsPerDay : null, sport: hasActivity ? input.sport : null,
+    sportMinutes: hasActivity ? input.sport === "none" ? 0 : input.sportMinutes : null,
+    sportDaysPerWeek: hasActivity ? input.sport === "none" ? 0 : input.sportDaysPerWeek : null };
+  const userId = c.get("userId");
+  // boffin: kept the profile and its activity inputs together when either save fails.
+  await c.env.DB.batch([
+    c.env.DB.prepare("INSERT INTO weight_profiles (user_id, age, height_cm, sex, activity_factor) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET age = excluded.age, height_cm = excluded.height_cm, sex = excluded.sex, activity_factor = excluded.activity_factor")
+      .bind(userId, profile.age, profile.heightCm, profile.sex, profile.activityFactor),
+    hasActivity ? c.env.DB.prepare("INSERT INTO weight_activity (user_id, steps_per_day, sport, sport_minutes, sport_days_per_week) VALUES (?, ?, ?, ?, ?) ON CONFLICT (user_id) DO UPDATE SET steps_per_day = excluded.steps_per_day, sport = excluded.sport, sport_minutes = excluded.sport_minutes, sport_days_per_week = excluded.sport_days_per_week")
+      .bind(userId, profile.stepsPerDay, profile.sport, profile.sportMinutes, profile.sportDaysPerWeek)
+      : c.env.DB.prepare("DELETE FROM weight_activity WHERE user_id = ?").bind(userId),
+  ]);
   return c.json(profile);
 }
 
@@ -111,29 +114,6 @@ export async function putWeightGoal(c: Ctx) {
   const goal = await c.env.DB.prepare("SELECT start_date AS startDate, start_weight_kg AS startWeightKg, target_date AS targetDate, target_weight_kg AS targetWeightKg FROM weight_goals WHERE user_id = ? AND start_date = ?")
     .bind(c.get("userId"), startDate).first();
   return c.json(goal);
-}
-
-export async function putDayReviews(c: Ctx) {
-  const input = await body(c);
-  const days = input?.days;
-  const timeZone = input?.timeZone ?? "UTC";
-  if (!Array.isArray(days) || !days.length || days.length > 3660 || typeof input?.complete !== "boolean" || !validTimeZone(timeZone)) return c.json({ error: "Invalid review" }, 400);
-  const today = mealDate(timeZone);
-  if (days.some(day => !day || typeof day.date !== "string" || !isDate(day.date) || (input.complete && day.date >= today)
-    || !Number.isSafeInteger(day.revision) || day.revision < 0) || new Set(days.map(day => day.date)).size !== days.length) return c.json({ error: "Invalid review" }, 400);
-  // boffin: refused the whole review range if any meal revision changed since it was displayed.
-  const result = await c.env.DB.prepare(`
-    WITH requested AS (SELECT json_extract(value, '$.date') AS date, json_extract(value, '$.revision') AS revision FROM json_each(?2))
-    INSERT INTO food_day_reviews (user_id, date, revision, confirmed_revision)
-    SELECT ?1, requested.date, requested.revision, CASE WHEN ?3 THEN requested.revision ELSE NULL END
-    FROM requested WHERE NOT EXISTS (
-      SELECT 1 FROM requested expected LEFT JOIN food_day_reviews current ON current.user_id = ?1 AND current.date = expected.date
-      WHERE expected.revision <> COALESCE(current.revision, 0)
-    )
-    ON CONFLICT (user_id, date) DO UPDATE SET confirmed_revision = excluded.confirmed_revision
-  `).bind(c.get("userId"), JSON.stringify(days.map(day => ({ date: day.date, revision: day.revision }))), Number(input.complete)).run();
-  if (result.meta.changes !== days.length) return c.json({ error: "Food changed; review the latest totals" }, 409);
-  return c.json({ days: await foodDays(c.env.DB, c.get("userId")) });
 }
 
 export async function putWeightEntry(c: Ctx) {

@@ -67,8 +67,9 @@ test('meal photos must be inline images', async () => {
 test('saved profiles remain private and reject invalid equation inputs', async () => {
   assert.deepEqual((await call('profile', 'GET', '')).json, { entries: [], phases: [], meals: [], profile: null, goals: [], days: [] });
   const profile = { age: 35, heightCm: 180, sex: 'male', activityFactor: 1.6 };
-  assert.deepEqual(await call('profile', 'PUT', '/profile', profile), { status: 200, json: profile });
-  assert.deepEqual(((await call('profile', 'GET', '')).json as any).profile, profile);
+  const saved = { ...profile, stepsPerDay: null, sport: null, sportMinutes: null, sportDaysPerWeek: null };
+  assert.deepEqual(await call('profile', 'PUT', '/profile', profile), { status: 200, json: saved });
+  assert.deepEqual(((await call('profile', 'GET', '')).json as any).profile, saved);
   assert.equal(((await call('other-profile', 'GET', '')).json as any).profile, null);
   for (const change of [{ age: 0 }, { age: 35.5 }, { heightCm: 0 }, { sex: 'other' }, { activityFactor: 0 }, { heightCm: '180' }]) {
     assert.equal((await call('profile', 'PUT', '/profile', { ...profile, ...change })).status, 400);
@@ -103,81 +104,89 @@ test('manual historical meals bypass AI allowance and keep unknown nutrients', a
   assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM meal_estimate_usage WHERE user_id = 'manual'").get()!.n, 0);
   const overview = (await call('manual', 'GET', '')).json as any;
   assert.deepEqual(overview.meals, [], 'old meal descriptions are loaded on demand');
-  assert.deepEqual(overview.days, [{ date: '2020-01-01', kcal: 640, mealCount: 1, revision: 1, confirmedRevision: null }]);
+  assert.deepEqual(overview.days, [{ date: '2020-01-01', kcal: 640, mealCount: 1 }]);
   const detail = (await call('manual', 'GET', '/days/2020-01-01')).json as any;
-  assert.deepEqual(detail, { date: '2020-01-01', meals: [response.json], revision: 1, confirmedRevision: null });
-  assert.deepEqual((await call('other-manual', 'GET', '/days/2020-01-01')).json, { date: '2020-01-01', meals: [], revision: 0, confirmedRevision: null });
+  assert.deepEqual(detail, { date: '2020-01-01', meals: [response.json] });
+  assert.deepEqual((await call('other-manual', 'GET', '/days/2020-01-01')).json, { date: '2020-01-01', meals: [] });
   for (const input of [{ date: '2020-02-30', description: 'x', kcal: 1 }, { date: '2020-01-01', description: '', kcal: 1 }, { date: '2020-01-01', description: 'x', kcal: -1 }]) {
     assert.equal((await call('manual', 'POST', '/../meals', input)).status, 400);
   }
 });
 
-test('range food reviews are atomic, allow true zero, and reject current days', async () => {
-  await call('review', 'POST', '/../meals', { date: '2020-01-01', description: 'lunch', kcal: 400 });
-  assert.equal((await call('review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 1 }, { date: '2020-01-02', revision: 0 }], complete: true, timeZone: 'Europe/Madrid' })).status, 200);
-  assert.deepEqual(((await call('review', 'GET', '')).json as any).days, [
-    { date: '2020-01-01', kcal: 400, mealCount: 1, revision: 1, confirmedRevision: 1 },
-    { date: '2020-01-02', kcal: 0, mealCount: 0, revision: 0, confirmedRevision: 0 },
-  ]);
-  await call('review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 1 }, { date: '2020-01-02', revision: 0 }], complete: false });
-  const stale = await call('review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 0 }, { date: '2020-01-02', revision: 0 }, { date: '2020-01-03', revision: 0 }], complete: true });
-  assert.equal(stale.status, 409);
-  assert.deepEqual(((await call('review', 'GET', '')).json as any).days.map((day: any) => [day.date, day.confirmedRevision, day.kcal]), [['2020-01-01', null, 400], ['2020-01-02', null, null]]);
-  assert.equal((await call('review', 'PUT', '/day-reviews', { days: [{ date: '2999-01-01', revision: 0 }], complete: true })).status, 400);
-  assert.equal((await call('review', 'PUT', '/day-reviews', { days: [{ date: new Date().toISOString().slice(0, 10), revision: 0 }], complete: true, timeZone: 'UTC' })).status, 400);
-  assert.equal((await call('review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-02', revision: 0 }], complete: true, timeZone: 'invalid' })).status, 400);
+test('food summaries follow edits immediately and preserve missing food as unknown', async () => {
+  const date = '2020-01-01';
+  await call('automatic', 'PUT', `/entries/${date}`, { weightKg: 80 });
+  await call('automatic', 'PUT', '/entries/2020-01-02', { weightKg: 79 });
+  const create = (kcal: number) => call('automatic', 'POST', '/../meals', { date, description: 'food', kcal });
+  const summary = async () => ((await call('automatic', 'GET', '')).json as any).days;
+  const first = (await create(100)).json as any;
+  const second = (await create(200)).json as any;
+  assert.deepEqual(await summary(), [{ date, kcal: 300, mealCount: 2 }, { date: '2020-01-02', kcal: null, mealCount: 0 }]);
+  await call('automatic', 'PUT', `/../meals/${first.id}`, { kcal: 150 });
+  assert.deepEqual((await summary())[0], { date, kcal: 350, mealCount: 2 });
+  await call('other-automatic', 'DELETE', `/../meals/${first.id}`);
+  assert.equal((await summary())[0].kcal, 350);
+  await call('automatic', 'DELETE', `/../meals/${first.id}`);
+  await call('automatic', 'DELETE', `/../meals/${second.id}`);
+  assert.deepEqual((await summary())[0], { date, kcal: null, mealCount: 0 });
+  await create(0);
+  assert.deepEqual((await summary())[0], { date, kcal: 0, mealCount: 1 }, 'a logged zero differs from missing food');
 });
 
-test('web additions, corrections and deletes invalidate reviewed food atomically', async () => {
-  const create = () => call('invalidate', 'POST', '/../meals', { date: '2020-01-01', description: 'food', kcal: 100 });
-  const confirm = (revision: number) => call('invalidate', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision }], complete: true });
-  const state = async () => ((await call('invalidate', 'GET', '/days/2020-01-01')).json as any);
-  const meal = (await create()).json as any;
-  await confirm(1);
-  await call('invalidate', 'PUT', `/../meals/${meal.id}`, { kcal: 200 });
-  assert.deepEqual([(await state()).revision, (await state()).confirmedRevision], [2, null]);
-  await confirm(2);
-  await create();
-  assert.deepEqual([(await state()).revision, (await state()).confirmedRevision], [3, null]);
-  await confirm(3);
-  await call('other-invalidate', 'DELETE', `/../meals/${meal.id}`);
-  assert.equal((await state()).confirmedRevision, 3);
-  await call('invalidate', 'DELETE', `/../meals/${meal.id}`);
-  assert.deepEqual([(await state()).revision, (await state()).confirmedRevision], [4, null]);
+test('old food reviews are unused and cannot turn a missing log into zero', async () => {
+  db.sqlite.exec("CREATE TABLE IF NOT EXISTS food_day_reviews (user_id TEXT NOT NULL, date TEXT NOT NULL, revision INTEGER NOT NULL, confirmed_revision INTEGER, PRIMARY KEY (user_id, date)); INSERT INTO food_day_reviews VALUES ('old-review', '2020-01-01', 4, 4), ('old-review', '2020-01-02', 0, 0)");
+  await call('old-review', 'PUT', '/entries/2020-01-01', { weightKg: 80 });
+  assert.deepEqual(((await call('old-review', 'GET', '')).json as any).days, [{ date: '2020-01-01', kcal: null, mealCount: 0 }]);
+  assert.equal((await call('old-review', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 4 }], complete: true })).status, 404);
+  const meal = (await call('old-review', 'POST', '/../meals', { date: '2020-01-01', description: 'lunch', kcal: 400 })).json as any;
+  await call('old-review', 'PUT', `/../meals/${meal.id}`, { kcal: 500 });
+  await call('old-review', 'DELETE', `/../meals/${meal.id}`);
+  assert.deepEqual({ ...db.sqlite.prepare("SELECT revision, confirmed_revision FROM food_day_reviews WHERE user_id = 'old-review' AND date = '2020-01-01'").get() }, { revision: 4, confirmed_revision: 4 });
 });
 
-test('failed meal mutations roll back food review invalidation', async (t) => {
+test('failed meal corrections retain the saved calories and nutrients', async (t) => {
   const meal = (await call('rollback', 'POST', '/../meals', { date: '2020-01-01', description: 'food', kcal: 100 })).json as any;
   assert.ok(meal.id, 'manual entry was saved');
-  await call('rollback', 'PUT', '/day-reviews', { days: [{ date: '2020-01-01', revision: 1 }], complete: true });
   db.sqlite.exec("CREATE TRIGGER fail_meal_update BEFORE UPDATE OF kcal ON meals WHEN NEW.user_id = 'rollback' BEGIN SELECT RAISE(ABORT, 'simulated storage failure'); END");
   const log = t.mock.method(console, 'error', () => {});
   try { assert.equal((await call('rollback', 'PUT', `/../meals/${meal.id}`, { kcal: 200 })).status, 500); }
   finally { log.mock.restore(); }
   db.sqlite.exec('DROP TRIGGER fail_meal_update');
   const detail = (await call('rollback', 'GET', '/days/2020-01-01')).json as any;
-  assert.deepEqual([detail.meals[0].kcal, detail.revision, detail.confirmedRevision], [100, 1, 1]);
+  assert.deepEqual([detail.meals[0].kcal, detail.meals[0].proteinG], [100, null]);
 });
 
-test('day details cannot combine old meals with a newer review revision', async () => {
-  await call('snapshot', 'POST', '/../meals', { date: '2020-01-01', description: 'first', kcal: 100 });
-  const prepare = db.prepare;
-  let changed = false;
-  db.prepare = (sql: string) => {
-    const statement = prepare(sql);
-    const all = statement.all.bind(statement);
-    statement.all = () => {
-      const result = all();
-      if (!changed) {
-        changed = true;
-        db.sqlite.exec("BEGIN; INSERT INTO meals (id, user_id, date, description, kcal, created_at) VALUES ('snapshot-second', 'snapshot', '2020-01-01', 'second', 200, '2020-01-01T12:00:00Z'); UPDATE food_day_reviews SET revision = revision + 1, confirmed_revision = NULL WHERE user_id = 'snapshot'; COMMIT");
-      }
-      return result;
-    };
-    return statement;
-  };
+test('profiles save steps and sport per user and normalize no sport', async () => {
+  const profile = { age: 35, heightCm: 180, sex: 'male', stepsPerDay: 8500, sport: 'strength', sportMinutes: 60, sportDaysPerWeek: 3 };
+  const saved = { ...profile, activityFactor: 1.2 };
+  assert.deepEqual(await call('activity', 'PUT', '/profile', profile), { status: 200, json: saved });
+  assert.deepEqual(((await call('activity', 'GET', '')).json as any).profile, saved);
+  assert.equal(((await call('other-activity', 'GET', '')).json as any).profile, null);
+  for (const sport of ['cycling', 'running', 'swimming']) assert.equal((await call('activity', 'PUT', '/profile', { ...profile, sport })).status, 200);
+  assert.deepEqual((await call('activity', 'PUT', '/profile', { ...profile, sport: 'none' })).json, { ...saved, sport: 'none', sportMinutes: 0, sportDaysPerWeek: 0 });
+  const legacy = { age: 36, heightCm: 180, sex: 'male', activityFactor: 1.6 };
+  assert.equal((await call('activity', 'PUT', '/profile', legacy)).status, 200);
+  assert.deepEqual(((await call('activity', 'GET', '')).json as any).profile, { ...legacy, stepsPerDay: null, sport: null, sportMinutes: null, sportDaysPerWeek: null });
+});
+
+test('profiles reject partial or out-of-range activity without changing saved data', async () => {
+  const profile = { age: 35, heightCm: 180, sex: 'female', stepsPerDay: 0, sport: 'none', sportMinutes: 0, sportDaysPerWeek: 0 };
+  assert.equal((await call('invalid-activity', 'PUT', '/profile', profile)).status, 200);
+  for (const change of [{ stepsPerDay: -1 }, { stepsPerDay: 100001 }, { stepsPerDay: 1.5 }, { stepsPerDay: '2000' }, { stepsPerDay: null }, { sport: 'tennis' }, { sport: null }, { sport: ['running'] }, { sportMinutes: -1 }, { sportMinutes: 601 }, { sportMinutes: null }, { sportDaysPerWeek: -1 }, { sportDaysPerWeek: 15 }, { sportDaysPerWeek: null }]) {
+    assert.equal((await call('invalid-activity', 'PUT', '/profile', { ...profile, ...change })).status, 400, JSON.stringify(change));
+  }
+  assert.equal((await call('invalid-activity', 'PUT', '/profile', { age: 35, heightCm: 180, sex: 'female', stepsPerDay: 8000 })).status, 400);
+  assert.deepEqual(((await call('invalid-activity', 'GET', '')).json as any).profile, { ...profile, activityFactor: 1.2 });
+});
+
+test('profile and activity writes fail together without overwriting either saved record', async (t) => {
+  const profile = { age: 35, heightCm: 180, sex: 'male', activityFactor: 1.6, stepsPerDay: 8000, sport: 'cycling', sportMinutes: 40, sportDaysPerWeek: 2 };
+  assert.equal((await call('activity-rollback', 'PUT', '/profile', profile)).status, 200);
+  assert.deepEqual(((await call('activity-rollback', 'GET', '')).json as any).profile, profile);
+  db.sqlite.exec("CREATE TRIGGER fail_activity BEFORE INSERT ON weight_activity WHEN NEW.user_id = 'activity-rollback' BEGIN SELECT RAISE(ABORT, 'simulated storage failure'); END");
+  const log = t.mock.method(console, 'error', () => {});
   try {
-    const detail = (await call('snapshot', 'GET', '/days/2020-01-01')).json as any;
-    assert.deepEqual([detail.meals.length, detail.revision], [1, 1]);
-  } finally { db.prepare = prepare; }
+    assert.equal((await call('activity-rollback', 'PUT', '/profile', { ...profile, age: 45, stepsPerDay: 9000 })).status, 500);
+  } finally { log.mock.restore(); db.sqlite.exec('DROP TRIGGER fail_activity'); }
+  assert.deepEqual(((await call('activity-rollback', 'GET', '')).json as any).profile, profile);
 });

@@ -3,7 +3,7 @@ import { after, test } from 'node:test';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
 import { app } from '../src/index.ts';
 import { mealDate, parseWeight, sendReminders } from '../src/handlers/telegram.ts';
-import { parseEstimate } from '../src/handlers/meals.ts';
+import { dayProgress, parseEstimate } from '../src/handlers/meals.ts';
 import { database } from './sqlite.ts';
 
 const { publicKey, privateKey } = await generateKeyPair('RS256');
@@ -89,7 +89,7 @@ test('meals log from text and photos as a formatted estimate with buttons', asyn
   assert.equal(sent.parse_mode, 'HTML');
   assert.equal(sent.text, ['🍳 <b>Eggs &amp; toast</b>', '<b>≈ 270 kcal</b>', '',
     '🥩 <b>15g</b> protein  ·  🍚 <b>16g</b> carbs  ·  🧈 <b>12g</b> fat', '<i>sat. fat 0g · fibre 2g · sugar 0g</i>', '',
-    '• eggs — 180', '• toast — 90', '', '<b>Today</b>', 'Kcal ▰▰▱▱▱▱▱▱▱▱ 270 / 1800', 'Protein ▰▱▱▱▱▱▱▱▱▱ 15 / 144g'].join('\n'));
+    '• eggs — 180', '• toast — 90', '', '<b>Today</b>', 'Kcal ▰▰▱▱▱▱▱▱▱▱ 270 / 1800', 'Protein ▰▱▱▱▱▱▱▱▱▱ 15 / 120g'].join('\n'));
   const [meal] = meals();
   assert.deepEqual(sent.reply_markup.inline_keyboard[0].map((button: any) => button.callback_data), [`fix:${meal.id}`, `undo:${meal.id}`]);
   assert.deepEqual({ ...meal, id: undefined }, { id: undefined, description: 'Eggs & toast', kcal: 270, p: 15, f: 12, mid: 55 });
@@ -158,22 +158,24 @@ test('meal estimates are capped per user per day, with database overrides', asyn
   assert.equal(response.status, 429, 'the web card shares the same allowance');
 });
 
-test('Telegram meal additions, corrections and undo invalidate food reviews', async () => {
-  assert.deepEqual(((await api('review-bot', 'GET', '/../weight')).json as any).days, []);
-  db.sqlite.exec("INSERT INTO telegram_links (user_id, chat_id, time_zone, remind_hour) VALUES ('review-bot', '10', 'Europe/Madrid', 8)");
+test('Telegram food totals follow additions, corrections and undo without confirmation', async () => {
+  db.sqlite.exec("INSERT INTO telegram_links (user_id, chat_id, time_zone, remind_hour) VALUES ('automatic-bot', '10', 'Europe/Madrid', 8)");
   const date = mealDate('Europe/Madrid');
   await telegram(10, 'toast');
-  const meal = db.sqlite.prepare("SELECT id FROM meals WHERE user_id = 'review-bot'").get()!;
-  const review = () => ({ ...db.sqlite.prepare("SELECT revision, confirmed_revision AS confirmedRevision FROM food_day_reviews WHERE user_id = 'review-bot' AND date = ?").get(date)! });
-  const confirm = () => db.sqlite.prepare("UPDATE food_day_reviews SET confirmed_revision = revision WHERE user_id = 'review-bot' AND date = ?").run(date);
-  assert.deepEqual(review(), { revision: 1, confirmedRevision: null });
-  confirm();
+  const meal = db.sqlite.prepare("SELECT id FROM meals WHERE user_id = 'automatic-bot'").get()!;
+  const days = async () => ((await api('automatic-bot', 'GET', '/../weight')).json as any).days;
+  assert.deepEqual(await days(), [{ date, kcal: 270, mealCount: 1 }]);
   await telegram(10, 'more toast');
-  assert.deepEqual(review(), { revision: 2, confirmedRevision: null });
-  confirm();
+  assert.deepEqual(await days(), [{ date, kcal: 540, mealCount: 2 }]);
   await telegram(10, '300 kcal', 'hook-secret', { reply_to_message: { message_id: 55 } });
-  assert.deepEqual(review(), { revision: 3, confirmedRevision: null });
-  confirm();
-  await telegram(10, '', 'hook-secret', {}, { callback_query: { id: 'review-undo', data: `undo:${meal.id}`, message: { message_id: 55, chat: { id: 10 } } } });
-  assert.deepEqual(review(), { revision: 4, confirmedRevision: null });
+  assert.deepEqual(await days(), [{ date, kcal: 600, mealCount: 2 }]);
+  await telegram(10, '', 'hook-secret', {}, { callback_query: { id: 'automatic-undo', data: `undo:${meal.id}`, message: { message_id: 55, chat: { id: 10 } } } });
+  assert.deepEqual(await days(), [{ date, kcal: 300, mealCount: 1 }]);
+});
+
+test('Telegram protein target is 1.5 g per average kg regardless of old phase settings', async () => {
+  db.sqlite.exec("INSERT INTO weight_entries VALUES ('protein', '2020-01-01', 80), ('protein', '2020-01-07', 82); INSERT INTO weight_phases VALUES ('protein', '2020-01-01', 2500, 2000, 3)");
+  assert.equal((await dayProgress(db as never, 'protein', '2020-01-07')).proteinTarget, 122);
+  assert.equal(db.sqlite.prepare("SELECT protein_g_per_kg FROM weight_phases WHERE user_id = 'protein'").get()!.protein_g_per_kg, 3, 'historical metadata is retained');
+  assert.equal((await dayProgress(db as never, 'no-weight', '2020-01-07')).proteinTarget, null);
 });
