@@ -17,6 +17,7 @@ try {
   await page.goto(`${base}/weight`)
   const plan = page.locator('.weight-plan')
   await plan.waitFor()
+  await page.evaluate(() => document.fonts.ready)
   const stats = page.locator('.weight-stats')
   assert.equal(await stats.locator('.weight-stat').count(), 4)
   assert.equal(await stats.getByText('To goal', { exact: true }).count(), 0)

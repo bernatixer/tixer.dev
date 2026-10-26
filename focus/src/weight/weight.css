@@ -5,7 +5,7 @@
 .weight-app .weight-stat--good { color: var(--acid); }
 .weight-app .weight-stat--bad { color: var(--priority-urgent); }
 .weight-goal__body { margin-top: 16px; }
-.weight-goal__target { font: 500 2.8rem var(--font-mono, monospace); color: var(--acid); }
+.weight-goal__target { font: 500 1.8rem var(--font-mono, monospace); color: var(--acid); }
 .weight-goal__target small { font-size: 1rem; color: var(--text-secondary); }
 .weight-goal__empty { font-size: 1.3rem; font-weight: 500; }
 .weight-goal__body p { margin: 6px 0; }
@@ -28,7 +28,8 @@
 .weight-history__date:hover, .weight-history__food:hover { color: var(--acid); }
 .weight-app button.weight-history__food { display: inline-flex; justify-content: flex-end; align-items: baseline; gap: 7px; padding-left: 16px; }
 .weight-history__food small { color: var(--text-secondary); font-size: .65rem; }
-.weight-plan__evidence { margin: 24px 0 16px; font-size: .78rem; line-height: 1.6; }
+.weight-plan__note { margin: 24px 0 16px; font-size: .78rem; line-height: 1.6; }
+.weight-plan__evidence { max-width: 42ch; margin-left: auto; text-align: right; line-height: 1.5; }
 .weight-plan__source { max-width: 360px; margin-top: 18px; }
 .weight-plan__past { border-top: 1px solid var(--border-default); margin-top: 26px; padding-top: 18px; }
 .weight-plan__past > summary { cursor: pointer; color: var(--text-secondary); font: .72rem var(--font-mono, monospace); }
@@ -274,8 +275,6 @@
 .weight-profile__workout-energy { grid-column: 1 / -1; margin: 0 !important; font-size: .65rem; line-height: 1.5; color: var(--text-secondary); }
 .weight-profile .weight-proposal > small { display: block; margin-top: 12px; line-height: 1.6; }
 
-.weight-plan__intake { margin-top: 14px !important; font-size: .78rem; }
-.weight-plan__intake strong { display: inline; margin-left: 7px; color: var(--acid); font: 500 .9rem var(--font-mono, monospace); }
 .weight-plan__outlook { margin: 18px 0; padding: 14px 16px; background: rgba(var(--white-rgb), .025); border: 1px solid var(--border-default); border-left: 3px solid var(--acid); }
 .weight-plan__outlook > strong { display: block; margin: 8px 0; font: 500 1.8rem var(--font-mono, monospace); color: var(--acid); }
 .weight-plan__outlook strong small { font-size: .82rem; color: var(--text-secondary); }
@@ -298,6 +297,7 @@
   .weight-profile__workout { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 38px; }
   .weight-profile__workout-kind { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .weight-plan__outlook { padding: 16px; }
+  .weight-plan__evidence { max-width: none; margin-left: 0; text-align: left; }
   .weight-plan__outlook strong small { display: block; margin-top: 8px; line-height: 1.5; }
 }
 
@@ -306,10 +306,10 @@
 
 .weight-overview { align-items: start; margin: 22px 0; }
 .weight-overview > .finance-card { margin: 0; }
-.weight-overview .weight-plan__evidence { margin: 16px 0 12px; font-size: .72rem; }
+.weight-overview .weight-plan__note { margin: 16px 0 12px; font-size: .72rem; }
 .weight-overview .weight-plan__figures { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .weight-overview .weight-plan__figures dd { font-size: 1.25rem; }
-.weight-overview .weight-plan__energy .finance-card-heading { flex-wrap: wrap; gap: 4px 12px; }
+.weight-overview .weight-plan__energy .finance-card-heading { flex-wrap: wrap; align-items: flex-start; gap: 4px 12px; }
 .weight-plan__phases { position: relative; margin-top: 18px; padding-top: 12px; border-top: 1px solid var(--border-default); }
 .weight-plan__phases .weight-plan__past { margin: 0; padding: 0; border: 0; }
 .weight-plan__phases summary { min-height: 30px; line-height: 30px; padding-right: 162px; }
