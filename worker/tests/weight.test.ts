@@ -67,7 +67,7 @@ test('meal photos must be inline images', async () => {
 test('saved profiles remain private and reject invalid equation inputs', async () => {
   assert.deepEqual((await call('profile', 'GET', '')).json, { entries: [], phases: [], meals: [], profile: null, goals: [], days: [] });
   const profile = { age: 35, heightCm: 180, sex: 'male', activityFactor: 1.6 };
-  const saved = { ...profile, stepsPerDay: null, sport: null, sportMinutes: null, sportDaysPerWeek: null };
+  const saved = { ...profile, stepsPerDay: null, sport: null, sportMinutes: null, sportDaysPerWeek: null, workouts: null, stepsIncludeRuns: null };
   assert.deepEqual(await call('profile', 'PUT', '/profile', profile), { status: 200, json: saved });
   assert.deepEqual(((await call('profile', 'GET', '')).json as any).profile, saved);
   assert.equal(((await call('other-profile', 'GET', '')).json as any).profile, null);
@@ -80,7 +80,7 @@ test('goal versions save the starting average and preserve it after corrected re
   for (const [date, weightKg] of [['2026-10-01', 82], ['2026-10-05', 80], ['2026-10-07', 79], ['2026-10-08', 77]] as const) {
     await call('goal', 'PUT', `/entries/${date}`, { weightKg });
   }
-  const first = { startDate: '2026-10-07', startWeightKg: 241 / 3, targetDate: '2026-12-01', targetWeightKg: 75 };
+  const first = { startDate: '2026-10-07', startWeightKg: 241 / 3, targetDate: '2026-12-01', targetWeightKg: 75, intakeKcal: null };
   assert.deepEqual(await call('goal', 'PUT', '/goals/2026-10-07', { targetDate: '2026-12-01', targetWeightKg: 75 }), { status: 200, json: first });
   await call('goal', 'PUT', '/entries/2026-10-05', { weightKg: 90 });
   assert.deepEqual(((await call('goal', 'GET', '')).json as any).goals, [first]);
@@ -91,6 +91,53 @@ test('goal versions save the starting average and preserve it after corrected re
   for (const [date, targetDate, targetWeightKg] of [['2026-02-30', '2026-12-01', 75], ['2026-10-07', '2027-02-30', 75], ['2026-10-07', '2026-10-07', 75], ['2026-10-07', '2026-12-01', 100]] as const) {
     assert.equal((await call('goal', 'PUT', `/goals/${date}`, { targetDate, targetWeightKg })).status, 400);
   }
+});
+
+test('goal intake can be set, preserved by old clients, cleared, and set to zero', async () => {
+  await call('goal-intake', 'PUT', '/entries/2020-01-01', { weightKg: 80 });
+  const input = { targetDate: '2020-04-01', targetWeightKg: 75 };
+  const first = { startDate: '2020-01-01', startWeightKg: 80, ...input, intakeKcal: 2200 };
+  assert.deepEqual(await call('goal-intake', 'PUT', '/goals/2020-01-01', { ...input, intakeKcal: 2200 }), { status: 200, json: first });
+  await call('goal-intake', 'PUT', '/entries/2020-01-01', { weightKg: 90 });
+  assert.deepEqual((await call('goal-intake', 'PUT', '/goals/2020-01-01', { ...input, targetWeightKg: 74 })).json, { ...first, targetWeightKg: 74 });
+  assert.deepEqual((await call('goal-intake', 'PUT', '/goals/2020-01-01', { ...input, intakeKcal: null })).json, { ...first, intakeKcal: null });
+  assert.deepEqual((await call('goal-intake', 'PUT', '/goals/2020-01-01', { ...input, intakeKcal: 0 })).json, { ...first, intakeKcal: 0 });
+  assert.deepEqual(((await call('goal-intake', 'GET', '')).json as any).goals, [{ ...first, intakeKcal: 0 }]);
+  assert.deepEqual(((await call('other-goal-intake', 'GET', '')).json as any).goals, []);
+});
+
+test('invalid goal intake leaves the goal and saved intake unchanged', async () => {
+  await call('invalid-intake', 'PUT', '/entries/2020-01-01', { weightKg: 80 });
+  const input = { targetDate: '2020-04-01', targetWeightKg: 75, intakeKcal: 2000 };
+  assert.equal((await call('invalid-intake', 'PUT', '/goals/2020-01-01', input)).status, 200);
+  for (const intakeKcal of [-1, 10001, 2000.5, '2000', false, [], {}]) {
+    assert.equal((await call('invalid-intake', 'PUT', '/goals/2020-01-01', { ...input, targetWeightKg: 74, intakeKcal })).status, 400, JSON.stringify(intakeKcal));
+  }
+  assert.deepEqual(((await call('invalid-intake', 'GET', '')).json as any).goals, [{ startDate: '2020-01-01', startWeightKg: 80, ...input }]);
+});
+
+test('invalid goal semantics cannot save or clear an intake', async () => {
+  await call('goal-semantics', 'PUT', '/entries/2020-01-01', { weightKg: 80 });
+  const input = { targetDate: '2020-04-01', targetWeightKg: 75, intakeKcal: 2100 };
+  assert.equal((await call('goal-semantics', 'PUT', '/goals/2020-01-01', input)).status, 200);
+  for (const intakeKcal of [null, 1000]) {
+    assert.equal((await call('goal-semantics', 'PUT', '/goals/2020-01-01', { ...input, targetWeightKg: 90, intakeKcal })).status, 400);
+    assert.equal((await call('no-goal-weight', 'PUT', '/goals/2020-01-01', { ...input, intakeKcal })).status, 400);
+  }
+  assert.deepEqual(((await call('goal-semantics', 'GET', '')).json as any).goals, [{ startDate: '2020-01-01', startWeightKg: 80, ...input }]);
+  assert.equal(db.sqlite.prepare("SELECT COUNT(*) AS n FROM weight_goal_intakes WHERE user_id = 'no-goal-weight'").get()!.n, 0);
+});
+
+test('goal and intake writes roll back together if intake storage fails', async (t) => {
+  await call('intake-rollback', 'PUT', '/entries/2020-01-01', { weightKg: 80 });
+  const input = { targetDate: '2020-04-01', targetWeightKg: 75, intakeKcal: 2000 };
+  const saved = { startDate: '2020-01-01', startWeightKg: 80, ...input };
+  assert.deepEqual((await call('intake-rollback', 'PUT', '/goals/2020-01-01', input)).json, saved);
+  db.sqlite.exec("CREATE TRIGGER fail_intake BEFORE INSERT ON weight_goal_intakes WHEN NEW.user_id = 'intake-rollback' BEGIN SELECT RAISE(ABORT, 'simulated storage failure'); END");
+  const log = t.mock.method(console, 'error', () => {});
+  try { assert.equal((await call('intake-rollback', 'PUT', '/goals/2020-01-01', { ...input, targetWeightKg: 74, intakeKcal: 1800 })).status, 500); }
+  finally { log.mock.restore(); db.sqlite.exec('DROP TRIGGER fail_intake'); }
+  assert.deepEqual(((await call('intake-rollback', 'GET', '')).json as any).goals, [saved]);
 });
 
 test('manual historical meals bypass AI allowance and keep unknown nutrients', async () => {
@@ -158,7 +205,7 @@ test('failed meal corrections retain the saved calories and nutrients', async (t
 
 test('profiles save steps and sport per user and normalize no sport', async () => {
   const profile = { age: 35, heightCm: 180, sex: 'male', stepsPerDay: 8500, sport: 'strength', sportMinutes: 60, sportDaysPerWeek: 3 };
-  const saved = { ...profile, activityFactor: 1.2 };
+  const saved = { ...profile, activityFactor: 1.2, workouts: null, stepsIncludeRuns: null };
   assert.deepEqual(await call('activity', 'PUT', '/profile', profile), { status: 200, json: saved });
   assert.deepEqual(((await call('activity', 'GET', '')).json as any).profile, saved);
   assert.equal(((await call('other-activity', 'GET', '')).json as any).profile, null);
@@ -166,7 +213,7 @@ test('profiles save steps and sport per user and normalize no sport', async () =
   assert.deepEqual((await call('activity', 'PUT', '/profile', { ...profile, sport: 'none' })).json, { ...saved, sport: 'none', sportMinutes: 0, sportDaysPerWeek: 0 });
   const legacy = { age: 36, heightCm: 180, sex: 'male', activityFactor: 1.6 };
   assert.equal((await call('activity', 'PUT', '/profile', legacy)).status, 200);
-  assert.deepEqual(((await call('activity', 'GET', '')).json as any).profile, { ...legacy, stepsPerDay: null, sport: null, sportMinutes: null, sportDaysPerWeek: null });
+  assert.deepEqual(((await call('activity', 'GET', '')).json as any).profile, { ...legacy, stepsPerDay: null, sport: null, sportMinutes: null, sportDaysPerWeek: null, workouts: null, stepsIncludeRuns: null });
 });
 
 test('profiles reject partial or out-of-range activity without changing saved data', async () => {
@@ -176,11 +223,11 @@ test('profiles reject partial or out-of-range activity without changing saved da
     assert.equal((await call('invalid-activity', 'PUT', '/profile', { ...profile, ...change })).status, 400, JSON.stringify(change));
   }
   assert.equal((await call('invalid-activity', 'PUT', '/profile', { age: 35, heightCm: 180, sex: 'female', stepsPerDay: 8000 })).status, 400);
-  assert.deepEqual(((await call('invalid-activity', 'GET', '')).json as any).profile, { ...profile, activityFactor: 1.2 });
+  assert.deepEqual(((await call('invalid-activity', 'GET', '')).json as any).profile, { ...profile, activityFactor: 1.2, workouts: null, stepsIncludeRuns: null });
 });
 
 test('profile and activity writes fail together without overwriting either saved record', async (t) => {
-  const profile = { age: 35, heightCm: 180, sex: 'male', activityFactor: 1.6, stepsPerDay: 8000, sport: 'cycling', sportMinutes: 40, sportDaysPerWeek: 2 };
+  const profile = { age: 35, heightCm: 180, sex: 'male', activityFactor: 1.6, stepsPerDay: 8000, sport: 'cycling', sportMinutes: 40, sportDaysPerWeek: 2, workouts: null, stepsIncludeRuns: null };
   assert.equal((await call('activity-rollback', 'PUT', '/profile', profile)).status, 200);
   assert.deepEqual(((await call('activity-rollback', 'GET', '')).json as any).profile, profile);
   db.sqlite.exec("CREATE TRIGGER fail_activity BEFORE INSERT ON weight_activity WHEN NEW.user_id = 'activity-rollback' BEGIN SELECT RAISE(ABORT, 'simulated storage failure'); END");
@@ -189,4 +236,71 @@ test('profile and activity writes fail together without overwriting either saved
     assert.equal((await call('activity-rollback', 'PUT', '/profile', { ...profile, age: 45, stepsPerDay: 9000 })).status, 500);
   } finally { log.mock.restore(); db.sqlite.exec('DROP TRIGGER fail_activity'); }
   assert.deepEqual(((await call('activity-rollback', 'GET', '')).json as any).profile, profile);
+});
+
+test('multiple workouts and running-step choice persist without requiring old sport inputs', async () => {
+  const profile = { age: 35, heightCm: 180, sex: 'male', stepsPerDay: 9000,
+    workouts: [{ sport: 'strength', minutesPerSession: 60, sessionsPerWeek: 3 }, { sport: 'running', minutesPerSession: 30, sessionsPerWeek: 2 }], stepsIncludeRuns: true };
+  const saved = { ...profile, activityFactor: 1.2, sport: 'none', sportMinutes: 0, sportDaysPerWeek: 0 };
+  assert.deepEqual(await call('multi-sport', 'PUT', '/profile', profile), { status: 200, json: saved });
+  assert.deepEqual(((await call('multi-sport', 'GET', '')).json as any).profile, saved);
+  assert.equal(((await call('other-sport', 'GET', '')).json as any).profile, null);
+  assert.deepEqual((await call('multi-sport', 'PUT', '/profile', { ...profile, workouts: [], stepsIncludeRuns: false })).json,
+    { ...saved, workouts: [], stepsIncludeRuns: false });
+});
+
+test('invalid workout lists and running-step choices cannot overwrite the profile', async () => {
+  const profile = { age: 35, heightCm: 180, sex: 'male', stepsPerDay: 9000, sport: 'none', sportMinutes: 0, sportDaysPerWeek: 0,
+    workouts: [{ sport: 'cycling', minutesPerSession: 45, sessionsPerWeek: 2 }], stepsIncludeRuns: false };
+  assert.equal((await call('invalid-workout', 'PUT', '/profile', profile)).status, 200);
+  for (const change of [
+    { workouts: 'running' }, { workouts: Array(9).fill(profile.workouts[0]) }, { workouts: [null] },
+    ...[{ sport: 'none' }, { sport: ['running'] }, { minutesPerSession: -1 }, { minutesPerSession: 601 }, { minutesPerSession: '30' }, { sessionsPerWeek: -1 }, { sessionsPerWeek: 15 }, { sessionsPerWeek: null }, { effort: 'extreme' }, { effort: ['hard'] }, { effort: 3 }].map(workout => ({ workouts: [{ ...profile.workouts[0], ...workout }] })),
+    { stepsIncludeRuns: 1 }, { stepsIncludeRuns: 'true' },
+  ]) assert.equal((await call('invalid-workout', 'PUT', '/profile', { ...profile, ...change })).status, 400, JSON.stringify(change));
+  assert.deepEqual(((await call('invalid-workout', 'GET', '')).json as any).profile, { ...profile, activityFactor: 1.2 });
+});
+
+test('workout effort survives saving and reading while older workouts remain unchanged', async () => {
+  const profile = { age: 35, heightCm: 180, sex: 'male', stepsPerDay: 9000, workouts: [
+    { sport: 'strength', minutesPerSession: 45, sessionsPerWeek: 3, effort: 'hard' },
+    { sport: 'running', minutesPerSession: 30, sessionsPerWeek: 2, effort: 'normal' },
+    { sport: 'cycling', minutesPerSession: 60, sessionsPerWeek: 1, effort: 'easy' },
+    { sport: 'swimming', minutesPerSession: 30, sessionsPerWeek: 1 },
+  ] };
+  const response = await call('workout-effort', 'PUT', '/profile', profile);
+  assert.equal(response.status, 200);
+  assert.deepEqual((response.json as any).workouts, profile.workouts);
+  assert.deepEqual(((await call('workout-effort', 'GET', '')).json as any).profile.workouts, profile.workouts);
+  const legacy = { ...profile, workouts: [{ ...profile.workouts[3], effort: null }] };
+  assert.equal((await call('workout-effort', 'PUT', '/profile', legacy)).status, 200);
+  assert.deepEqual(((await call('workout-effort', 'GET', '')).json as any).profile.workouts, [profile.workouts[3]]);
+});
+
+test('running speed and jogging speed persist and invalid speeds cannot replace saved workouts', async () => {
+  const profile = { age: 35, heightCm: 180, sex: 'male', stepsPerDay: 9000, workouts: [
+    { sport: 'running', speedKmh: 12, minutesPerSession: 30, sessionsPerWeek: 2 },
+    { sport: 'jogging', speedKmh: 8, minutesPerSession: 45, sessionsPerWeek: 1 },
+  ] };
+  assert.equal((await call('workout-speed', 'PUT', '/profile', profile)).status, 200);
+  const saved = ((await call('workout-speed', 'GET', '')).json as any).profile;
+  assert.deepEqual(saved.workouts, profile.workouts);
+  for (const change of [{ speedKmh: 0 }, { speedKmh: 3.9 }, { speedKmh: 23.1 }, { speedKmh: '12' }, { speedKmh: [] }, { speedKmh: true }, { sport: 'strength' }, { sport: 'swimming' }, { sport: 'cycling' }]) {
+    assert.equal((await call('workout-speed', 'PUT', '/profile', { ...profile, age: 40, workouts: [{ ...profile.workouts[0], ...change }] })).status, 400);
+    assert.deepEqual(((await call('workout-speed', 'GET', '')).json as any).profile, saved);
+  }
+  assert.equal((await call('workout-speed', 'PUT', '/profile', { ...profile, workouts: [{ ...profile.workouts[0], speedKmh: null }] })).status, 200);
+  assert.deepEqual(((await call('workout-speed', 'GET', '')).json as any).profile.workouts, [{ sport: 'running', minutesPerSession: 30, sessionsPerWeek: 2 }]);
+});
+
+test('workout save failures roll back profile and activity writes', async (t) => {
+  const profile = { age: 35, heightCm: 180, sex: 'male', stepsPerDay: 8000, sport: 'none', sportMinutes: 0, sportDaysPerWeek: 0,
+    workouts: [{ sport: 'swimming', minutesPerSession: 30, sessionsPerWeek: 2 }], stepsIncludeRuns: false };
+  assert.equal((await call('workout-rollback', 'PUT', '/profile', profile)).status, 200);
+  assert.deepEqual(((await call('workout-rollback', 'GET', '')).json as any).profile, { ...profile, activityFactor: 1.2 });
+  db.sqlite.exec("CREATE TRIGGER fail_workouts BEFORE INSERT ON weight_activity_extras WHEN NEW.user_id = 'workout-rollback' BEGIN SELECT RAISE(ABORT, 'simulated storage failure'); END");
+  const log = t.mock.method(console, 'error', () => {});
+  try { assert.equal((await call('workout-rollback', 'PUT', '/profile', { ...profile, age: 40, stepsPerDay: 10000, workouts: [] })).status, 500); }
+  finally { log.mock.restore(); db.sqlite.exec('DROP TRIGGER fail_workouts'); }
+  assert.deepEqual(((await call('workout-rollback', 'GET', '')).json as any).profile, { ...profile, activityFactor: 1.2 });
 });

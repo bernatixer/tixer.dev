@@ -95,12 +95,25 @@ CREATE TABLE IF NOT EXISTS weight_activity (
     sport_days_per_week REAL NOT NULL CHECK (sport_days_per_week BETWEEN 0 AND 14)
 );
 
+CREATE TABLE IF NOT EXISTS weight_activity_extras (
+    user_id TEXT PRIMARY KEY,
+    workouts TEXT CHECK (workouts IS NULL OR (json_valid(workouts) AND json_type(workouts) = 'array')),
+    steps_include_runs INTEGER CHECK (steps_include_runs IS NULL OR steps_include_runs IN (0, 1))
+);
+
 CREATE TABLE IF NOT EXISTS weight_goals (
     user_id TEXT NOT NULL,
     start_date TEXT NOT NULL,
     start_weight_kg REAL NOT NULL,
     target_date TEXT NOT NULL,
     target_weight_kg REAL NOT NULL,
+    PRIMARY KEY (user_id, start_date)
+);
+
+CREATE TABLE IF NOT EXISTS weight_goal_intakes (
+    user_id TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    intake_kcal INTEGER NOT NULL CHECK (typeof(intake_kcal) = 'integer' AND intake_kcal BETWEEN 0 AND 10000),
     PRIMARY KEY (user_id, start_date)
 );
 

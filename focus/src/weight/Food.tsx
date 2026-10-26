@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { DEFAULT_PROTEIN_PER_KG, type Meal, type Phase } from './model'
+import { DEFAULT_PROTEIN_PER_KG, type Meal } from './model'
 import type { MealEstimateJob } from './useMealEstimates'
 
 // Phone photos are several MB; 1024px JPEG is plenty for estimating a plate.
@@ -32,7 +32,7 @@ function useCountUp(target: number, ms = 600) {
 
 const NUTRIENT_LABELS = [['carbsG', 'Carbs'], ['fatG', 'Fat'], ['saturatedG', 'Sat. fat'], ['fibreG', 'Fibre'], ['sugarG', 'Sugar']] as const
 
-export function Food({ meals, phase, bodyKg, jobs = [], onAdd, onRetry, onDismiss, onUpdate, onDelete, title = 'FOOD · TODAY', onDirty, knownTotal = true }: { meals: Meal[]; phase?: Phase; bodyKg?: number; jobs?: MealEstimateJob[]; onAdd: (text: string, image?: string) => void; onRetry?: (id: string) => void; onDismiss?: (id: string) => void; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; title?: string; onDirty?: (dirty: boolean) => void; knownTotal?: boolean }) {
+export function Food({ meals, kcalTarget, bodyKg, jobs = [], onAdd, onRetry, onDismiss, onUpdate, onDelete, title = 'FOOD · TODAY', onDirty, knownTotal = true }: { meals: Meal[]; kcalTarget?: number | null; bodyKg?: number; jobs?: MealEstimateJob[]; onAdd: (text: string, image?: string) => void; onRetry?: (id: string) => void; onDismiss?: (id: string) => void; onUpdate: (id: string, kcal: number) => Promise<unknown>; onDelete: (id: string) => Promise<unknown>; title?: string; onDirty?: (dirty: boolean) => void; knownTotal?: boolean }) {
   const [text, setText] = useState('')
   const [photo, setPhoto] = useState<string>()
   const [error, setError] = useState('')
@@ -69,8 +69,8 @@ export function Food({ meals, phase, bodyKg, jobs = [], onAdd, onRetry, onDismis
   }
   return <article className="finance-card weight-food">
     <span className="finance-eyebrow">{title}</span>
-    <div className="weight-food__total">{knownTotal ? <><strong>{shownTotal}</strong> kcal{phase && <small> of {phase.intakeKcal} planned · {total <= phase.intakeKcal ? `${phase.intakeKcal - total} left` : <span className="weight-stat--bad">{total - phase.intakeKcal} over</span>}</small>}</> : <span>No food logged · total unknown</span>}</div>
-    {knownTotal && phase && <progress className={total > phase.intakeKcal ? 'is-over' : undefined} value={Math.min(total, phase.intakeKcal)} max={phase.intakeKcal} aria-label="Eaten of planned intake" />}
+    <div className="weight-food__total">{knownTotal ? <><strong>{shownTotal}</strong> kcal{kcalTarget != null && <small> of {kcalTarget} planned · {total <= kcalTarget ? `${kcalTarget - total} left` : <span className="weight-stat--bad">{total - kcalTarget} over</span>}</small>}</> : <span>No food logged · total unknown</span>}</div>
+    {knownTotal && kcalTarget != null && kcalTarget > 0 && <progress className={total > kcalTarget ? 'is-over' : undefined} value={Math.min(total, kcalTarget)} max={kcalTarget} aria-label="Eaten of planned intake" />}
     {meals.some(meal => meal.proteinG != null) && <dl className="weight-food__nutrients">
       <div className="weight-food__protein"><dt>Protein</dt><dd>{grams('proteinG')}<small>{proteinTarget ? ` / ${proteinTarget} g` : ' g'}</small></dd>
         {proteinTarget && <progress value={Math.min(grams('proteinG'), proteinTarget)} max={proteinTarget} aria-label="Protein of target" />}</div>

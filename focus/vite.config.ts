@@ -24,6 +24,7 @@ export default defineConfig({
           const path = request.url?.split('?')[0]
           if (path === '/') request.url = '/tests/todo.html'
           else if (path && /^\/(?:finance|money)(?:\.html)?\/?$/.test(path)) request.url = '/tests/vault.html'
+          else if (path === '/weight/compare' || path === '/weight/compare/') request.url = '/tests/weight.html'
           else if (path && /^\/weight(?:\.html)?\/?$/.test(path)) request.url = '/tests/weight.html'
           next()
         })

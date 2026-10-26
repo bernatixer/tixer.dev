@@ -8,7 +8,7 @@ import '../src/styles/shared.css'
 const api = import.meta.env.VITE_API_URL || 'http://localhost:5556/api'
 if (!/^http:\/\/(?:localhost|127\.0\.0\.1):\d+\/api\/?$/.test(api)) throw new Error('The preview requires a local test API.')
 setTokenProvider(async () => {
-  const response = await fetch(`${new URL(api).origin}/__test/token`)
+  const response = await fetch(`${new URL(api).origin}/__test/token?variant=goal-phases`)
   if (!response.ok) throw new Error('Local preview API is unavailable.')
   return (await response.json()).token
 })

@@ -3,7 +3,7 @@ import { after, test } from 'node:test';
 import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
 import { app } from '../src/index.ts';
 import { mealDate, parseWeight, sendReminders } from '../src/handlers/telegram.ts';
-import { dayProgress, parseEstimate } from '../src/handlers/meals.ts';
+import { dayProgress, mealMessage, parseEstimate } from '../src/handlers/meals.ts';
 import { database } from './sqlite.ts';
 
 const { publicKey, privateKey } = await generateKeyPair('RS256');
@@ -178,4 +178,30 @@ test('Telegram protein target is 1.5 g per average kg regardless of old phase se
   assert.equal((await dayProgress(db as never, 'protein', '2020-01-07')).proteinTarget, 122);
   assert.equal(db.sqlite.prepare("SELECT protein_g_per_kg FROM weight_phases WHERE user_id = 'protein'").get()!.protein_g_per_kg, 3, 'historical metadata is retained');
   assert.equal((await dayProgress(db as never, 'no-weight', '2020-01-07')).proteinTarget, null);
+});
+
+test('Telegram selects intake by assigned food date and a goal without intake suppresses older targets', async () => {
+  await api('goal-budget', 'PUT', '/../weight/entries/2020-01-01', { weightKg: 80 });
+  await api('goal-budget', 'PUT', '/../weight/phases/2020-01-01', { maintenanceKcal: 2500, intakeKcal: 1800 });
+  await api('goal-budget', 'PUT', '/../weight/phases/2020-01-15', { maintenanceKcal: 2500, intakeKcal: 1600 });
+  await api('goal-budget', 'PUT', '/../weight/goals/2020-01-10', { targetDate: '2020-04-01', targetWeightKg: 75, intakeKcal: 2200 });
+  await api('goal-budget', 'PUT', '/../weight/goals/2020-01-20', { targetDate: '2020-04-01', targetWeightKg: 74, intakeKcal: null });
+  await api('goal-budget', 'PUT', '/../weight/goals/2020-02-01', { targetDate: '2020-04-01', targetWeightKg: 73, intakeKcal: 0 });
+  for (const [date, target] of [['2020-01-09', 1800], ['2020-01-10', 2200], ['2020-01-19', 2200], ['2020-01-20', null], ['2020-01-31', null], ['2020-02-01', 0]] as const) {
+    assert.equal((await dayProgress(db as never, 'goal-budget', date)).kcalTarget, target, date);
+  }
+  const beforeRollover = mealDate('Europe/Madrid', new Date('2020-01-20T00:30:00Z'));
+  const afterRollover = mealDate('Europe/Madrid', new Date('2020-01-20T01:30:00Z'));
+  assert.equal((await dayProgress(db as never, 'goal-budget', beforeRollover)).kcalTarget, 2200);
+  assert.equal((await dayProgress(db as never, 'goal-budget', afterRollover)).kcalTarget, null);
+  assert.equal((await dayProgress(db as never, 'other-budget', '2020-01-10')).kcalTarget, null);
+});
+
+test('Telegram renders a zero intake target without treating it as no budget or dividing by zero', () => {
+  const meal = parseEstimate(estimate)!;
+  const progress = { kcal: 0, kcalTarget: 0, protein: 0, proteinTarget: null };
+  assert.match(mealMessage(meal, progress), /Kcal 0 \/ 0/);
+  assert.match(mealMessage(meal, { ...progress, kcal: 270 }), /Kcal 270 \/ 0/);
+  assert.doesNotMatch(mealMessage(meal, progress), /NaN|Infinity/);
+  assert.doesNotMatch(mealMessage(meal, { ...progress, kcalTarget: null }), /Kcal/);
 });

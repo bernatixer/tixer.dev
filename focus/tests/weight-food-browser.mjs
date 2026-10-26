@@ -9,6 +9,7 @@ const day = offset => {
   return new Date(now.getTime() - now.getTimezoneOffset() * 60000 + offset * 864e5).toISOString().slice(0, 10)
 }
 const foodDate = day(-1)
+const humanDate = date => new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 let editedWeight = 80
 const meals = [{ id: 'breakfast', date: foodDate, description: 'Synthetic breakfast', kcal: 400, proteinG: 20, createdAt: `${foodDate}T08:00:00Z` }]
 const snapshot = () => ({
@@ -44,6 +45,7 @@ try {
       return json(body)
     }
     if (path === `/api/weight/entries/${foodDate}` && request.method() === 'PUT') { editedWeight = request.postDataJSON().weightKg; return json({ date: foodDate, weightKg: editedWeight }) }
+    if (path === '/api/meals/breakfast' && request.method() === 'PUT') { meals[0].kcal = request.postDataJSON().kcal; return json(meals[0]) }
     if (path === '/api/telegram') return json({ linked: false })
     if (path === '/api/meals' && request.method() === 'POST') {
       const input = request.postDataJSON()
@@ -59,7 +61,7 @@ try {
   })
   await page.goto(`${base}/weight`)
   await page.getByText('HISTORY', { exact: true }).click()
-  const openDay = () => page.getByRole('button', { name: `Open ${foodDate}`, exact: true }).click()
+  const openDay = () => page.getByRole('button', { name: `Open ${humanDate(foodDate)}`, exact: true }).click()
   await openDay()
   const drawer = page.getByRole('dialog')
   const composer = () => drawer.getByPlaceholder('What did you eat? e.g. 2 eggs, toast and a coffee with milk')
@@ -125,16 +127,16 @@ try {
   await drawer.getByRole('spinbutton', { name: 'kcal for Saved before refresh failure', exact: true }).waitFor()
   assert.equal(submissions.length, posts, 'retrying a saved job only refreshes; it never POSTs again')
   const queueRefresh = page.waitForResponse(response => new URL(response.url()).pathname === `/api/weight/days/${foodDate}`)
-  await composer().fill('New meal after weight edit')
+  await composer().fill('New meal after calorie edit')
   await drawer.getByRole('button', { name: 'Add', exact: true }).click()
   await queueRefresh
-  await gateFor('New meal after weight edit')
+  await gateFor('New meal after calorie edit')
   holdNextDay = true
-  await drawer.getByLabel('Weight (kg)', { exact: true }).fill('79.9')
-  await drawer.getByRole('button', { name: 'Save weight', exact: true }).click()
+  await drawer.getByRole('spinbutton', { name: 'kcal for Synthetic breakfast', exact: true }).fill('410')
+  await drawer.getByRole('heading').click()
   await gateFor('older day refresh')
-  ;(await gateFor('New meal after weight edit'))(200)
-  const newestMeal = drawer.getByRole('spinbutton', { name: 'kcal for New meal after weight edit', exact: true })
+  ;(await gateFor('New meal after calorie edit'))(200)
+  const newestMeal = drawer.getByRole('spinbutton', { name: 'kcal for New meal after calorie edit', exact: true })
   await newestMeal.waitFor()
   ;(await gateFor('older day refresh'))()
   await page.waitForFunction(() => !document.querySelector('dialog button[aria-label="Close day"]')?.disabled)

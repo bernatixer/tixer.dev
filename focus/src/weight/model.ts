@@ -1,13 +1,16 @@
 export interface WeightEntry { date: string; weightKg: number }
 export interface Phase { startDate: string; maintenanceKcal: number; intakeKcal: number; proteinPerKg?: number | null }
+export interface Workout { sport: 'strength' | 'cycling' | 'running' | 'jogging' | 'swimming'; minutesPerSession: number; sessionsPerWeek: number; effort?: 'easy' | 'normal' | 'hard' | null; speedKmh?: number | null }
 export interface WeightProfile {
   age: number; heightCm: number; sex: 'male' | 'female'; activityFactor: number
   stepsPerDay?: number | null
-  sport?: 'none' | 'strength' | 'cycling' | 'running' | 'swimming' | null
+  sport?: 'none' | Workout['sport'] | null
   sportMinutes?: number | null
   sportDaysPerWeek?: number | null
+  workouts?: Workout[] | null
+  stepsIncludeRuns?: boolean | null
 }
-export interface WeightGoal { startDate: string; startWeightKg: number; targetDate: string; targetWeightKg: number }
+export interface WeightGoal { startDate: string; startWeightKg: number; targetDate: string; targetWeightKg: number; intakeKcal?: number | null }
 export interface FoodDay { date: string; kcal: number | null; mealCount: number }
 // Nutrient grams are null on meals logged before they were estimated.
 export interface Meal { id: string; date: string; description: string; kcal: number; proteinG?: number | null; carbsG?: number | null; fatG?: number | null; saturatedG?: number | null; fibreG?: number | null; sugarG?: number | null; createdAt: string }
@@ -25,16 +28,25 @@ export const dayNumber = (date: string) => Date.parse(`${date}T00:00:00Z`) / DAY
 export const dateOf = (day: number) => new Date(day * DAY_MS).toISOString().slice(0, 10)
 export const localToday = () => { const now = new Date(); return dateOf(Math.floor((now.getTime() - now.getTimezoneOffset() * 60000) / DAY_MS)) }
 
-export const phaseOn = (phases: Phase[], date: string) => last(phases.filter(phase => phase.startDate <= date))
-export const deficitOn = (phases: Phase[], date: string) => { const phase = phaseOn(phases, date); return phase ? phase.maintenanceKcal - phase.intakeKcal : 0 }
-
 // Calendar-window mean, so a missed weigh-in shortens the window instead of stretching it back in time.
 export function movingAverage(entries: WeightEntry[], days = 7): number[] {
-  return entries.map(entry => {
-    const end = dayNumber(entry.date)
-    const window = entries.filter(other => { const day = dayNumber(other.date); return day <= end && day > end - days })
-    return window.reduce((sum, other) => sum + other.weightKg, 0) / window.length
-  })
+  return entries.map(entry => averageAt(entries, entry.date, days)!)
+}
+
+function averageAt(entries: WeightEntry[], date: string, days: number): number | null {
+  const end = dayNumber(date)
+  const window = entries.filter(entry => { const day = dayNumber(entry.date); return day <= end && day > end - days })
+  return window.length ? window.reduce((sum, entry) => sum + entry.weightKg, 0) / window.length : null
+}
+
+export function trendAt(entries: WeightEntry[], date: string): number | null {
+  return averageAt(entries, date, 7)
+}
+
+export function bodyMassIndex(weightKg: number, heightCm: number): number | null {
+  if (!Number.isFinite(weightKg) || weightKg <= 0 || !Number.isFinite(heightCm) || heightCm <= 0) return null
+  const value = weightKg / (heightCm / 100) ** 2
+  return Number.isFinite(value) ? value : null
 }
 
 export interface Analysis {

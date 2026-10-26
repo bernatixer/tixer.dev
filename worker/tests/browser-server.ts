@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { Readable } from 'node:stream';
-import { exportSPKI, generateKeyPair, SignJWT } from 'jose';
+import { decodeJwt, exportSPKI, generateKeyPair, SignJWT } from 'jose';
 import { app } from '../src/index.ts';
 import { database } from './sqlite.ts';
+import { previewOwner } from './preview-variants.ts';
+
+const selfCheck = process.argv.includes('--self-check');
+// boffin: refused self-check writes to persistent preview data before opening storage.
+if (selfCheck && process.env.FOCUS_PREVIEW_DB !== undefined && process.env.FOCUS_PREVIEW_DB !== ':memory:') {
+  throw new Error('Self-check requires an in-memory database; unset FOCUS_PREVIEW_DB or use :memory:');
+}
 
 const { publicKey, privateKey } = await generateKeyPair('RS256');
 const issuer = 'https://finance-test.clerk.accounts.dev';
@@ -21,11 +28,17 @@ const server = createServer(async (incoming, outgoing) => {
     if (url.pathname.startsWith('/__test/')) {
       const headers = { 'cache-control': 'no-store', 'access-control-allow-origin': 'http://localhost:3000' };
       if (url.pathname === '/__test/token') {
-        const now = Math.floor(Date.now() / 1000);
-        const token = await new SignJWT({ iss: issuer, sub: 'synthetic_browser_user', sid: 'synthetic_browser_session',
-          azp: 'http://localhost:3000', nbf: now - 2, exp: now + 3600 })
-          .setProtectedHeader({ alg: 'RS256' }).sign(privateKey);
-        response = Response.json({ token }, { headers });
+        try {
+          const owner = previewOwner(db, url.searchParams.get('variant'));
+          const now = Math.floor(Date.now() / 1000);
+          const token = await new SignJWT({ iss: issuer, sub: owner, sid: 'synthetic_browser_session',
+            azp: 'http://localhost:3000', nbf: now - 2, exp: now + 3600 })
+            .setProtectedHeader({ alg: 'RS256' }).sign(privateKey);
+          response = Response.json({ token }, { headers });
+        } catch (error) {
+          if (!(error instanceof RangeError)) throw error;
+          response = Response.json({ error: 'Invalid preview variant' }, { status: 400, headers });
+        }
       } else if (url.pathname === '/__test/inspect') {
         response = Response.json(db.sqlite.prepare('SELECT * FROM financial_vaults').all(), { headers });
       } else if (url.pathname === '/__test/fail-next' && incoming.method === 'POST') {
@@ -71,7 +84,7 @@ function close() {
 process.once('SIGINT', close);
 process.once('SIGTERM', close);
 
-if (process.argv.includes('--self-check')) {
+if (selfCheck) {
   try {
     const base = `http://127.0.0.1:${port}`;
     assert.equal((await fetch(`${base}/api/finance/vault`)).status, 401);
@@ -103,7 +116,28 @@ if (process.argv.includes('--self-check')) {
     assert.equal(rows.length, 1);
     assert.equal(rows[0].envelope, null);
     assert.equal(rows[0].revision, 2);
-    console.log('Finance browser API self-check passed.');
+    for (const variant of ['', 'unknown', '../synthetic_browser_user']) {
+      assert.equal((await fetch(`${base}/__test/token?variant=${encodeURIComponent(variant)}`)).status, 400);
+    }
+    const originalHeaders = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+    assert.equal((await fetch(`${base}/api/weight/entries/2020-01-01`, { method: 'PUT', headers: originalHeaders, body: JSON.stringify({ weightKg: 80 }) })).status, 200);
+    const owners = new Set();
+    for (const variant of ['north-star', 'goal-phases', 'checkpoints', 'calorie-target', 'reality-forecast']) {
+      const response = await fetch(`${base}/__test/token?variant=${variant}`);
+      assert.equal(response.status, 200);
+      const variantToken = (await response.json()).token;
+      const owner = decodeJwt(variantToken).sub;
+      assert.notEqual(owner, decodeJwt(token).sub);
+      owners.add(owner);
+      const variantHeaders = { authorization: `Bearer ${variantToken}`, 'content-type': 'application/json' };
+      assert.deepEqual((await (await fetch(`${base}/api/weight`, { headers: variantHeaders })).json()).entries, [{ date: '2020-01-01', weightKg: 80 }]);
+      assert.equal((await fetch(`${base}/api/weight/entries/2020-01-01`, { method: 'PUT', headers: variantHeaders, body: JSON.stringify({ weightKg: 70 }) })).status, 200);
+      await fetch(`${base}/__test/token?variant=${variant}`);
+      assert.deepEqual((await (await fetch(`${base}/api/weight`, { headers: variantHeaders })).json()).entries, [{ date: '2020-01-01', weightKg: 70 }]);
+    }
+    assert.equal(owners.size, 5);
+    assert.deepEqual((await (await fetch(`${base}/api/weight`, { headers: originalHeaders })).json()).entries, [{ date: '2020-01-01', weightKg: 80 }]);
+    console.log('Finance and isolated Weight variant API self-check passed.');
   } finally { close(); }
 } else {
   console.log(`Local test API listening at http://127.0.0.1:${port}`);

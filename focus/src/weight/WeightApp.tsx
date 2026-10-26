@@ -1,21 +1,23 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent, type PointerEvent, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
 import { useAuthSync } from '@/hooks/useAuthSync'
 import { ApiError, del, get, post, put } from '@/api/client'
-import { analyse, dateOf, last, mealDay, phaseOn, streakBefore, type Meal, dayNumber, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
+import { analyse, bodyMassIndex, last, mealDay, streakBefore, type Meal, dayNumber, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
 import '@/finance/finance.css'
 import './weight.css'
 import { Food } from './Food'
 import { useMealEstimates } from './useMealEstimates'
 import { WeightPlan } from './WeightPlan'
 import { DayDrawer } from './DayDrawer'
-import { forecast, goalOn, goalProgress, goalReference, observedExpenditure } from './goals'
+import { goalReference, intakeTargetOn } from './goals'
+import { trendAt } from './model'
+import { compactWeightDate as shortDate, formatWeightDate } from './format'
+import { WeightChart } from './WeightChart'
 import type { FoodDay, WeightGoal, WeightProfile } from './model'
 
 const kg = (value: number, digits = 2) => `${value.toFixed(digits)} kg`
 const signed = (value: number, digits = 2) => { const rounded = Number(value.toFixed(digits)); return `${rounded > 0 ? '+' : rounded < 0 ? '−' : '±'}${Math.abs(rounded).toFixed(digits)}` }
-const shortDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 export function WeightApp() {
   const { isLoaded, isSignedIn } = useAuth()
@@ -54,101 +56,50 @@ function Weight() {
 
   if (!data) return error ? <p role="alert" className="finance-notice">{error}</p> : <p className="finance-loading">Loading…</p>
   const { entries, phases, meals, profile, goals, days } = data
-  const foodDay = mealDay()
-  const bodyKg = entries.length ? last(movingAverage(entries)) : undefined
+  const today = localToday(), foodDay = mealDay()
+  // boffin: future records stay editable in history but cannot change current estimates.
+  const currentEntries = entries.filter(entry => entry.date <= today)
+  const bodyKg = trendAt(currentEntries, today) ?? last(movingAverage(currentEntries))
   return <>
     {error && <p role="alert" className="finance-notice">{error}</p>}
-    {!entries.some(entry => entry.date === localToday()) && <TodayForm entries={entries} goals={goals} onSave={weightKg => run(put(`/weight/entries/${localToday()}`, { weightKg }))} />}
-    <Stats entries={entries} goals={goals} days={days} />
-    {entries.length > 0 && <Chart entries={entries} phases={phases} goals={goals} />}
-    <WeightPlan entries={entries} phases={phases} profile={profile} goals={goals} days={days}
-      onGoal={(date, goal) => run(put(`/weight/goals/${date}`, goal))} onProfile={value => run(put('/weight/profile', value))}
-      onPhase={phase => run(put(`/weight/phases/${phase.startDate}`, phase))}
-      onDeletePhase={date => run(del(`/weight/phases/${date}`))} />
-    <Food meals={meals.filter(meal => meal.date === foodDay)} phase={phaseOn(phases, foodDay)} bodyKg={bodyKg}
-      jobs={estimates.jobs.filter(job => job.date === foodDay)} onAdd={(text, image) => estimates.add(foodDay, text, image)} onRetry={estimates.retry} onDismiss={estimates.dismiss}
-      onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))} />
+    {!entries.some(entry => entry.date === localToday()) && <TodayForm entries={currentEntries} goals={goals} onSave={weightKg => run(put(`/weight/entries/${localToday()}`, { weightKg }))} />}
+    <Stats entries={currentEntries} profile={profile} />
+    {currentEntries.length > 0 && <WeightChart entries={currentEntries} goals={goals} days={days} onOpenDay={setSelectedDay} />}
+    <div className="finance-columns weight-overview">
+      <Food meals={meals.filter(meal => meal.date === foodDay)} kcalTarget={intakeTargetOn(goals, phases, foodDay)} bodyKg={bodyKg}
+        jobs={estimates.jobs.filter(job => job.date === foodDay)} onAdd={(text, image) => estimates.add(foodDay, text, image)} onRetry={estimates.retry} onDismiss={estimates.dismiss}
+        onUpdate={(id, kcal) => run(put(`/meals/${id}`, { kcal }))} onDelete={id => run(del(`/meals/${id}`))} />
+      <WeightPlan entries={currentEntries} profile={profile} goals={goals} days={days}
+        onGoal={(date, goal) => run(put(`/weight/goals/${date}`, goal))} onProfile={value => run(put('/weight/profile', value))}
+        />
+    </div>
     <Drawer title="HISTORY" meta={`${entries.length} weigh-ins · ${days.length} days logged`} open={!entries.length}>
       <Log entries={entries} goals={goals} days={days} onOpen={setSelectedDay}
         onImport={rows => run(Promise.all(rows.map(entry => put(`/weight/entries/${entry.date}`, { weightKg: entry.weightKg }))))}
-        onDelete={date => run(del(`/weight/entries/${date}`))} />
+        onDelete={date => run(del(`/weight/entries/${date}`))} onSave={(date, weightKg) => run(put(`/weight/entries/${date}`, { weightKg }))} />
     </Drawer>
-    {selectedDay && <DayDrawer key={selectedDay} date={selectedDay} entries={entries} phases={phases} onChange={load} jobs={estimates.jobs.filter(job => job.date === selectedDay)} onAdd={(text, image) => estimates.add(selectedDay, text, image)} onRetry={estimates.retry} onDismiss={estimates.dismiss} refreshKey={`${days.find(day => day.date === selectedDay)?.kcal}/${days.find(day => day.date === selectedDay)?.mealCount}/${estimates.jobs.filter(job => job.date === selectedDay).map(job => `${job.id}:${job.status}`).join(',')}`} onClose={() => setSelectedDay(null)} />}
+    {selectedDay && <DayDrawer key={selectedDay} date={selectedDay} entries={entries} kcalTarget={intakeTargetOn(goals, phases, selectedDay)} onChange={load} jobs={estimates.jobs.filter(job => job.date === selectedDay)} onAdd={(text, image) => estimates.add(selectedDay, text, image)} onRetry={estimates.retry} onDismiss={estimates.dismiss} refreshKey={`${days.find(day => day.date === selectedDay)?.kcal}/${days.find(day => day.date === selectedDay)?.mealCount}/${estimates.jobs.filter(job => job.date === selectedDay).map(job => `${job.id}:${job.status}`).join(',')}`} onClose={() => setSelectedDay(null)} />}
     <TelegramCard />
   </>
 }
 
 type WeightData = { entries: WeightEntry[]; phases: Phase[]; meals: Meal[]; profile: WeightProfile | null; goals: WeightGoal[]; days: FoodDay[] }
 
-function Stats({ entries, goals, days }: { entries: WeightEntry[]; goals: WeightGoal[]; days: FoodDay[] }) {
+function Stats({ entries, profile }: { entries: WeightEntry[]; profile: WeightProfile | null }) {
   const result = analyse(entries)
   if (!result) return null
-  const latest = last(entries)!, goal = goalOn(goals, localToday())
-  const target = goalReference(goals, latest.date).find(point => point.date === latest.date)
-  const observed = observedExpenditure(entries, days, mealDay())
-  const progress = goal ? goalProgress(entries, goal, latest.date) : null
+  const today = localToday(), latest = last(entries)!
+  const current = trendAt(entries, today)
+  const readings = entries.filter(entry => entry.date <= today && dayNumber(entry.date) > dayNumber(today) - 7).length
+  const bmi = profile ? bodyMassIndex(latest.weightKg, profile.heightCm) : null
+  const change = current === null ? result.changeKg : current - entries[0].weightKg
   const tiles: [string, string, string, string?][] = [
-    ['7-day average', kg(result.trendKg), `${progress?.readings ?? entries.filter(entry => dayNumber(entry.date) > dayNumber(latest.date) - 7).length}/7 readings · last ${kg(latest.weightKg)}`],
-    ['Since start', `${signed(result.changeKg)} kg`, `From ${kg(entries[0].weightKg)} on ${shortDate(entries[0].date)}`, result.changeKg <= 0 ? 'good' : 'bad'],
-    ['Vs target', target ? `${signed(result.trendKg - target.weightKg)} kg` : '—', target ? progress?.reached ? 'Target average reached' : 'Seven-day average vs target' : goal ? 'See your goal and deadline below' : 'Set a target weight and date', target ? result.trendKg <= target.weightKg ? 'good' : 'bad' : undefined],
+    ['7-day average', current === null ? '—' : kg(current), `${readings}/7 readings · last ${shortDate(latest.date)}`],
+    ['Since start', `${signed(change)} kg`, `From ${kg(entries[0].weightKg)} on ${shortDate(entries[0].date)}`, change <= 0 ? 'good' : 'bad'],
+    ['BMI', bmi === null ? '—' : bmi.toFixed(1), bmi === null ? 'Add your height in metabolism settings' : `${kg(latest.weightKg)} · ${profile?.heightCm} cm · ${shortDate(latest.date)}`],
     ['Pace / week', result.kgPerWeek === null ? '—' : `${signed(result.kgPerWeek)} kg`, result.kgPerWeek === null ? 'Needs a week of data' : 'Observed, last three weeks'],
-    ['Observed daily burn', observed ? `${observed.kcal} kcal` : '—', observed ? `${observed.foodDays} logged days${observed.provisional ? ' · early estimate' : ''}` : 'Starts after 7 days of food + weight'],
   ]
   return <section className="weight-stats">{tiles.map(([label, value, note, tone]) => <div key={label} className="finance-card weight-stat"><span className="finance-eyebrow">{label}</span><strong className={tone ? `weight-stat--${tone}` : undefined}>{value}</strong><small>{note}</small></div>)}</section>
-}
-
-function Chart({ entries, phases, goals }: { entries: WeightEntry[]; phases: Phase[]; goals: WeightGoal[] }) {
-  const trend = movingAverage(entries)
-  const currentGoal = goalOn(goals, localToday())
-  const end = dateOf(Math.max(dayNumber(last(entries)!.date), dayNumber(localToday()) + 14, currentGoal ? dayNumber(currentGoal.targetDate) : 0))
-  const goal = goalReference(goals, end)
-  const predicted = phases.length ? forecast(entries, phases, end) : []
-  const projectedRows = [...entries, ...predicted]
-  const projectedTrend = movingAverage(projectedRows)
-  const projection = projectedRows.map((entry, index) => ({ date: entry.date, weightKg: projectedTrend[index] })).filter(entry => entry.date >= last(entries)!.date)
-  const values = [...entries.map(entry => entry.weightKg), ...goal.map(point => point.weightKg), ...projection.map(point => point.weightKg)]
-  const top = Math.ceil(Math.max(...values) * 2 + 1) / 2, bottom = Math.floor(Math.min(...values) * 2 - 1) / 2
-  const startDay = dayNumber(entries[0].date), days = Math.max(1, dayNumber(end) - startDay)
-  const x = (date: string) => (dayNumber(date) - startDay) / days * 1000
-  const y = (value: number) => (top - value) / (top - bottom) * 300
-  const path = (points: [string, number][]) => points.map(([date, value], i) => `${i ? 'L' : 'M'}${x(date).toFixed(1)},${y(value).toFixed(1)}`).join('')
-  const ticks = Array.from({ length: 5 }, (_, i) => top - (top - bottom) * i / 4)
-  const [hover, setHover] = useState<number | null>(null)
-  const hovered = hover === null ? null : dateOf(startDay + hover)
-  const hoveredIndex = entries.findIndex(entry => entry.date === hovered)
-  const hoveredGoal = goal.find(point => point.date === hovered)
-  const onPointerMove = (event: PointerEvent<HTMLDivElement>) => {
-    const box = event.currentTarget.getBoundingClientRect()
-    setHover(Math.min(days, Math.max(0, Math.round((event.clientX - box.left) / box.width * days))))
-  }
-  return <article className="finance-card weight-chart">
-    <div className="finance-card-heading"><span className="finance-eyebrow">PROGRESS</span>
-      <div className="weight-chart__legend"><span><i className="weight-key--raw" />Weigh-ins</span><span><i className="weight-key--trend" />7-day average</span>{goal.length > 0 && <span><i className="weight-key--goal" />Target</span>}{predicted.length > 0 && <span><i className="weight-key--forecast" />Forecast · approximate</span>}</div></div>
-    <div className="weight-chart__plot" onPointerMove={onPointerMove} onPointerLeave={() => setHover(null)}>
-      <div className="weight-chart__scale">{ticks.map(tick => <span key={tick} style={{ top: `${(top - tick) / (top - bottom) * 100}%` }}>{tick.toFixed(1)}</span>)}</div>
-      {/* Stretched to fit; non-scaling strokes and zero-length round caps keep lines and dots crisp. */}
-      <svg viewBox="0 0 1000 300" preserveAspectRatio="none" role="img" aria-label="Weight, seven-day average, fixed target and approximate forecast over time">
-        {ticks.map(tick => <line key={tick} className="weight-chart__grid" x1="0" x2="1000" y1={y(tick)} y2={y(tick)} />)}
-        <line className="weight-chart__today" x1={x(localToday())} x2={x(localToday())} y1="0" y2="300" />
-        {goal.length > 0 && <path className="weight-chart__goal" d={path(goal.map(point => [point.date, point.weightKg]))} />}
-        {predicted.length > 0 && <path className="weight-chart__forecast" d={path(projection.map(point => [point.date, point.weightKg]))} />}
-        <path className="weight-chart__raw" d={path(entries.map(entry => [entry.date, entry.weightKg]))} />
-        {entries.map(entry => <path key={entry.date} className="weight-chart__dot" d={`M${x(entry.date)},${y(entry.weightKg)}h0`} />)}
-        <path className="weight-chart__trend" d={path(entries.map((entry, i) => [entry.date, trend[i]]))} />
-        {hovered && <line className="weight-chart__cursor" x1={x(hovered)} x2={x(hovered)} y1="0" y2="300" />}
-        {hoveredIndex >= 0 && <path className="weight-chart__dot weight-chart__dot--active" d={`M${x(hovered!)},${y(entries[hoveredIndex].weightKg)}h0`} />}
-      </svg>
-      {/* Shifting by the same percentage as the offset keeps the tooltip inside the plot at both edges. */}
-      {hovered && <div className="weight-chart__tooltip" style={{ left: `${hover! / days * 100}%`, transform: `translateX(-${hover! / days * 100}%)` }}>
-        <time>{shortDate(hovered)}</time>
-        <span>Weigh-in <strong>{hoveredIndex >= 0 ? kg(entries[hoveredIndex].weightKg) : '—'}</strong></span>
-        <span>7-day average <strong>{hoveredIndex >= 0 ? kg(trend[hoveredIndex]) : '—'}</strong></span>
-        {hoveredGoal && <span>Goal <strong>{kg(hoveredGoal.weightKg)}</strong></span>}
-        {hoveredIndex >= 0 && hoveredGoal && <span>Vs goal <strong className={trend[hoveredIndex] - hoveredGoal.weightKg <= 0 ? 'weight-stat--good' : 'weight-stat--bad'}>{signed(trend[hoveredIndex] - hoveredGoal.weightKg)} kg</strong></span>}
-      </div>}
-    </div>
-    <div className="weight-chart__dates"><span>{shortDate(entries[0].date)}</span><span>{shortDate(dateOf(startDay + Math.round(days / 2)))}</span><span>{shortDate(end)}</span></div>
-  </article>
 }
 
 function TodayForm({ entries, goals, onSave }: { entries: WeightEntry[]; goals: WeightGoal[]; onSave: (weightKg: number) => Promise<unknown> }) {
@@ -199,7 +150,7 @@ function TodayForm({ entries, goals, onSave }: { entries: WeightEntry[]; goals: 
   </form>
 }
 
-function Log({ entries, goals, days, onOpen, onImport, onDelete }: { entries: WeightEntry[]; goals: WeightGoal[]; days: FoodDay[]; onOpen: (date: string) => void; onImport: (rows: WeightEntry[]) => Promise<unknown>; onDelete: (date: string) => Promise<unknown> }) {
+function Log({ entries, goals, days, onOpen, onImport, onDelete, onSave }: { entries: WeightEntry[]; goals: WeightGoal[]; days: FoodDay[]; onOpen: (date: string) => void; onImport: (rows: WeightEntry[]) => Promise<unknown>; onDelete: (date: string) => Promise<unknown>; onSave: (date: string, weightKg: number) => Promise<unknown> }) {
   const [paste, setPaste] = useState('')
   const trend = movingAverage(entries)
   const averages = new Map(entries.map((entry, index) => [entry.date, trend[index]]))
@@ -210,9 +161,27 @@ function Log({ entries, goals, days, onOpen, onImport, onDelete }: { entries: We
     {!entries.length && <><p className="finance-muted">Copy your DATE and WEIGHT columns from a spreadsheet to import.</p><textarea className="weight-paste" rows={4} value={paste} onChange={event => setPaste(event.target.value)} placeholder={'14/10/2026\t81\n15/10/2026\t80,55'} /><button type="button" disabled={!parsed.length} onClick={() => void onImport(parsed).then(() => setPaste('')).catch(() => undefined)}>Import {parsed.length || ''} entries</button></>}
     <div className="weight-history__scroll"><table className="weight-table"><thead><tr><th>Date</th><th>Weight</th><th>7-day avg</th><th>Target</th><th>Vs target</th><th>Eaten</th><th /></tr></thead><tbody>{dates.map(date => {
       const entry = entries.find(value => value.date === date), avg = averages.get(date), target = targets.get(date), food = days.find(value => value.date === date)
-      return <tr key={date}><td><button type="button" className="weight-history__date" aria-label={`Open ${date}`} onClick={() => onOpen(date)}>{shortDate(date)}</button></td><td>{entry?.weightKg.toFixed(2) ?? '—'}</td><td>{avg?.toFixed(2) ?? '—'}</td><td>{target?.toFixed(2) ?? '—'}</td><td className={avg !== undefined && target !== undefined ? avg <= target ? 'weight-stat--good' : 'weight-stat--bad' : undefined}>{avg !== undefined && target !== undefined ? signed(avg - target) : '—'}</td><td><button type="button" className="weight-history__food" aria-label={`Food for ${date}`} onClick={() => onOpen(date)}>{food?.kcal === null || food?.kcal === undefined ? '—' : <><span>{food.kcal}</span><small>kcal</small></>}</button></td><td>{entry && <button type="button" className="finance-remove" aria-label={`Delete ${date}`} onClick={() => { if (window.confirm(`Delete ${shortDate(date)}?`)) void onDelete(date).catch(() => undefined) }}>×</button>}</td></tr>
+      return <tr key={date}><td><button type="button" className="weight-history__date" aria-label={`Open ${formatWeightDate(date)}`} onClick={() => onOpen(date)}>{shortDate(date)}</button></td><td><WeightCell date={date} entry={entry} onSave={onSave} /></td><td>{avg?.toFixed(2) ?? '—'}</td><td>{target?.toFixed(2) ?? '—'}</td><td className={avg !== undefined && target !== undefined ? avg <= target ? 'weight-stat--good' : 'weight-stat--bad' : undefined}>{avg !== undefined && target !== undefined ? signed(avg - target) : '—'}</td><td><button type="button" className="weight-history__food" aria-label={`Food for ${formatWeightDate(date)}`} onClick={() => onOpen(date)}>{food?.kcal === null || food?.kcal === undefined ? '—' : <><span>{food.kcal}</span><small>kcal</small></>}</button></td><td>{entry && <button type="button" className="finance-remove" aria-label={`Delete ${formatWeightDate(date)}`} onClick={() => { if (window.confirm(`Delete ${shortDate(date)}?`)) void onDelete(date).catch(() => undefined) }}>×</button>}</td></tr>
     })}</tbody></table></div>
   </>
+}
+
+function WeightCell({ date, entry, onSave }: { date: string; entry?: WeightEntry; onSave: (date: string, value: number) => Promise<unknown> }) {
+  const [editing, setEditing] = useState(false), [draft, setDraft] = useState(entry ? String(entry.weightKg) : '')
+  const [busy, setBusy] = useState(false), [error, setError] = useState('')
+  const save = async (event: FormEvent) => {
+    event.preventDefault()
+    if (busy || !draft || !Number.isFinite(Number(draft)) || Number(draft) < 20 || Number(draft) > 400) return
+    setBusy(true); setError('')
+    try { await onSave(date, Number(draft)); setEditing(false) }
+    catch { setError('Could not save. Try again.') }
+    finally { setBusy(false) }
+  }
+  return editing ? <form className="weight-history__edit" onSubmit={save}>
+    <input autoFocus aria-label={`Weight for ${formatWeightDate(date)}`} type="number" inputMode="decimal" required min="20" max="400" step="0.05" value={draft} onChange={event => setDraft(event.target.value)} disabled={busy} />
+    <button disabled={busy} type="submit" aria-label="Save weight">✓</button><button disabled={busy} type="button" aria-label="Cancel weight edit" onClick={() => setEditing(false)}>×</button>
+    {error && <small role="alert">{error}</small>}
+  </form> : <button type="button" className="weight-history__weight" aria-label={`${entry ? 'Edit' : 'Add'} weight for ${formatWeightDate(date)}`} onClick={() => { setDraft(entry ? String(entry.weightKg) : ''); setEditing(true) }}>{entry?.weightKg.toFixed(2) ?? '+'}</button>
 }
 
 // Collapsed by default: logs and settings stay out of the way of the daily view.

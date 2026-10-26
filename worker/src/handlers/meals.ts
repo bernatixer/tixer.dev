@@ -148,9 +148,9 @@ export function mealMessage(estimate: MealEstimate, today: DayProgress) {
     "",
     ...estimate.items.map(item => `• ${escapeHtml(item.name)} — ${item.kcal}`),
   ];
-  if (today.kcalTarget || today.proteinTarget) {
+  if (today.kcalTarget !== null || today.proteinTarget) {
     lines.push("", "<b>Today</b>");
-    if (today.kcalTarget) lines.push(`Kcal ${bar(today.kcal, today.kcalTarget)} ${today.kcal} / ${today.kcalTarget}`);
+    if (today.kcalTarget !== null) lines.push(`Kcal ${today.kcalTarget > 0 ? bar(today.kcal, today.kcalTarget) + " " : ""}${today.kcal} / ${today.kcalTarget}`);
     if (today.proteinTarget) lines.push(`Protein ${bar(today.protein, today.proteinTarget)} ${Math.round(today.protein)} / ${today.proteinTarget}g`);
   }
   return lines.join("\n");
@@ -163,7 +163,13 @@ export async function dayProgress(db: D1Database, userId: string, date: string):
   const weekAgo = new Date(Date.parse(`${date}T00:00:00Z`) - 6 * 864e5).toISOString().slice(0, 10);
   const [eaten, phase, weight] = await Promise.all([
     db.prepare("SELECT COALESCE(SUM(kcal), 0) AS kcal, COALESCE(SUM(protein_g), 0) AS protein FROM meals WHERE user_id = ? AND date = ?").bind(userId, date).first<{ kcal: number; protein: number }>(),
-    db.prepare("SELECT intake_kcal FROM weight_phases WHERE user_id = ? AND start_date <= ? ORDER BY start_date DESC LIMIT 1").bind(userId, date).first<{ intake_kcal: number }>(),
+    // boffin: kept a goal with no budget from reviving an older calorie phase.
+    db.prepare(`SELECT intake_kcal FROM (
+      SELECT goals.start_date, intake.intake_kcal, 1 AS is_goal FROM weight_goals goals
+      LEFT JOIN weight_goal_intakes intake ON intake.user_id = goals.user_id AND intake.start_date = goals.start_date
+      WHERE goals.user_id = ?1 AND goals.start_date <= ?2
+      UNION ALL SELECT start_date, intake_kcal, 0 AS is_goal FROM weight_phases WHERE user_id = ?1 AND start_date <= ?2
+    ) ORDER BY is_goal DESC, start_date DESC LIMIT 1`).bind(userId, date).first<{ intake_kcal: number | null }>(),
     db.prepare("SELECT AVG(weight_kg) AS kg FROM weight_entries WHERE user_id = ? AND date BETWEEN ? AND ?").bind(userId, weekAgo, date).first<{ kg: number | null }>(),
   ]);
   return {
