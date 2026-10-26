@@ -58,8 +58,20 @@ try {
   assert.equal(await plan.locator('.weight-goal__body').getByText('Daily intake target', { exact: true }).count(), 0)
   assert.equal(await plan.getByText('Logged food average', { exact: true }).count(), 0)
   assert.equal(await plan.locator('.weight-energy__labels').getByText('Average eaten', { exact: true }).count(), 1)
-  assert.equal(await plan.locator('.weight-plan__evidence').innerText(), 'Based on 9 days of food logs and 10 weigh-ins. Early estimate.')
+  assert.equal(await plan.locator('.weight-plan__evidence').innerText(), '9 food days · 10 weigh-ins · Early estimate')
   assert.equal(await plan.locator('.weight-plan__energy > .finance-card-heading .weight-plan__evidence').count(), 1)
+  const checkEnergyHeader = async (sameRow = false) => {
+    const evidence = plan.locator('.weight-plan__evidence')
+    const box = await evidence.boundingBox()
+    const lineHeight = await evidence.evaluate(element => parseFloat(getComputedStyle(element).lineHeight))
+    assert(Math.abs(box.height - lineHeight) < 1, 'evidence must stay on one line')
+    if (sameRow) {
+      const title = await plan.locator('.weight-plan__energy > .finance-card-heading .finance-eyebrow').boundingBox()
+      assert(Math.abs(title.y + title.height / 2 - box.y - box.height / 2) < 1, 'header title and evidence must be vertically centered')
+    }
+  }
+  await checkEnergyHeader(true)
+  await plan.getByRole('img', { name: 'Average eaten 2000 kcal per day; observed burn 2385 kcal per day; energy difference -385 kcal per day', exact: true }).waitFor()
   const goalBox = await plan.locator('.weight-goal__body').boundingBox(), outlookBox = await plan.locator('.weight-plan__outlook').boundingBox()
   assert(goalBox.x < outlookBox.x && Math.abs(goalBox.y - outlookBox.y) < 2, 'outlook sits next to the weight goal')
 
@@ -234,6 +246,11 @@ try {
   assert(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth + 1))
   await dialog.getByRole('button', { name: 'Close goal', exact: true }).click()
   const withoutHeight = await snapshot()
+  for (const width of [1100, 390, 320]) {
+    await page.setViewportSize({ width, height: 844 })
+    await checkEnergyHeader(width >= 1000)
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+  }
   withoutHeight.profile = null
   await page.route('**/api/weight', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(withoutHeight) }))
   await page.reload()

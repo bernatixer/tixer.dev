@@ -190,9 +190,14 @@ test('observed expenditure uses the first available aligned day with its two bou
   const readings = entriesFrom('2026-10-01', 2, 85, -0.1);
   const result = observedExpenditure(readings, loggedDays('2026-10-01', 1), '2026-10-02')!;
   const { kgPerWeek, ...summary } = result;
-  assert.deepEqual(summary, { kcal: 2850, averageIntakeKcal: 2100, startDate: '2026-10-01', endDate: '2026-10-02', foodDays: 1, weighIns: 2, provisional: true });
+  assert.deepEqual(summary, { kcal: 2870, averageIntakeKcal: 2100, startDate: '2026-10-01', endDate: '2026-10-02', foodDays: 1, weighIns: 2, provisional: true });
   assert.ok(Math.abs(kgPerWeek + 0.7) < 1e-9);
   assert.equal(observedExpenditure(readings.slice(0, 1), loggedDays('2026-10-01', 1), '2026-10-02'), null);
+});
+
+test('observed burn rounds to whole kcal without snapping to 50-kcal steps', () => {
+  const result = observedExpenditure(entriesFrom('2026-10-01', 8, 80, -0.019), loggedDays('2026-10-01', 7), '2026-10-08')!;
+  assert.equal(result.kcal, 2246);
 });
 
 test('calibration grows toward 28 days and remains provisional below 21 days', () => {
@@ -206,7 +211,7 @@ test('calibration grows toward 28 days and remains provisional below 21 days', (
   for (const expected of cases) {
     const result = observedExpenditure(entriesFrom('2026-10-01', expected.count + 1, 85, -0.1), loggedDays('2026-10-01', expected.count), expected.end);
     const { kgPerWeek, ...summary } = result!;
-    assert.deepEqual(summary, { kcal: 2850, averageIntakeKcal: 2100, startDate: expected.start, endDate: expected.end, foodDays: expected.days, weighIns: expected.days + 1, provisional: expected.provisional });
+    assert.deepEqual(summary, { kcal: 2870, averageIntakeKcal: 2100, startDate: expected.start, endDate: expected.end, foodDays: expected.days, weighIns: expected.days + 1, provisional: expected.provisional });
     assert.ok(Math.abs(kgPerWeek + 0.7) < 1e-9);
   }
 });
@@ -222,13 +227,13 @@ test('calibration prefers the newest eligible endpoint over a longer older inter
 test('observed expenditure excludes food on its last weight boundary and all later observations', () => {
   const readings = entriesFrom('2026-10-01', 8, 85, -0.1);
   const days = [...loggedDays('2026-10-01', 7), ...loggedDays('2026-10-08', 3, 10000)];
-  assert.equal(observedExpenditure([...readings, { date: '2026-10-09', weightKg: 60 }], days, '2026-10-08')!.kcal, 2850);
+  assert.equal(observedExpenditure([...readings, { date: '2026-10-09', weightKg: 60 }], days, '2026-10-08')!.kcal, 2870);
 });
 
 test('logged zero stays zero while missing food and empty days remain unknown', () => {
   const readings = entriesFrom('2026-10-01', 8, 85, -0.1);
   const days = loggedDays('2026-10-01', 7, 0);
-  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 750);
+  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 770);
   assert.equal(observedExpenditure(readings, days.map(day => ({ ...day, kcal: null })), '2026-10-08'), null);
   assert.equal(observedExpenditure(readings, days.map(day => ({ ...day, mealCount: 0 })), '2026-10-08'), null);
 });
@@ -243,7 +248,7 @@ test('missing food breaks the interval rather than falling back to a calorie pla
     assert.equal(result.startDate, '2026-10-05');
     assert.equal(result.foodDays, 3);
   }
-  assert.equal(observedExpenditure(readings, loggedDays('2026-10-01', 7, 600), '2026-10-08')!.kcal, 1350);
+  assert.equal(observedExpenditure(readings, loggedDays('2026-10-01', 7, 600), '2026-10-08')!.kcal, 1370);
 });
 
 test('a food gap restarts the longest contiguous interval after that day', () => {
@@ -258,9 +263,9 @@ test('a food gap restarts the longest contiguous interval after that day', () =>
 test('editing a logged food total immediately changes the aligned estimate', () => {
   const readings = entriesFrom('2026-10-01', 8, 85, -0.1);
   const days = loggedDays('2026-10-01', 7);
-  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 2850);
+  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 2870);
   days[3].kcal = 2800;
-  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 2950);
+  assert.equal(observedExpenditure(readings, days, '2026-10-08')!.kcal, 2970);
 });
 
 test('historical aligned calibration stays available without using food after the last weigh-in', () => {
@@ -271,7 +276,7 @@ test('historical aligned calibration stays available without using food after th
   assert.equal(result.endDate, '2026-10-29');
   assert.equal(result.startDate, '2026-10-01');
   assert.equal(result.averageIntakeKcal, 2100);
-  assert.equal(result.kcal, 2850);
+  assert.equal(result.kcal, 2870);
 });
 
 test('calibration requires two distinct boundary weights without inventing missing readings', () => {
@@ -302,12 +307,12 @@ test('observed intake averages every known food day over the same weight interva
   const days = [{ date: '2026-10-01', kcal: 1000, mealCount: 1 }, { date: '2026-10-02', kcal: 3000, mealCount: 3 }];
   const result = observedExpenditure(readings, days, '2026-10-03')!;
   assert.equal(result.averageIntakeKcal, 2000);
-  assert.equal(result.kcal, 2750);
+  assert.equal(result.kcal, 2770);
   assert.ok(Math.abs(result.kgPerWeek + 0.7) < 1e-9);
 });
 
 test('gaining weight puts observed expenditure below the aligned intake', () => {
-  assert.equal(observedExpenditure(entriesFrom('2026-10-01', 8, 80, 0.1), loggedDays('2026-10-01', 7), '2026-10-08')!.kcal, 1350);
+  assert.equal(observedExpenditure(entriesFrom('2026-10-01', 8, 80, 0.1), loggedDays('2026-10-01', 7), '2026-10-08')!.kcal, 1330);
 });
 
 test('phase intake follows the latest effective goal and a blank target suppresses older budgets', async () => {

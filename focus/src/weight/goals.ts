@@ -69,7 +69,7 @@ export function observedExpenditure(entries: WeightEntry[], days: FoodDay[], tod
       const my = readings.reduce((sum, entry) => sum + entry.weightKg, 0) / readings.length
       const slope = xs.reduce((sum, x, i) => sum + (x - mx) * (readings[i].weightKg - my), 0) / xs.reduce((sum, x) => sum + (x - mx) ** 2, 0)
       const averageIntakeKcal = intakes.reduce<number>((sum, kcal) => sum + kcal!, 0) / foodDays
-      const kcal = Math.round((averageIntakeKcal - slope * KCAL_PER_KG) / 50) * 50
+      const kcal = Math.round(averageIntakeKcal - slope * KCAL_PER_KG)
       if (Number.isFinite(kcal)) return { kcal, averageIntakeKcal, kgPerWeek: slope * 7, startDate, endDate, foodDays, weighIns: readings.length, provisional: foodDays < 21 || readings.length < Math.max(4, Math.ceil(foodDays / 2)) }
     }
   }
