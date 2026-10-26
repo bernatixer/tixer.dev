@@ -38,7 +38,7 @@ export function WeightChart({ entries, goals, days: food, onOpenDay }: Props) {
   }
   return <article className="finance-card weight-chart">
     <div className="finance-card-heading"><span className="finance-eyebrow">PROGRESS</span>
-      <div className="weight-chart__controls"><button type="button" aria-pressed={!horizon} onClick={() => setHorizon(false)}>Recent</button><button type="button" aria-pressed={horizon} onClick={() => setHorizon(true)}>To goal</button><button type="button" aria-pressed={showCalories} onClick={() => setShowCalories(value => !value)}>Daily calories</button></div>
+      <div className="weight-chart__controls"><div className="weight-chart__range" role="group" aria-label="Chart range"><button type="button" aria-pressed={!horizon} onClick={() => setHorizon(false)}>Recent</button><button type="button" aria-pressed={horizon} onClick={() => setHorizon(true)}>To goal</button></div><button type="button" aria-pressed={showCalories} onClick={() => setShowCalories(value => !value)}>Daily calories</button></div>
     </div>
     <div className="weight-chart__legend"><span><i className="weight-key--raw" />Weigh-ins · kg</span><span><i className="weight-key--trend" />7-day average</span>{goal.length > 0 && <span><i className="weight-key--goal" />Target line</span>}{predicted.length > 0 && <span><i className="weight-key--forecast" />If recent pace continues</span>}{showCalories && <span><i className="weight-key--calories" />Food logged · kcal</span>}</div>
     <div className={`weight-chart__plot${showCalories ? ' weight-chart__plot--calories' : ''}`} onPointerMove={pointer} onPointerLeave={() => setHover(null)}>

@@ -239,6 +239,10 @@
 .weight-chart__controls { display: flex; flex-wrap: wrap; gap: 6px; }
 .weight-app .weight-chart__controls button { min-height: 34px; padding: 5px 10px; font-size: .68rem; }
 .weight-chart__controls [aria-pressed="true"] { border-color: var(--acid); color: var(--acid); }
+.weight-chart__range { display: inline-flex; }
+.weight-chart__range button + button { margin-left: -2px; }
+.weight-chart__range [aria-pressed="true"] { position: relative; z-index: 1; background: rgba(var(--acid-rgb), .07); }
+.weight-chart__range button:focus-visible { position: relative; z-index: 2; }
 .weight-chart__legend { margin-top: 16px; }
 .weight-chart__plot--calories { margin-right: 54px; }
 .weight-chart__calories { fill: var(--tag-work); opacity: .22; cursor: pointer; }
