@@ -4,10 +4,12 @@
 
 import { FC, useEffect, useRef } from 'react'
 import { SignIn } from '@clerk/clerk-react'
-import { useTheme } from '@/hooks'
+import { useTheme } from '@/hooks/useTheme'
 import type { ThemeId } from '@/styles/theme'
+// boffin: load sign-in styles with the component in every document.
+import './SignInPage.css'
 
-export const SignInPage: FC = () => {
+export const SignInPage: FC<{ redirectUrl?: string }> = ({ redirectUrl }) => {
   const { themeId, setTheme } = useTheme()
   const prevTheme = useRef<ThemeId>(themeId)
 
@@ -34,6 +36,8 @@ export const SignInPage: FC = () => {
           <SignIn 
             fallbackRedirectUrl="/"
             signUpFallbackRedirectUrl="/"
+            forceRedirectUrl={redirectUrl}
+            signUpForceRedirectUrl={redirectUrl}
             appearance={{
               elements: {
                 rootBox: 'clerk-root',

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { useAuth, SignIn, UserButton } from '@clerk/clerk-react'
+import { useAuth, UserButton } from '@clerk/clerk-react'
 import { AppHeader } from '@/components/AppHeader'
+import { SignInPage } from '@/components/todo/SignInPage'
 import { useAuthSync } from '@/hooks/useAuthSync'
 import { ApiError, del, get, post, put } from '@/api/client'
 import { analyse, bodyMassIndex, last, mealDay, streakBefore, type Meal, dayNumber, localToday, movingAverage, parseSheetRows, type Phase, type WeightEntry } from './model'
@@ -23,7 +24,7 @@ export function WeightApp() {
   const { isLoaded, isSignedIn } = useAuth()
   const { isReady } = useAuthSync()
   if (!isLoaded) return <p className="finance-loading">Loading sign-in…</p>
-  if (!isSignedIn) return <main className="finance-app"><div className="finance-gate"><span className="finance-eyebrow">FOCUS / WEIGHT</span><h1>Sign in to Weight</h1><SignIn forceRedirectUrl="/weight.html" signUpForceRedirectUrl="/weight.html" /><a href="/">← Back to Focus</a></div></main>
+  if (!isSignedIn) return <SignInPage redirectUrl="/weight.html" />
   return <WeightPage isReady={isReady} account={<UserButton appearance={{ elements: { avatarBox: 'user-avatar' } }} />} />
 }
 

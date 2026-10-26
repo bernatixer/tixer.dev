@@ -1,0 +1,186 @@
+/* ============================================
+   SIGN IN PAGE
+   ============================================ */
+
+.signin-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.signin-background {
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(var(--acid-rgb), 0.08), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(var(--acid-rgb), 0.05), transparent),
+        radial-gradient(circle at 20% 80%, rgba(var(--acid-rgb), 0.03), transparent);
+    z-index: 0;
+}
+
+.signin-background::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle, var(--acid) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.04;
+    mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, black, transparent);
+    -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, black, transparent);
+}
+
+.signin-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    padding: 40px;
+}
+
+.signin-header {
+    text-align: center;
+}
+
+.signin-logo {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.logo-square {
+    width: 24px;
+    height: 24px;
+    background: var(--acid);
+    animation: logo-pulse 3s ease-in-out infinite;
+}
+
+@keyframes logo-pulse {
+    0%, 100% {
+        box-shadow: 0 0 0 rgba(var(--acid-rgb), 0);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(var(--acid-rgb), 0.3);
+        transform: scale(1.05);
+    }
+}
+
+.logo-text {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--bone);
+}
+
+.signin-tagline {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--acid);
+    opacity: 0.7;
+}
+
+.signin-card {
+    background: rgba(var(--white-rgb), 0.02);
+    border: 1px solid rgba(var(--white-rgb), 0.08);
+    padding: 8px;
+    position: relative;
+}
+
+.signin-card::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: 20%;
+    right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--acid), transparent);
+}
+
+.signin-card::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 20%;
+    right: 20%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--acid), transparent);
+    opacity: 0.5;
+}
+
+/* Clerk overrides */
+.clerk-root { font-family: var(--font-mono, 'JetBrains Mono', monospace) !important; }
+.clerk-card { background: transparent !important; box-shadow: none !important; }
+.clerk-button {
+    background: var(--acid) !important;
+    color: var(--void) !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+}
+.clerk-button:hover {
+    box-shadow: 4px 4px 0 rgba(var(--acid-rgb), 0.3) !important;
+    transform: translate(-2px, -2px) !important;
+}
+.clerk-input {
+    background: rgba(var(--white-rgb), 0.05) !important;
+    border: 1px solid rgba(var(--white-rgb), 0.15) !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+}
+.clerk-input:focus {
+    border-color: var(--acid) !important;
+    box-shadow: 0 0 0 1px var(--acid) !important;
+}
+.clerk-social-button {
+    background: transparent !important;
+    border: 1px solid rgba(var(--white-rgb), 0.15) !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+    color: var(--bone) !important;
+    transition: all 0.2s ease !important;
+}
+.clerk-social-button span { color: var(--bone) !important; }
+.clerk-social-button svg path[d*="M12 0"] { fill: var(--bone) !important; }
+.clerk-social-button:last-child svg { filter: brightness(0) invert(1) !important; }
+.clerk-social-button:hover {
+    border-color: var(--acid) !important;
+    background: rgba(var(--acid-rgb), 0.05) !important;
+}
+.clerk-divider { background: rgba(var(--white-rgb), 0.1) !important; }
+.clerk-divider-text {
+    color: rgba(245, 245, 240, 0.4) !important;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+    font-size: 0.65rem !important;
+    letter-spacing: 0.1em !important;
+    text-transform: uppercase !important;
+}
+.clerk-link { color: var(--acid) !important; }
+.clerk-label {
+    font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+    font-size: 0.7rem !important;
+    letter-spacing: 0.05em !important;
+    text-transform: uppercase !important;
+}
+
+/* Decorations */
+.signin-decoration { display: flex; flex-direction: column; align-items: center; gap: 16px; opacity: 0.3; }
+.decoration-line { width: 1px; height: 40px; background: linear-gradient(to bottom, var(--acid), transparent); }
+.decoration-dots { display: flex; gap: 8px; }
+.decoration-dot { width: 4px; height: 4px; background: var(--acid); opacity: 0.6; }
+.decoration-dot:nth-child(2) { opacity: 0.5; }
+.decoration-dot:nth-child(3) { opacity: 0.4; }
+.decoration-dot:nth-child(4) { opacity: 0.3; }
+.decoration-dot:nth-child(5) { opacity: 0.2; }
