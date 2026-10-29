@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { DEFAULT_PROTEIN_PER_KG, type Meal } from './model'
+import { carbTarget, DEFAULT_PROTEIN_PER_KG, type Meal } from './model'
 import type { MealEstimateJob } from './useMealEstimates'
 
 // Phone photos are several MB; 1024px JPEG is plenty for estimating a plate.
@@ -51,6 +51,7 @@ export function Food({ meals, kcalTarget, bodyKg, jobs = [], onAdd, onRetry, onD
   const shownTotal = useCountUp(total)
   const grams = (key: 'proteinG' | (typeof NUTRIENT_LABELS)[number][0]) => Math.round(meals.reduce((sum, meal) => sum + (meal[key] ?? 0), 0))
   const proteinTarget = bodyKg ? Math.round(DEFAULT_PROTEIN_PER_KG * bodyKg) : undefined
+  const dailyCarbTarget = carbTarget(kcalTarget, bodyKg)
   // Meals that weren't in the last list flash for the length of the animation; the first list has nothing to compare against.
   const seen = useRef<Set<string> | null>(null)
   const [fresh, setFresh] = useState<Set<string>>(new Set())
@@ -74,7 +75,8 @@ export function Food({ meals, kcalTarget, bodyKg, jobs = [], onAdd, onRetry, onD
     {meals.some(meal => meal.proteinG != null) && <dl className="weight-food__nutrients">
       <div className="weight-food__protein"><dt>Protein</dt><dd>{grams('proteinG')}<small>{proteinTarget ? ` / ${proteinTarget} g` : ' g'}</small></dd>
         {proteinTarget && <progress value={Math.min(grams('proteinG'), proteinTarget)} max={proteinTarget} aria-label="Protein of target" />}</div>
-      {NUTRIENT_LABELS.map(([key, label]) => <div key={key}><dt>{label}</dt><dd>{grams(key)}<small> g</small></dd></div>)}
+      {NUTRIENT_LABELS.map(([key, label]) => <div className={key === 'carbsG' && dailyCarbTarget ? 'weight-food__carbs' : undefined} key={key}><dt>{label}</dt><dd>{grams(key)}<small>{key === 'carbsG' && dailyCarbTarget ? ` / ${dailyCarbTarget} g` : ' g'}</small></dd>
+        {key === 'carbsG' && dailyCarbTarget && <progress value={Math.min(grams(key), dailyCarbTarget)} max={dailyCarbTarget} aria-label="Carbs of target" />}</div>)}
     </dl>}
     {meals.some(meal => meal.proteinG == null) && meals.some(meal => meal.proteinG != null) && <p className="finance-muted">Nutrient totals exclude meals without nutrient estimates.</p>}
     {(meals.length > 0 || jobs.length > 0) && <ul className="weight-food__meals">{meals.map(meal => <li key={meal.id} className={fresh.has(meal.id) ? 'is-new' : undefined}>

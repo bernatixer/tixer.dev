@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { analyse, streakBefore, movingAverage, parseSheetRows, trendAt } from '../src/weight/model.ts';
+import { analyse, carbTarget, streakBefore, movingAverage, parseSheetRows, trendAt } from '../src/weight/model.ts';
 
 const sheet = 'DATE\tWEIGHT\tGOAL\n14/10/2026\t81\t81,00\n15/10/2026\t80,55\t80,94\n16/10/2026\t81,05\t80,89\n17/10/2026\t80,75\t80,83\n18/10/2026\t\t80,78';
 
@@ -54,4 +54,10 @@ test('BMI uses weight in kilograms and converts saved height from centimetres', 
   assert.ok(Math.abs(bodyMassIndex(79.25, 175)! - 25.877551020408163) < 1e-9);
   assert.equal(bodyMassIndex(80, 200), 20);
   for (const [weight, height] of [[80, 0], [0, 175], [80, -175], [NaN, 175], [80, Infinity]]) assert.equal(bodyMassIndex(weight, height), null);
+});
+
+test('carb target reserves calories for the fixed protein target and minimum fat', () => {
+  assert.equal(carbTarget(2000, 80), 272);
+  assert.equal(carbTarget(1800, 70), 251);
+  for (const [kcal, kg] of [[null, 80], [2000, undefined], [0, 80], [500, 80], [2000, 0], [2000, -80]]) assert.equal(carbTarget(kcal, kg), null);
 });

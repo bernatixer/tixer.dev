@@ -188,9 +188,10 @@
 .weight-app .weight-food__nutrients dd { margin: 2px 0 0; text-align: left; font: 500 1rem var(--font-mono, monospace); color: var(--bone); white-space: nowrap; }
 .weight-food__nutrients dd small { font-size: .7rem; color: var(--text-secondary); }
 .weight-food__protein dd { color: var(--acid); }
-.weight-app .weight-food__protein progress { height: 4px; margin-top: 6px; }
+.weight-food__carbs dd { color: var(--tag-work); }
+.weight-app .weight-food__protein progress, .weight-app .weight-food__carbs progress { height: 4px; margin-top: 6px; }
 .weight-food__macros { display: block; margin-top: 2px; font: .66rem var(--font-mono, monospace); color: var(--text-secondary); }
-@media(max-width: 650px) { .weight-food__nutrients { grid-template-columns: repeat(5, minmax(0, 1fr)); } .weight-food__protein { grid-column: 1 / -1; } }
+@media(max-width: 650px) { .weight-food__nutrients { grid-template-columns: repeat(5, minmax(0, 1fr)); } .weight-food__protein, .weight-food__carbs { grid-column: 1 / -1; } }
 .weight-food__meals li.is-new { animation: weight-flash 1.4s ease-out; }
 @keyframes weight-flash { from { background: rgba(var(--acid-rgb), .18); } to { background: transparent; } }
 .weight-food__meals li.is-pending { grid-template-columns: auto 1fr auto; animation: weight-rise .25s ease-out; }

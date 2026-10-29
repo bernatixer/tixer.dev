@@ -17,6 +17,14 @@ export interface Meal { id: string; date: string; description: string; kcal: num
 
 // Current target; stored phase settings remain available as historical data.
 export const DEFAULT_PROTEIN_PER_KG = 1.5
+export const MIN_FAT_PER_KG = 0.6
+
+// Reserve the calorie budget for the fixed protein target and a conservative fat floor; carbs receive what remains.
+export function carbTarget(kcalTarget?: number | null, bodyKg?: number): number | null {
+  if (typeof kcalTarget !== 'number' || !Number.isFinite(kcalTarget) || kcalTarget <= 0 || typeof bodyKg !== 'number' || !Number.isFinite(bodyKg) || bodyKg <= 0) return null
+  const remaining = kcalTarget - bodyKg * (DEFAULT_PROTEIN_PER_KG * 4 + MIN_FAT_PER_KG * 9)
+  return remaining > 0 ? Math.round(remaining / 4) : null
+}
 
 // Energy in a kg of mixed body-weight loss; the /9 kcal-per-gram figure assumes pure fat and overstates the pace.
 export const KCAL_PER_KG = 7700

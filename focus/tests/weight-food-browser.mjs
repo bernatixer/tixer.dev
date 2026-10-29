@@ -11,7 +11,7 @@ const day = offset => {
 const foodDate = day(-1)
 const humanDate = date => new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 let editedWeight = 80
-const meals = [{ id: 'breakfast', date: foodDate, description: 'Synthetic breakfast', kcal: 400, proteinG: 20, createdAt: `${foodDate}T08:00:00Z` }]
+const meals = [{ id: 'breakfast', date: foodDate, description: 'Synthetic breakfast', kcal: 400, proteinG: 20, carbsG: 50, createdAt: `${foodDate}T08:00:00Z` }]
 const snapshot = () => ({
   entries: Array.from({ length: 10 }, (_, index) => ({ date: day(index - 9), weightKg: day(index - 9) === foodDate ? editedWeight : 80 })),
   phases: [{ startDate: day(-20), maintenanceKcal: 2400, intakeKcal: 2000, proteinPerKg: 2.2 }],
@@ -90,6 +90,7 @@ try {
   assert.equal(await drawer.getByText('Add known calories', { exact: true }).count(), 0)
   assert.equal(await drawer.getByText('Food coverage', { exact: true }).count(), 0)
   assert.equal(await drawer.getByRole('progressbar', { name: 'Protein of target' }).getAttribute('max'), '120', 'old phase protein values cannot override 1.5 g/kg')
+  assert.equal(await drawer.getByRole('progressbar', { name: 'Carbs of target' }).getAttribute('max'), '272', 'carb cap uses the calorie target after protein and minimum fat')
   ;(await gateFor('First synthetic meal'))(200)
   ;(await gateFor('Second synthetic meal'))(500)
   await drawer.getByRole('spinbutton', { name: 'kcal for First synthetic meal', exact: true }).waitFor()
