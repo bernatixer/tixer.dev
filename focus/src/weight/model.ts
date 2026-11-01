@@ -86,6 +86,25 @@ export function analyse(entries: WeightEntry[], windowDays = 21): Analysis | nul
 // Food days roll over at 02:00 (matches the worker), so a late snack counts towards the evening before.
 export const mealDay = (now = new Date()) => { const shifted = new Date(now.getTime() - 2 * 3600e3); return dateOf(Math.floor((shifted.getTime() - shifted.getTimezoneOffset() * 60000) / DAY_MS)) }
 
+export const CALORIE_PATTERN_THRESHOLD = 3000
+
+export function calorieWeightPattern(entries: WeightEntry[], days: FoodDay[], lagDays: 1 | 3 | 7, today: string, foodDay: string) {
+  const weights = new Map(entries.filter(entry => entry.date <= today && Number.isFinite(entry.weightKg) && entry.weightKg > 0).map(entry => [entry.date, entry.weightKg]))
+  const logged = days.filter(day => day.date < today && day.date < foodDay && day.mealCount > 0 && day.kcal !== null && Number.isFinite(day.kcal) && day.kcal >= 0)
+  const points: { date: string; endDate: string; kcal: number; changeKg: number }[] = []
+  // boffin: compare completed food days with exact later weigh-ins; missing readings stay unknown.
+  for (const day of [...logged].sort((a, b) => a.date.localeCompare(b.date))) {
+    const endDate = dateOf(dayNumber(day.date) + lagDays)
+    const before = weights.get(day.date), after = weights.get(endDate)
+    if (before !== undefined && after !== undefined) points.push({ date: day.date, endDate, kcal: day.kcal!, changeKg: after - before })
+  }
+  const group = (high: boolean) => {
+    const samples = points.filter(point => (point.kcal >= CALORIE_PATTERN_THRESHOLD) === high)
+    return { count: samples.length, meanChangeKg: samples.length ? samples.reduce((sum, point) => sum + point.changeKg, 0) / samples.length : null }
+  }
+  return { points, high: group(true), low: group(false), skippedDays: logged.length - points.length }
+}
+
 // Consecutive logged days ending the day before `date`.
 export function streakBefore(entries: WeightEntry[], date: string): number {
   const logged = new Set(entries.map(entry => entry.date))
