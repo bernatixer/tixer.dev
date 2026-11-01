@@ -1,5 +1,17 @@
 # Calorie and weight pattern
 
+## Revision: one timeline
+
+The user found the scatter plot difficult to understand and chose to keep the comparison on the original Progress timeline, highlighting high-calorie days. Remove the separate panel, its styles, aggregation helper and obsolete tests. Keep the existing 3,000 kcal highlight threshold.
+
+Show food bars by default. Mark days at or above 3,000 kcal with orange bars and a light vertical band, with a labelled legend. Keep current weight/average/target/forecast lines, ranges, food editing and the ability to hide calories. A food day's tooltip shows the exact following morning's weight and change from that day's morning; missing readings stay unknown, never use the next available reading. Future or absent readings cannot create a result.
+
+Plan: first adapt the synthetic browser regression to the timeline and observe failure; then update WeightChart and remove the displaced scatter implementation; update existing preview/browser toggles for the new default; run Focus tests/build, timeline and food browser checks, inspect desktop/phone/light/dark previews, and review the final change. No new dependencies, API/schema changes or writes to personal records.
+
+Verified revision: 137 Focus tests and production build pass. Synthetic timeline coverage checks the inclusive threshold, positive/negative/zero changes, missing next-morning and future readings, toggle behavior, keyboard and touch food editing, and 320/390px layouts. Existing food browser regression passes. Inspected dark/light phone and desktop previews. Fresh review's accessible-description finding was fixed with a unique tooltip ID, tooltip role and aria-describedby relationship, verified by a regression that failed before the fix. Static chart lines no longer block food-bar taps. The retired scatter and its unused aggregation/tests/styles are removed.
+
+## Initial version
+
 The user wants the overall relationship between logged calories and subsequent weight changes, especially days around 3,000 kcal. A new panel below Progress compares all recorded history, using the existing private Weight API response.
 
 Approaches considered: inspecting individual days (the user preferred the overall pattern), adding more overlapping lines to Progress (harder to read), or a scatter plot plus grouped averages (chosen implementation). Each dot shows one food day's kcal against the change between that morning's weight and an exact later weigh-in. Default: next morning; alternatives: 3 and 7 calendar days later. The two groups are below 3,000 kcal and at least 3,000 kcal. Show mean scale change and sample count separately for each group; no numerical result when a group is empty.

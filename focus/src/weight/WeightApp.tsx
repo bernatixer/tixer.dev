@@ -15,7 +15,6 @@ import { goalReference, intakeTargetOn } from './goals'
 import { trendAt } from './model'
 import { compactWeightDate as shortDate, formatWeightDate } from './format'
 import { WeightChart } from './WeightChart'
-import { CalorieWeightPattern } from './CalorieWeightPattern'
 import type { FoodDay, WeightGoal, WeightProfile } from './model'
 
 const kg = (value: number, digits = 2) => `${value.toFixed(digits)} kg`
@@ -67,7 +66,6 @@ function Weight() {
     {!entries.some(entry => entry.date === localToday()) && <TodayForm entries={currentEntries} goals={goals} onSave={weightKg => run(put(`/weight/entries/${localToday()}`, { weightKg }))} />}
     <Stats entries={currentEntries} profile={profile} />
     {currentEntries.length > 0 && <WeightChart entries={currentEntries} goals={goals} days={days} onOpenDay={setSelectedDay} />}
-    <CalorieWeightPattern entries={currentEntries} days={days} />
     <div className="finance-columns weight-overview">
       <Food meals={meals.filter(meal => meal.date === foodDay)} kcalTarget={intakeTargetOn(goals, phases, foodDay)} bodyKg={bodyKg}
         jobs={estimates.jobs.filter(job => job.date === foodDay)} onAdd={(text, image) => estimates.add(foodDay, text, image)} onRetry={estimates.retry} onDismiss={estimates.dismiss}

@@ -152,7 +152,7 @@ try {
   assert.equal((await snapshot()).goals[0].targetDate, day(-1), 'editing an old budget preserves its deadline')
   assert.equal((await snapshot()).goals[0].intakeKcal, 1850)
 
-  await page.getByRole('button', { name: 'Daily calories', exact: true }).click()
+  assert.equal(await page.getByRole('button', { name: 'Daily calories', exact: true }).getAttribute('aria-pressed'), 'true')
   assert.equal(await page.locator('.weight-chart__calories').count(), 10)
   await page.getByLabel('Calories scale').waitFor()
   await page.getByRole('button', { name: `Food for ${human(day(-1))}: 2000 kcal`, exact: true }).focus()

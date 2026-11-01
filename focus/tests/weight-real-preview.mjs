@@ -27,7 +27,7 @@ try {
   await stats.screenshot({ path: `${output}/final-stats.png` })
 
   await plan.getByText('AT YOUR RECENT PACE', { exact: true }).waitFor()
-  await page.getByRole('button', { name: 'Daily calories', exact: true }).click()
+  assert.equal(await page.getByRole('button', { name: 'Daily calories', exact: true }).getAttribute('aria-pressed'), 'true')
   assert((await page.locator('.weight-chart__calories').count()) > 0)
   assert.equal(await page.locator('.weight-lab').count(), 0)
   const foodBox = await page.locator('.weight-overview > .weight-food').boundingBox(), planBox = await plan.boundingBox()
